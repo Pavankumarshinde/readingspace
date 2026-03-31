@@ -1,0 +1,17 @@
+{
+  "name": "ReadingSpace",
+  "short_name": "ReadingSpace",
+  "description": "Premium Reading Room Management Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#002954",
+  "theme_color": "#002954",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
