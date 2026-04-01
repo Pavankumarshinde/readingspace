@@ -1,15 +1,48 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { ArrowLeft, MapPin, Edit, Key, Copy, Home, Shield, LogOut } from 'lucide-react'
+import { ArrowLeft, MapPin, Edit, Shield, LogOut, Building } from 'lucide-react'
 
 export default function SpaceProfile() {
   const router = useRouter()
   const supabase = createClient()
+  
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [radius, setRadius] = useState(200)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/login')
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (data) {
+          setProfile(data)
+        }
+      } catch (error) {
+        console.error(error)
+        toast.error('Failed to load profile')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -17,152 +50,146 @@ export default function SpaceProfile() {
     router.refresh()
   }
 
-  const copyKey = () => {
-    navigator.clipboard.writeText('RS-4F9K-12')
-    toast.success('Space Key copied to clipboard!')
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-surface items-center justify-center text-outline">
+        <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
+        Syncing Profile...
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface">
-      {/* TopAppBar */}
-      <header className="bg-surface/80 backdrop-blur-md flex items-center justify-between px-6 py-5 w-full sticky top-0 z-50 border-b border-outline-variant/10">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="btn-ghost !p-2">
-            <ArrowLeft size={20} className="text-primary" />
-          </button>
-          <h1 className="text-lg font-black text-primary tracking-tight font-headline italic">ReadingSpace</h1>
-        </div>
-        <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/30 shadow-sm bg-primary-fixed flex-center text-primary font-bold">
-           RA
-        </div>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+      <header>
+        <h2 className="section-header text-primary">Operational Profile</h2>
+        <p className="section-sub mt-1">Management identity & radius settings</p>
       </header>
 
-      <main className="max-w-md mx-auto px-6 pt-2 pb-32 space-y-6 w-full">
-        {/* Header Section */}
-        <section className="py-2">
-          <h2 className="text-3xl font-black tracking-tighter text-primary font-headline italic">Sunrise Reading Hall</h2>
-          <div className="flex items-center gap-1.5 mt-2 text-on-surface-variant group cursor-pointer">
-            <MapPin size={16} className="text-secondary" />
-            <p className="text-[13px] font-bold uppercase tracking-widest opacity-60">Floor 4, North Wing • Mumbai 400012</p>
-          </div>
-        </section>
-
-        {/* General Information Consolidated Card */}
-        <section>
-          <div className="bg-white border border-outline-variant/20 rounded-2xl divide-y divide-outline-variant/10 shadow-sm overflow-hidden">
-            <div className="p-5 flex items-center justify-between group hover:bg-surface-container-low transition-colors">
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black text-outline uppercase tracking-[0.2em] mb-1 opacity-60">Manager Email</span>
-                <span className="text-[15px] font-bold text-primary italic">manager@reading.space.edu</span>
+      <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-8">
+           {/* Business Identity */}
+           <section className="space-y-4">
+              <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Organization</h3>
+              <div className="card p-6 relative overflow-hidden group">
+                 <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-xl bg-primary/5 text-primary flex items-center justify-center border border-primary/10 transition-transform group-hover:scale-105">
+                       <span className="material-symbols-outlined text-2xl">corporate_fare</span>
+                    </div>
+                    <div className="flex flex-col">
+                       <h2 className="font-headline font-bold text-base text-on-surface leading-tight">
+                         {profile?.business_name || 'Organization Space'}
+                       </h2>
+                       <p className="font-bold text-[9px] text-outline uppercase tracking-widest mt-1 opacity-60">Verified Hub Manager</p>
+                    </div>
+                 </div>
               </div>
-              <button className="text-outline/40 hover:text-primary transition-colors p-2 underline decoration-2 underline-offset-4 decoration-primary/20">
-                EDIT
-              </button>
-            </div>
-            <div className="p-5 flex items-center justify-between group hover:bg-surface-container-low transition-colors">
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black text-outline uppercase tracking-[0.2em] mb-1 opacity-60">Contact Phone</span>
-                <span className="text-[15px] font-bold text-primary italic">+91 98765 43210</span>
-              </div>
-              <button className="text-outline/40 hover:text-primary transition-colors p-2 underline decoration-2 underline-offset-4 decoration-primary/20">
-                EDIT
-              </button>
-            </div>
-          </div>
-        </section>
+           </section>
 
-        {/* Compact Location */}
-        <section>
-          <div className="bg-white border border-outline-variant/20 rounded-3xl overflow-hidden shadow-lg border-4 border-white">
-            <div className="relative h-32 bg-surface-container-highest flex-center overflow-hidden">
-               {/* Symbolic static map preview */}
-               <div className="absolute inset-0 bg-primary/5 pattern-dots opacity-20" />
-               <div className="z-10 w-10 h-10 bg-primary rounded-full flex-center shadow-2xl border-4 border-white animate-bounce">
-                  <Home size={20} className="text-white fill-current" />
-               </div>
-               <div className="absolute top-2 right-4 bg-primary text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full">LIVE PREVIEW</div>
-            </div>
-            <div className="px-5 py-4 flex items-center justify-between bg-surface-container-lowest">
-              <p className="text-[11px] text-on-surface-variant font-black uppercase tracking-widest leading-relaxed max-w-[200px]">4th Floor, North Wing, Mumbai 400012</p>
-              <button className="text-secondary text-[11px] font-black uppercase tracking-widest hover:underline decoration-2">Change</button>
-            </div>
-          </div>
-        </section>
-
-        {/* Minimal Space Key */}
-        <section>
-          <div className="bg-primary p-5 rounded-3xl text-white flex items-center justify-between shadow-2xl shadow-primary/20 relative overflow-hidden group">
-            <div className="flex items-center gap-4 z-10">
-              <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm group-hover:scale-110 transition-transform">
-                <Key size={20} className="text-secondary" />
+           {/* Contact Details */}
+           <section className="space-y-4">
+              <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Primary Liaison</h3>
+              <div className="card divide-y divide-outline-variant/10 overflow-hidden">
+                 {[
+                    { label: 'Identity', val: profile?.name, icon: 'person' },
+                    { label: 'Communications', val: profile?.email, icon: 'alternate_email' },
+                    { label: 'Hotline', val: profile?.phone || 'Not provided', icon: 'call' }
+                 ].map((item, i) => (
+                    <div key={i} className="p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors group">
+                       <div className="flex items-center gap-4">
+                          <span className="material-symbols-outlined text-outline/40 icon-sm transition-colors group-hover:text-primary">{item.icon}</span>
+                          <div>
+                             <p className="text-[8px] font-bold text-outline/50 uppercase tracking-widest">{item.label}</p>
+                             <p className="text-xs font-bold text-on-surface mt-0.5">{item.val}</p>
+                          </div>
+                       </div>
+                       <button className="btn-ghost scale-75 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="material-symbols-outlined icon-xs">edit</span>
+                       </button>
+                    </div>
+                 ))}
               </div>
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] opacity-40 block mb-0.5">Space Join Key</span>
-                <span className="font-mono text-lg font-black tracking-[0.2em] uppercase italic text-primary-fixed">RS·4F9K·12</span>
-              </div>
-            </div>
-            <button 
-               onClick={copyKey}
-               className="flex items-center gap-2 bg-secondary text-on-secondary px-5 py-2.5 rounded-2xl text-[11px] font-black transition-all active:scale-95 shadow-lg shadow-black/10 z-10"
-            >
-               <Copy size={16} />
-               COPY
-            </button>
-            <div className="absolute right-[-10%] top-[-50%] w-32 h-32 bg-white/5 rounded-full blur-2xl" />
-          </div>
-        </section>
+           </section>
 
-        {/* Modern Check-in Radius */}
-        <section className="bg-white border border-outline-variant/20 rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex flex-col">
-              <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Check-in Radius</h3>
-              <p className="text-[11px] font-bold text-outline uppercase tracking-widest opacity-60 italic">Geofencing Strictness</p>
-            </div>
-            <span className="text-xs font-black text-white px-4 py-1.5 bg-primary rounded-full shadow-lg border border-primary/20 italic">{radius}m</span>
-          </div>
-          
-          <div className="relative flex items-center h-10">
-             <input 
-               type="range" 
-               min="50" 
-               max="1000" 
-               step="50"
-               value={radius}
-               onChange={(e) => setRadius(parseInt(e.target.value))}
-               className="w-full h-2 bg-surface-container rounded-full appearance-none cursor-pointer accent-primary"
-             />
-          </div>
-          
-          <div className="flex justify-between mt-3 text-[9px] font-black text-outline uppercase tracking-[0.2em] opacity-40">
-            <span>High Precision</span>
-            <span>Wide Coverage</span>
-          </div>
-        </section>
-
-        {/* Account Actions */}
-        <section className="space-y-3 pt-6 pb-20">
-          <button className="w-full flex items-center justify-between p-5 bg-white border border-outline-variant/10 rounded-2xl hover:bg-surface-container-low transition-all group active:scale-[0.98]">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-surface-container-low flex-center text-outline group-hover:text-primary transition-colors">
-                 <Shield size={22} />
+           {/* Security Area */}
+           <section className="space-y-4">
+              <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Session Protocol</h3>
+              <div className="flex gap-3">
+                 <button 
+                   onClick={handleLogout}
+                   className="flex-1 flex items-center justify-center gap-2 py-3 border border-error/20 text-error bg-error/5 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-error/10 transition-all active:scale-[0.98]"
+                 >
+                   <span className="material-symbols-outlined icon-xs">logout</span>
+                   <span>Terminate Session</span>
+                 </button>
+                 <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-outline-variant/30 text-outline bg-surface-container-low rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container transition-all active:scale-[0.98]">
+                    <span className="material-symbols-outlined icon-xs">security</span>
+                    <span>Guard Panel</span>
+                 </button>
               </div>
-              <span className="text-[14px] font-black text-primary uppercase tracking-widest">Manager Credentials</span>
-            </div>
-            <span className="material-symbols-outlined text-outline-variant text-[24px]">chevron_right</span>
-          </button>
-          
-          <button 
-             onClick={handleLogout}
-             className="w-full flex items-center gap-4 p-5 bg-error/5 border border-error/10 rounded-2xl hover:bg-error/10 transition-all active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-error/10 flex-center text-error">
-               <LogOut size={22} />
-            </div>
-            <span className="text-[14px] font-black text-error uppercase tracking-widest">Terminate Session</span>
-          </button>
-        </section>
+              <p className="text-center text-[8px] text-outline/40 font-mono uppercase tracking-widest">
+                ReadingSpace Core v1.2.x // Terminal RA-01
+              </p>
+           </section>
+        </div>
+
+        <div className="space-y-8">
+           {/* Geofencing Section */}
+           <section className="space-y-4">
+              <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Operational Boundary</h3>
+              <div className="card p-6 space-y-8">
+                 <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                       <h3 className="font-bold text-xs text-on-surface">Precision Radius</h3>
+                       <p className="text-[9px] font-bold text-outline uppercase tracking-widest mt-1 opacity-60">Attendance geofence strictness</p>
+                    </div>
+                    <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-bold font-mono tracking-widest">
+                       {radius} MTRS
+                    </span>
+                 </div>
+                 
+                 <div className="px-2">
+                    <input 
+                      type="range" 
+                      min="50" 
+                      max="1000" 
+                      step="50"
+                      value={radius}
+                      onChange={(e) => setRadius(parseInt(e.target.value))}
+                      className="w-full h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary"
+                    />
+                    <div className="flex justify-between mt-3 text-[8px] font-bold text-outline/40 uppercase tracking-widest">
+                       <span>Tactical (50m)</span>
+                       <span>Expansion (1km)</span>
+                    </div>
+                 </div>
+              </div>
+           </section>
+
+           {/* Location Section */}
+           <section className="space-y-4">
+              <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Physical Presence</h3>
+              <div className="card relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span className="material-symbols-outlined text-6xl">location_on</span>
+                 </div>
+                 <div className="p-6">
+                    <p className="text-[8px] font-bold text-outline/50 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                       <span className="material-symbols-outlined icon-xs text-primary">share_location</span>
+                       Registered Address
+                    </p>
+                    <p className="text-[11px] font-bold text-on-surface uppercase tracking-widest leading-relaxed max-w-[80%]">
+                       {profile?.address || 'Deployment coordinates not set'}
+                    </p>
+                    <button className="mt-6 text-primary text-[9px] font-bold uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
+                       Relocate Station
+                    </button>
+                 </div>
+              </div>
+           </section>
+        </div>
       </main>
     </div>
   )
 }
+

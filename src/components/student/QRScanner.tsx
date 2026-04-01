@@ -14,39 +14,58 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
-  const [reader, setReader] = useState<BrowserQRCodeReader | null>(null)
+  // Use ref to avoid stale closure - the callback always reads current value
+  const scannedRef = useRef(false)
 
   useEffect(() => {
-    const codeReader = new BrowserQRCodeReader()
-    
+    let codeReader: BrowserQRCodeReader | null = null
+    let controls: any = null
+
     async function startScanner() {
       try {
+        codeReader = new BrowserQRCodeReader()
         const devices = await navigator.mediaDevices.enumerateDevices()
         const videoInputDevices = devices.filter(device => device.kind === 'videoinput')
-        const selectedDeviceId = videoInputDevices[0].deviceId
         
-        const ctrl = await codeReader.decodeFromVideoDevice(
-          selectedDeviceId,
+        if (videoInputDevices.length === 0) {
+          toast.error('No camera found')
+          onClose()
+          return
+        }
+
+        // Prefer back camera on mobile
+        const backCamera = videoInputDevices.find(d => d.label.toLowerCase().includes('back')) || videoInputDevices[0]
+        
+        controls = await codeReader.decodeFromVideoDevice(
+          backCamera.deviceId,
           videoRef.current!,
           async (result, error) => {
-            if (result && !scanning) {
-              setScanning(true)
-              const payload = result.getText()
-              try {
-                await onScan(payload)
-                codeReader.reset()
-              } catch (err: any) {
-                toast.error(err.message || 'Verification failed')
-                setScanning(false)
-              }
+            // Guard: if already processing a scan, ignore all further frames
+            if (!result || scannedRef.current) return
+            
+            // Immediately mark as scanned to block all future frames
+            scannedRef.current = true
+            setScanning(true)
+
+            // Stop the scanner right away - no more frames needed
+            try { controls?.stop() } catch (e) {}
+            try { codeReader?.reset() } catch (e) {}
+
+            const payload = result.getText()
+            try {
+              await onScan(payload)
+            } catch (err: any) {
+              toast.error(err.message || 'Verification failed')
+              // Reset the guard so user can try again
+              scannedRef.current = false
+              setScanning(false)
             }
           }
         )
-        setReader(codeReader)
         setLoading(false)
       } catch (err) {
         console.error('Scanner Error:', err)
-        toast.error('Could not access camera')
+        toast.error('Could not access camera. Please check permissions.')
         onClose()
       }
     }
@@ -54,9 +73,14 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     startScanner()
 
     return () => {
-      reader?.reset()
+      if (controls) {
+        try { controls.stop() } catch (e) {}
+      }
+      if (codeReader) {
+        try { codeReader.reset() } catch (e) {}
+      }
     }
-  }, [reader])
+  }, [])
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col pt-12 items-center px-5">
@@ -76,7 +100,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
               <RefreshCw size={32} className="text-white animate-spin opacity-40" />
            </div>
          )}
-         <video ref={videoRef} className="w-full h-full object-cover" />
+         <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
          
          {/* Scanner Overlay Frame */}
          <div className="absolute inset-0 flex-center pointer-events-none">

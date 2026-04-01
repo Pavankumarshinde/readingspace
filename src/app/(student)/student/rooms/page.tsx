@@ -1,154 +1,194 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Avatar from '@/components/ui/Avatar'
+
 import JoinRoomModal from '@/components/student/JoinRoomModal'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 export default function StudentRooms() {
   const [showJoinModal, setShowJoinModal] = useState(false)
+  const [rooms, setRooms] = useState<any[]>([])
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const supabase = createClient()
+  const router = useRouter()
 
-  const rooms = [
-    {
-      id: '1',
-      name: 'Sunrise Reading Hall',
-      location: 'Floor 3, North Wing',
-      description: 'Experience the tranquility of morning study sessions in our most sought-after location with panoramic views.',
-      type: 'Premium',
-      start: 'Nov 12, 2024',
-      expiry: 'Dec 12, 2024',
-      seat: 'B-12',
-      image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=800',
-    },
-    {
-      id: '2',
-      name: 'The Quiet Zone',
-      location: 'Floor 1, West Wing',
-      description: 'Zero-distraction environment strictly for deep focus work. No devices allowed unless specified.',
-      type: 'Standard',
-      start: 'Dec 05, 2024',
-      expiry: 'Jan 05, 2025',
-      seat: 'Q-08',
-      image: 'https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&q=80&w=800',
-    },
-  ]
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      setProfile(profileData)
+
+      const { data: subs, error } = await supabase
+        .from('subscriptions')
+        .select(`*, rooms (*)`)
+        .eq('student_id', user.id)
+        .eq('status', 'active')
+
+      if (error) throw error
+      setRooms(subs || [])
+    } catch (err: any) {
+      toast.error('Failed to load rooms')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredRooms = rooms.filter(sub =>
+    sub.rooms?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface">
+         <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* TopAppBar */}
-      <header className="bg-surface/80 backdrop-blur-xl flex justify-between items-center px-6 py-4 w-full sticky top-0 z-40 border-b border-outline-variant/10">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-            menu_book
-          </span>
-          <h1 className="font-headline font-bold text-xl tracking-tight text-primary">ReadingSpace</h1>
+      {/* Header row */}
+      <section className="mb-4 flex justify-between items-center px-2">
+        <div>
+          <p className="text-secondary text-[11px] font-medium uppercase tracking-wider mb-0.5">Scholar Portal</p>
+          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface">My Reading Rooms</h2>
         </div>
-        <div className="flex items-center gap-4">
-          <button className="btn-ghost">
-            <span className="material-symbols-outlined">search</span>
-          </button>
-          <div className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-primary/10">
-             <Avatar name="Julian Thorne" size={40} />
-          </div>
-        </div>
-      </header>
+        <button 
+          onClick={() => setShowJoinModal(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-outline text-on-surface text-xs font-medium rounded-lg hover:bg-surface-container-low transition-colors active:scale-95"
+        >
+          <span className="material-symbols-outlined text-sm">add</span>
+          <span className="hidden sm:inline">Join Room</span>
+        </button>
+      </section>
 
-      <main className="max-w-5xl mx-auto px-6 pt-8 pb-32 w-full">
-        {/* Welcome Section */}
-        <section className="mb-12 flex justify-between items-end">
-          <div>
-            <p className="text-secondary font-medium mb-1">Welcome back, Scholar</p>
-            <h2 className="section-header text-3xl mb-2">My Reading Rooms</h2>
-            <div className="h-1.5 w-12 bg-secondary rounded-full"></div>
-          </div>
-          <button 
-            onClick={() => setShowJoinModal(true)}
-            className="btn-primary"
+      {/* Search bar */}
+      <div className="relative mb-6 px-2">
+        <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-outline/50 text-base pointer-events-none select-none">
+          search
+        </span>
+        <input
+          type="text"
+          placeholder="Search rooms..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl pl-10 pr-10 py-2.5 text-sm text-on-surface placeholder:text-outline/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-5 top-1/2 -translate-y-1/2 text-outline/50 hover:text-on-surface transition-colors"
           >
-            <span className="material-symbols-outlined">add</span>
-            <span>Join Room</span>
+            <span className="material-symbols-outlined text-base">close</span>
           </button>
-        </section>
+        )}
+      </div>
 
-        {/* Room List Container */}
-        <div className="flex flex-col gap-8">
-          {rooms.map((room) => (
-            <div key={room.id} className="card group relative overflow-hidden p-6 card-hover border-outline-variant/30">
-              <div className="flex flex-col md:flex-row gap-6">
-                <div className="md:w-1/3 aspect-[4/3] rounded-2xl overflow-hidden relative shrink-0">
-                  <img 
-                    alt={room.name} 
-                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" 
-                    src={room.image}
-                  />
-                  <div className="absolute top-3 left-3">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                       room.type === 'Premium' ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-tertiary-fixed text-on-tertiary-fixed'
-                    }`}>
-                       {room.type}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex-1 flex flex-col">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-headline text-xl font-bold text-primary">{room.name}</h3>
-                    <button className="btn-ghost">
-                       <span className="material-symbols-outlined">more_vert</span>
+      {/* Room List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredRooms.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-24 bg-surface-container-low rounded-2xl border border-outline-variant/30">
+            <div className="w-16 h-16 bg-surface-container-highest rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-outline text-3xl">
+                {searchQuery ? 'search_off' : 'meeting_room'}
+              </span>
+            </div>
+            <h3 className="font-headline font-semibold text-lg text-on-surface mb-1">
+              {searchQuery ? `No rooms matching "${searchQuery}"` : 'No joined rooms yet'}
+            </h3>
+            <p className="text-on-surface-variant text-sm max-w-xs text-center mb-6">
+              {searchQuery
+                ? 'Try a different search term.'
+                : 'Join a reading room using a key provided by your manager.'}
+            </p>
+            {!searchQuery && (
+              <button 
+                onClick={() => setShowJoinModal(true)}
+                className="px-4 py-2 bg-primary text-on-primary rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
+              >
+                Join Your First Room
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredRooms.map((sub) => {
+            const room = sub.rooms
+            if (!room) return null
+            
+            return (
+              <div key={sub.id} className="bg-surface border border-outline-variant/30 rounded-xl p-5 transition-all duration-200 hover:border-outline-variant/60 group shadow-sm hover:shadow-md">
+                <div className="flex flex-col h-full">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-headline text-lg font-semibold text-on-surface group-hover:text-primary transition-colors">{room.name}</h3>
+                      <p className="text-on-surface-variant text-xs mt-1 line-clamp-2 leading-relaxed">
+                        {room.description || 'Dedicated reading space for focused learning.'}
+                      </p>
+                    </div>
+                    <button className="btn-ghost scale-90">
+                      <span className="material-symbols-outlined icon-sm">more_vert</span>
                     </button>
                   </div>
-                  <p className="text-on-surface-variant text-sm mb-6 leading-relaxed">
-                     {room.description}
-                  </p>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-3 gap-4 py-4 border-y border-outline-variant/10 my-4">
                     <div>
-                      <p className="input-label">Start</p>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-secondary text-base">event_note</span>
-                        <span className="font-mono text-[13px] font-semibold">{room.start}</span>
-                      </div>
+                      <p className="text-[9px] text-outline uppercase tracking-widest mb-1 font-bold">Joined</p>
+                      <p className="font-mono text-[10px] font-medium text-on-surface">
+                        {new Date(sub.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                      </p>
                     </div>
                     <div>
-                      <p className="input-label">Expiry</p>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-secondary text-base">event_available</span>
-                        <span className="font-mono text-[13px] font-semibold">{room.expiry}</span>
-                      </div>
+                      <p className="text-[9px] text-outline uppercase tracking-widest mb-1 font-bold">Expires</p>
+                      <p className="font-mono text-[10px] font-medium text-secondary">
+                        {new Date(sub.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                      </p>
                     </div>
-                    <div className="col-span-2 md:col-span-1">
-                      <p className="input-label">Assigned Seat</p>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-secondary text-base">chair</span>
-                        <span className="font-mono text-[13px] font-semibold">{room.seat}</span>
-                      </div>
+                    <div>
+                      <p className="text-[9px] text-outline uppercase tracking-widest mb-1 font-bold">Seat</p>
+                      <p className="font-mono text-[10px] font-bold text-primary">{sub.seat_number}</p>
                     </div>
                   </div>
                   
                   <div className="mt-auto">
                     <Link href={`/student/rooms/${room.id}`}>
-                      <button className="btn-gradient w-full group/btn overflow-hidden relative">
-                        <span className="relative z-10 flex items-center gap-2">
-                          Enter Reading Room
-                          <span className="material-symbols-outlined text-lg group-hover/btn:translate-x-1 transition-transform">
-                             chevron_right
-                          </span>
-                        </span>
+                      <button className="w-full py-2.5 bg-surface-container-low border border-outline-variant/30 text-on-surface hover:bg-primary hover:text-on-primary hover:border-primary rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                        <span>Enter Room</span>
+                        <span className="material-symbols-outlined icon-xs font-bold">east</span>
                       </button>
                     </Link>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </main>
+            )
+          })
+        )}
+      </div>
 
       {showJoinModal && (
         <JoinRoomModal 
           open={showJoinModal} 
           onClose={() => setShowJoinModal(false)}
-          onSuccess={() => {}}
+          onSuccess={fetchData}
         />
       )}
     </div>

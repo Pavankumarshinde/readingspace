@@ -83,105 +83,111 @@ export default function StudentProfile() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface">
-      {/* TopAppBar */}
-      <header className="bg-surface/80 backdrop-blur-xl flex justify-between items-center px-6 py-4 w-full fixed top-0 z-50 border-b border-outline-variant/10">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-            menu_book
-          </span>
-          <h1 className="font-headline font-bold text-xl tracking-tight text-primary">My Profile</h1>
-        </div>
-        <div className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-primary-fixed shrink-0">
-          <Avatar name={user.name} size={40} />
-        </div>
-      </header>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+      {/* Header Section */}
+      <section>
+        <h2 className="section-header">Account Space</h2>
+        <p className="section-sub mt-1">Scholar identity & preferences</p>
+      </section>
 
-      <main className="pt-24 px-6 max-w-2xl mx-auto mt-4 pb-32">
-        {/* Profile Hero Section */}
-        <section className="mb-10">
-          <div className="bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/30 relative overflow-hidden shadow-sm">
-            <button className="absolute top-6 right-6 p-2 rounded-full hover:bg-surface-container-low transition-colors text-outline">
-              <span className="material-symbols-outlined text-[20px]">edit</span>
-            </button>
-            <div className="flex flex-col gap-1 relative z-10">
-              <h2 className="font-headline text-3xl font-bold text-primary tracking-tight italic">
-                {user.name}
-              </h2>
-              <p className="text-on-surface-variant font-body text-sm font-medium opacity-80 uppercase tracking-widest leading-loose">
-                {user.email}
-              </p>
-            </div>
-            {/* Decoration */}
-            <div className="absolute -bottom-6 -right-6 opacity-[0.03] pointer-events-none">
-              <span className="material-symbols-outlined text-[140px]">school</span>
-            </div>
-          </div>
-        </section>
+      <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-8">
+           {/* Profile Hero section */}
+           <section>
+             <div className="card p-6 relative overflow-hidden group hover:border-primary/20 transition-all">
+               <button className="absolute top-4 right-4 btn-ghost scale-75 group-hover:text-primary transition-colors">
+                 <span className="material-symbols-outlined">edit</span>
+               </button>
+               <div className="flex items-center gap-6">
+                 <div className="w-14 h-14 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/30 shrink-0">
+                   <Avatar name={user.name} size={56} />
+                 </div>
+                 <div className="flex flex-col">
+                   <h2 className="font-headline text-lg font-bold text-on-surface tracking-tight leading-tight group-hover:text-primary transition-colors">
+                     {user.name}
+                   </h2>
+                   <p className="font-mono text-[9px] text-outline uppercase tracking-widest mt-1.5 font-bold">
+                     {user.email}
+                   </p>
+                 </div>
+               </div>
 
-        {/* Settings List */}
-        <section className="space-y-8">
-          <div>
-            <h3 className="font-headline text-lg font-bold text-primary mb-4 px-2">Account Preferences</h3>
-            <div className="bg-surface-container-low rounded-3xl overflow-hidden shadow-inner-soft">
-              {[
-                { title: 'Notifications', sub: 'Manage alerts and reminders', icon: 'notifications' },
-                { title: 'Security', sub: 'Password and biometric access', icon: 'security' },
-                { title: 'Appearance', sub: 'Themes and font scaling', icon: 'palette' }
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-5 hover:bg-surface-container transition-colors cursor-pointer group border-b border-outline-variant/5 last:border-none">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
-                      <span className="material-symbols-outlined">{item.icon}</span>
-                    </div>
-                    <div>
-                      <p className="font-body font-bold text-on-surface text-[15px]">{item.title}</p>
-                      <p className="text-xs text-on-surface-variant font-medium">{item.sub}</p>
-                    </div>
+               {/* Stats Row */}
+               <div className="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-outline-variant/10">
+                  <div>
+                    <p className="text-[8px] text-outline uppercase tracking-widest mb-1 font-bold">Current Hub</p>
+                    <p className="font-headline text-xs font-bold text-on-surface truncate">{user.activeRoom}</p>
                   </div>
-                  <span className="material-symbols-outlined text-outline-variant group-hover:text-primary transition-all duration-300 group-hover:translate-x-1">
-                    chevron_right
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+                  <div>
+                    <p className="text-[8px] text-outline uppercase tracking-widest mb-1 font-bold">Attendance</p>
+                    <p className="font-headline text-xs font-bold text-on-surface">{user.daysAttended} Sessions</p>
+                  </div>
+               </div>
+             </div>
+           </section>
 
-          <div>
-            <h3 className="font-headline text-lg font-bold text-primary mb-4 px-2">Library Status</h3>
-            <div className="bg-surface-container-low rounded-3xl p-6 border border-outline-variant/10 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-secondary fill-icon">history</span>
-                  <span className="font-body font-bold text-sm text-on-surface">Currently Active Room</span>
-                </div>
-                <span className="text-[11px] font-bold text-outline uppercase tracking-wider bg-surface-container-lowest px-3 py-1 rounded-full shadow-sm">
-                  {user.activeRoom}
-                </span>
-              </div>
-              
-              <div className="flex flex-col gap-3">
-                <div className="progress-bar h-2.5">
-                  <div className="progress-fill" style={{ width: '66%' }} />
-                </div>
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-[0.15em] font-bold text-center">
-                  Days Attended This Month: <span className="text-secondary">{user.daysAttended}</span>
-                </p>
-              </div>
-            </div>
-          </div>
+           {/* Security / Dangerous Area */}
+           <section className="space-y-4">
+             <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Session Protocol</h3>
+             <button 
+               onClick={handleLogout}
+               className="w-full flex items-center justify-center gap-2 py-3 border border-error/20 text-error bg-error/5 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-error/10 transition-all active:scale-[0.98]"
+             >
+               <span className="material-symbols-outlined icon-xs">logout</span>
+               <span>Terminate Session</span>
+             </button>
+             <p className="text-center text-[8px] text-outline/40 font-mono uppercase tracking-widest">
+               ReadingSpace Build 1.2.x // Scholar Node
+             </p>
+           </section>
+        </div>
 
-          {/* Danger Zone */}
-          <div className="pt-4 pb-12">
-            <button 
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-error-container text-on-error-container rounded-2xl font-headline font-bold hover:opacity-90 transition-all active:scale-[0.98] shadow-lg shadow-error/5"
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>Logout from Session</span>
-            </button>
-          </div>
-        </section>
+        <div className="space-y-8">
+           {/* Preferences Grid */}
+           <section className="space-y-4">
+             <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Global Preferences</h3>
+             <div className="card divide-y divide-outline-variant/10 overflow-hidden">
+               {[
+                 { title: 'Notifications', icon: 'notifications', desc: 'Alerts & status' },
+                 { title: 'Security & Privacy', icon: 'security', desc: 'Encryption & access' },
+                 { title: 'Theme Engine', icon: 'palette', desc: 'Visual identity' }
+               ].map((item, i) => (
+                 <div key={i} className="flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors cursor-pointer group">
+                   <div className="flex items-center gap-4">
+                     <span className="material-symbols-outlined text-outline/40 text-[20px] group-hover:text-primary transition-colors">{item.icon}</span>
+                     <div>
+                       <p className="font-bold text-xs text-on-surface leading-tight">{item.title}</p>
+                       <p className="text-[9px] text-outline/60 uppercase tracking-widest font-bold mt-0.5">{item.desc}</p>
+                     </div>
+                   </div>
+                   <span className="material-symbols-outlined text-outline-variant/30 text-[18px] group-hover:translate-x-1 transition-transform group-hover:text-primary">
+                     chevron_right
+                   </span>
+                 </div>
+               ))}
+             </div>
+           </section>
+
+           <section className="space-y-4">
+             <h3 className="text-[9px] font-bold text-outline uppercase tracking-widest px-1">Archive & Support</h3>
+             <div className="card divide-y divide-outline-variant/10 overflow-hidden">
+               {[
+                 { title: 'Information Center', icon: 'help_outline' },
+                 { title: 'System Documentation', icon: 'info' }
+               ].map((item, i) => (
+                 <div key={i} className="flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors cursor-pointer group">
+                   <div className="flex items-center gap-4">
+                     <span className="material-symbols-outlined text-outline/40 text-[20px] group-hover:text-primary transition-colors">{item.icon}</span>
+                     <p className="font-bold text-xs text-on-surface">{item.title}</p>
+                   </div>
+                   <span className="material-symbols-outlined text-outline-variant/30 text-[18px] group-hover:translate-x-1 transition-transform group-hover:text-primary">
+                     chevron_right
+                   </span>
+                 </div>
+               ))}
+             </div>
+           </section>
+        </div>
       </main>
     </div>
   )

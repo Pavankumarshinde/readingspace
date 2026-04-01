@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Save, UserPlus, Info, Mail, Phone, Calendar, Armchair, Building, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createClient } from '@/lib/supabase/client'
 
 export default function AddStudent() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [rooms, setRooms] = useState<{ id: string, name: string }[]>([])
   
   const [formData, setFormData] = useState({
     name: '',
@@ -20,15 +22,50 @@ export default function AddStudent() {
     sendInvite: true
   })
 
+  useEffect(() => {
+    const fetchRooms = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      
+      const { data } = await supabase
+        .from('rooms')
+        .select('id, name')
+        .eq('manager_id', user.id)
+      
+      if (data) {
+        setRooms(data)
+        if (data.length > 0) {
+          setFormData(prev => ({ ...prev, room: data[0].id }))
+        }
+      }
+    }
+    fetchRooms()
+  }, [])
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      toast.success('Student added successfully!')
-      router.back()
+    
+    try {
+      const res = await fetch('/api/manager/students/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to add student')
+      } else {
+        toast.success('Student added successfully!')
+        router.back()
+      }
+    } catch (err) {
+      toast.error('Network error. Failed to add student.')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -123,13 +160,15 @@ export default function AddStudent() {
                         <Building size={18} />
                      </div>
                      <select 
+                       required
                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-semibold appearance-none pr-8"
                        value={formData.room}
                        onChange={(e) => setFormData({...formData, room: e.target.value})}
                      >
-                        <option value="">Choose a room...</option>
-                        <option value="1">Sunrise Reading Hall</option>
-                        <option value="2">The Quiet Zone</option>
+                        {rooms.length === 0 && <option value="">Loading rooms...</option>}
+                        {rooms.map((room) => (
+                           <option key={room.id} value={room.id}>{room.name}</option>
+                        ))}
                      </select>
                   </div>
                </div>
@@ -158,6 +197,7 @@ export default function AddStudent() {
                        </div>
                        <input 
                          type="number" 
+                         required
                          className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-semibold" 
                          min="1"
                          value={formData.duration}
@@ -194,7 +234,7 @@ export default function AddStudent() {
           <button 
              type="submit" 
              disabled={loading}
-             className="btn-gradient w-full py-5 rounded-2xl text-[16px]"
+             className="btn-gradient w-full py-5 rounded-2xl text-[16px] disabled:opacity-50"
           >
              {loading ? 'Processing Enrollment...' : 'Enroll Scholar'}
           </button>

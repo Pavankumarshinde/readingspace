@@ -28,16 +28,13 @@ export default function Avatar({ name, imageUrl, size = 40, fontSize = 14 }: Ava
   
   return (
     <div
-      className="flex items-center justify-center font-bold tracking-tighter shrink-0 aspect-square"
+      className="flex items-center justify-center font-headline font-semibold tracking-tight shrink-0 aspect-square bg-surface-container-highest text-primary"
       style={{
         width: size,
         height: size,
-        background: `linear-gradient(135deg, ${avatarColor(name)}, var(--primary-container))`,
-        color: 'white',
         borderRadius: '50%',
         fontSize: fontSize,
-        boxShadow: 'inset 0 0 10px rgba(0,0,0,0.1)',
-        border: '2px solid var(--surface-container-highest)',
+        border: '1px solid var(--outline-variant)',
       }}
     >
       {getInitials(name)}

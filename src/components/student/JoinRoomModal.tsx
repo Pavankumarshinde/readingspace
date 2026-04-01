@@ -22,11 +22,10 @@ export default function JoinRoomModal({ open, onClose, onSuccess }: JoinRoomModa
     setLoading(true)
 
     try {
-      const { data: room, error: roomError } = await supabase
-        .from('rooms')
-        .select('id, name')
-        .eq('join_key', key.toUpperCase())
-        .single()
+      const { data: roomData, error: roomError } = await supabase
+        .rpc('verify_room_key', { p_key: key })
+      
+      const room = Array.isArray(roomData) ? roomData[0] : roomData
 
       if (roomError || !room) {
         throw new Error('Invalid join key. Please check and try again.')
@@ -69,12 +68,12 @@ export default function JoinRoomModal({ open, onClose, onSuccess }: JoinRoomModa
            <Key size={20} className="search-icon" />
            <input 
              type="text" 
-             className="input uppercase tracking-widest font-bold" 
-             placeholder="E.G. SUN782X" 
+             className="input tracking-widest font-bold" 
+             placeholder="e.g. SuN782x" 
              maxLength={8}
              required 
              value={key}
-             onChange={(e) => setKey(e.target.value.toUpperCase())}
+             onChange={(e) => setKey(e.target.value)}
            />
         </div>
 

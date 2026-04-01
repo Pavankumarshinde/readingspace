@@ -89,6 +89,31 @@ alter table public.attendance_logs enable row level security;
 alter table public.join_requests enable row level security;
 alter table public.notes enable row level security;
 
+-- AUTH HELPER FUNCTIONS (Security Definer to break recursion)
+create or replace function public.is_room_manager(room_uuid uuid, user_uuid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.rooms
+    where id = room_uuid and manager_id = user_uuid
+  );
+$$;
+
+create or replace function public.is_room_student(room_uuid uuid, user_uuid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.subscriptions
+    where room_id = room_uuid and student_id = user_uuid and status = 'active'
+  );
+$$;
+
 -- RLS POLICIES
 
 -- Profiles: Users can read/update their own; managers can read students in their rooms
@@ -98,51 +123,32 @@ create policy "Users can update own profile" on public.profiles for update using
 -- Rooms: Managers can CRUD their own; students can read rooms they have a subscription for
 create policy "Managers can CRUD own rooms" on public.rooms for all using (auth.uid() = manager_id);
 create policy "Students can view subscribed rooms" on public.rooms for select using (
-  exists (
-    select 1 from public.subscriptions 
-    where subscriptions.room_id = rooms.id and subscriptions.student_id = auth.uid()
-  )
+  public.is_room_student(id, auth.uid())
 );
 
 -- Subscriptions: Managers can CRUD for their rooms; students can read their own
 create policy "Managers can CRUD room subscriptions" on public.subscriptions for all using (
-  exists (
-    select 1 from public.rooms 
-    where rooms.id = subscriptions.room_id and rooms.manager_id = auth.uid()
-  )
+  public.is_room_manager(room_id, auth.uid())
 );
 create policy "Students can view own subscriptions" on public.subscriptions for select using (auth.uid() = student_id);
 
 -- Attendance: Students insert own; managers insert/update for their rooms
 create policy "Students can insert own attendance" on public.attendance_logs for insert with check (auth.uid() = student_id);
 create policy "Users can view relevant attendance" on public.attendance_logs for select using (
-  auth.uid() = student_id or 
-  exists (
-    select 1 from public.rooms 
-    where rooms.id = attendance_logs.room_id and rooms.manager_id = auth.uid()
-  )
+  auth.uid() = student_id or public.is_room_manager(room_id, auth.uid())
 );
 create policy "Managers can manage room attendance" on public.attendance_logs for all using (
-  exists (
-    select 1 from public.rooms 
-    where rooms.id = attendance_logs.room_id and rooms.manager_id = auth.uid()
-  )
+  public.is_room_manager(room_id, auth.uid())
 );
 
 -- Join Requests: Students insert; managers read/update
 create policy "Students can create join requests" on public.join_requests for insert with check (auth.uid() = student_id);
 create policy "Students can view own join requests" on public.join_requests for select using (auth.uid() = student_id);
 create policy "Managers can view room join requests" on public.join_requests for select using (
-  exists (
-    select 1 from public.rooms 
-    where rooms.id = join_requests.room_id and rooms.manager_id = auth.uid()
-  )
+  public.is_room_manager(room_id, auth.uid())
 );
 create policy "Managers can update room join requests" on public.join_requests for update using (
-  exists (
-    select 1 from public.rooms 
-    where rooms.id = join_requests.room_id and rooms.manager_id = auth.uid()
-  )
+  public.is_room_manager(room_id, auth.uid())
 );
 
 -- Notes: Students CRUD own

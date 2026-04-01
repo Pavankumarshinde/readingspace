@@ -27,9 +27,21 @@ export default function LoginPage() {
       if (error) throw error
 
       if (data.user) {
+        // Fetch role directly to avoid intermediate redirects
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single()
+
         toast.success('Welcome back!')
-        router.push('/')
-        router.refresh()
+        
+        // Redirect directly to the correct dashboard
+        if (profile?.role === 'manager') {
+          router.push('/manager/dashboard')
+        } else {
+          router.push('/student/rooms')
+        }
       }
     } catch (err: any) {
       toast.error(err.message || 'Invalid login credentials')

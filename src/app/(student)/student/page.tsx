@@ -1,4 +1,4 @@
-import { Search, SlidersHorizontal, MoreVertical, Plus, BookOpen, Calculator, Lightbulb, Languages } from 'lucide-react'
+import { MoreVertical, Plus, BookOpen, Calculator, Lightbulb, Languages } from 'lucide-react'
 
 export default function StudentNotes() {
   const notes = [
@@ -45,13 +45,7 @@ export default function StudentNotes() {
         </p>
       </header>
 
-      <div className="search-wrapper">
-         <Search size={18} className="search-icon" />
-         <input type="text" className="input" placeholder="Search notes..." />
-         <button className="absolute right-3 top-1/2 -translate-y-1/2 btn-ghost p-1.5">
-           <SlidersHorizontal size={18} className="text-[var(--text-secondary)]" />
-         </button>
-      </div>
+      {/* Search area removed */}
 
       <div className="flex flex-col gap-4">
         {notes.map((note) => (
