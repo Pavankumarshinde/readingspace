@@ -65,14 +65,20 @@ export default function Sidebar({ role }: { role: UserRole }) {
         })}
       </nav>
 
-      {/* Footer / User Info Context would go here */}
+      {/* Footer / User Info Context */}
       <div className="p-4 border-t border-outline-variant/10">
-        <div className="flex items-center gap-3 px-2">
-           <div className="w-8 h-8 rounded-full bg-surface-container-highest shrink-0" />
-           <div className="hidden lg:block min-w-0">
-              <p className="text-[11px] font-bold text-on-surface truncate">Admin Account</p>
-              <p className="text-[9px] text-outline truncate lowercase">reading.space/admin</p>
+        <div className="flex items-center gap-3 px-2 py-2 bg-surface-container-low rounded-2xl border border-outline-variant/5">
+           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+             <span className="material-symbols-outlined text-sm">shield_person</span>
            </div>
+            <div className="hidden lg:block min-w-0">
+               <p className="text-[10px] font-black text-on-surface truncate uppercase tracking-widest leading-none">
+                 {role === 'manager' ? 'Admin' : 'My Account'}
+               </p>
+               <p className="text-[8px] text-outline truncate lowercase font-bold mt-1 opacity-50 italic">
+                 {role === 'manager' ? 'manager.readingspace.in' : 'student.readingspace.in'}
+               </p>
+            </div>
         </div>
       </div>
     </aside>

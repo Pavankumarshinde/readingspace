@@ -90,11 +90,11 @@ export default function StudentNotes() {
         .single()
 
       if (error) {
-        toast.error('Failed to save log')
+        toast.error('Failed to save note')
         return
       }
       setNotes([data, ...notes])
-      toast.success('Log saved successfully!')
+      toast.success('Note saved!')
     } else if (activeNote) {
       const { data, error } = await supabase
         .from('notes')
@@ -104,11 +104,11 @@ export default function StudentNotes() {
         .single()
 
       if (error) {
-        toast.error('Failed to update log')
+        toast.error('Failed to update note')
         return
       }
       setNotes(notes.map(note => note.id === activeNote.id ? data : note))
-      toast.success('Log updated successfully!')
+      toast.success('Note updated!')
     }
 
     setIsAdding(false)
@@ -123,11 +123,11 @@ export default function StudentNotes() {
         .eq('id', activeNote.id)
 
       if (error) {
-        toast.error('Failed to delete log')
+        toast.error('Failed to delete note')
         return
       }
       setNotes(notes.filter(note => note.id !== activeNote.id))
-      toast.success('Log deleted successfully!')
+      toast.success('Note deleted!')
       setActiveNote(null)
     }
   }
@@ -150,15 +150,15 @@ export default function StudentNotes() {
       {/* Header Section */}
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="section-header">Personal Logs</h2>
-          <p className="section-sub mt-1">Thought repository</p>
+          <h2 className="section-header">My Notes</h2>
+          <p className="section-sub mt-1">All your notes</p>
         </div>
         <button 
           onClick={openAddNote}
           className="btn-sm-minimal"
         >
           <span className="material-symbols-outlined icon-xs">add</span>
-          <span className="hidden sm:inline">New Entry</span>
+          <span className="hidden sm:inline">Add Note</span>
         </button>
       </header>
 
@@ -192,7 +192,7 @@ export default function StudentNotes() {
                  {searchQuery ? 'search_off' : 'edit_note'}
                </span>
                <p className="text-on-surface-variant text-xs font-bold uppercase tracking-widest opacity-50">
-                  {searchQuery ? `No notes matching "${searchQuery}"` : 'Repository empty'}
+                  {searchQuery ? `No notes matching "${searchQuery}"` : 'No notes yet'}
                </p>
                {searchQuery && (
                  <button
@@ -252,7 +252,7 @@ export default function StudentNotes() {
               <button onClick={() => { setActiveNote(null); setIsAdding(false); }} className="text-outline hover:text-primary transition-colors">
                 <span className="material-symbols-outlined">close</span>
               </button>
-              <h2 className="font-headline font-black text-primary uppercase tracking-widest text-[10px]">Note Editor</h2>
+              <h2 className="font-headline font-black text-primary uppercase tracking-widest text-[10px]">Edit Note</h2>
               <button 
                 onClick={handleSave} 
                 className="bg-primary text-on-primary px-6 py-2 rounded-xl text-xs font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all"
@@ -264,19 +264,19 @@ export default function StudentNotes() {
            <div className="flex-1 overflow-y-auto p-6 space-y-8 max-w-2xl mx-auto w-full">
               {/* Title Section */}
               <div className="space-y-2">
-                 <label className="text-[10px] font-black text-outline uppercase tracking-widest block pl-1">Subject Header</label>
+                 <label className="text-[10px] font-black text-outline uppercase tracking-widest block pl-1">Title</label>
                  <input 
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className="w-full bg-surface-container-low border-none rounded-2xl px-5 py-4 text-2xl font-bold text-primary italic focus:ring-2 focus:ring-primary/10 transition-all placeholder:opacity-30" 
-                    placeholder="Enter context..."
+                    placeholder="Enter title..."
                  />
               </div>
 
               {/* Tag Section */}
               <div className="space-y-3">
-                 <label className="text-[10px] font-black text-outline uppercase tracking-widest block pl-1">Tags & Metadata</label>
+                 <label className="text-[10px] font-black text-outline uppercase tracking-widest block pl-1">Tags</label>
                  <div className="flex flex-wrap gap-2 mb-3">
                     {tags.map(tag => (
                        <span key={tag} className="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
@@ -304,12 +304,12 @@ export default function StudentNotes() {
 
               {/* Content Section */}
               <div className="space-y-2 flex-1 min-h-[300px]">
-                 <label className="text-[10px] font-black text-outline uppercase tracking-widest block pl-1">Observations</label>
+                 <label className="text-[10px] font-black text-outline uppercase tracking-widest block pl-1">Note Content</label>
                  <textarea 
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     className="w-full h-full min-h-[300px] bg-surface-container-low border-none rounded-3xl p-6 text-on-surface font-medium leading-relaxed focus:ring-2 focus:ring-primary/10 transition-all resize-none shadow-inner" 
-                    placeholder="Document your findings here..."
+                    placeholder="Write your note here..."
                  />
               </div>
 
@@ -321,7 +321,7 @@ export default function StudentNotes() {
                       className="w-full py-4 text-error font-black text-[10px] uppercase tracking-widest bg-error/5 hover:bg-error/10 rounded-2xl transition-all flex items-center justify-center gap-2 group"
                     >
                       <Trash2 size={14} className="group-hover:scale-110 transition-transform" /> 
-                      Delete this Note Permanently
+                      Delete Note
                     </button>
                  </div>
               )}

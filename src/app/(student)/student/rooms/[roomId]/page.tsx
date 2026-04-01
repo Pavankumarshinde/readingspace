@@ -286,7 +286,7 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
                     <span className="material-symbols-outlined text-xl">chair</span>
                  </div>
                  <div>
-                    <p className="text-[9px] text-outline uppercase tracking-widest mb-0.5">Assigned Seat</p>
+                    <p className="text-[9px] text-outline uppercase tracking-widest mb-0.5">Your Seat</p>
                     <p className="font-mono text-sm font-bold text-primary">{subscription.seat_number}</p>
                  </div>
               </div>
@@ -299,7 +299,7 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
                  <span className="material-symbols-outlined text-xl">calendar_today</span>
               </div>
               <div>
-                 <p className="text-[9px] text-outline uppercase tracking-widest mb-0.5">Validity Period</p>
+                 <p className="text-[9px] text-outline uppercase tracking-widest mb-0.5">Membership Valid From – To</p>
                  <p className="font-mono text-[10px] font-medium text-on-surface">
                     {format(parseISO(subscription.start_date), 'dd MMM')} — {format(parseISO(subscription.end_date), 'dd MMM yyyy')}
                  </p>
@@ -312,7 +312,7 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
           {isTodayAttended ? (
             <div className="bg-surface-container-highest/20 border border-secondary/20 py-4 rounded-xl w-full flex items-center justify-center gap-3 text-secondary shadow-inner">
                <span className="material-symbols-outlined text-lg fill-icon">check_circle</span>
-               <span className="text-xs font-bold uppercase tracking-widest">Already Checked In</span>
+               <span className="text-xs font-bold uppercase tracking-widest">You&apos;ve already checked in today</span>
             </div>
           ) : (
             <button 
@@ -351,14 +351,14 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
         {/* Streak Stats (Minimalized) */}
         <section className="grid grid-cols-2 gap-4">
            <div className="bg-surface border border-outline-variant/30 p-5 rounded-2xl flex flex-col items-center">
-              <p className="text-[9px] text-outline uppercase tracking-widest mb-1.5">Current Streak</p>
+              <p className="text-[9px] text-outline uppercase tracking-widest mb-1.5">Study Streak</p>
               <div className="flex items-center gap-2">
                  <span className="material-symbols-outlined text-secondary text-xl font-bold">local_fire_department</span>
                  <p className="font-headline text-lg font-bold text-on-surface">{streak} <span className="text-xs font-medium text-outline">Days</span></p>
               </div>
            </div>
            <div className="bg-surface border border-outline-variant/30 p-5 rounded-2xl flex flex-col items-center">
-              <p className="text-[9px] text-outline uppercase tracking-widest mb-1.5">Personal Best</p>
+              <p className="text-[9px] text-outline uppercase tracking-widest mb-1.5">Best Streak</p>
               <p className="font-headline text-lg font-bold text-on-surface">{bestStreak} <span className="text-xs font-medium text-outline">Days</span></p>
            </div>
         </section>

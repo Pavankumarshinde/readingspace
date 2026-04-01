@@ -67,6 +67,18 @@ export async function POST(req: Request) {
       // Note: The profile row is automatically created by the `handle_new_user` Postgres trigger!
     }
 
+    // MANDATORY SYNC: Explicitly update the profile document with provided mobile/name
+    // This ensures data parity for both existing and new students immediately.
+    const { error: profileUpdateError } = await supabaseAdmin
+      .from('profiles')
+      .update({ name, phone: phone || '' })
+      .eq('id', studentId)
+
+    if (profileUpdateError) {
+       console.error('Warning: Profile sync failure:', profileUpdateError)
+       // We'll not fail the subscription process but log for visibility
+    }
+
     // 3. Compute endDate from duration (in months)
     const startObj = new Date(startDate)
     const endObj = new Date(startObj)

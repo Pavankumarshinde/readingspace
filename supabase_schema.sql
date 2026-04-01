@@ -159,8 +159,15 @@ create policy "Students can manage own notes" on public.notes for all using (aut
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, name, email, role)
-  values (new.id, new.raw_user_meta_data->>'name', new.email, new.raw_user_meta_data->>'role');
+  insert into public.profiles (id, name, email, role, phone, gender)
+  values (
+    new.id, 
+    new.raw_user_meta_data->>'name', 
+    new.email, 
+    new.raw_user_meta_data->>'role',
+    new.raw_user_meta_data->>'phone',
+    new.raw_user_meta_data->>'gender'
+  );
   return new;
 end;
 $$ language plpgsql security definer;

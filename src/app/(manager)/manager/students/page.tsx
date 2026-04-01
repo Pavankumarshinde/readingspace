@@ -223,8 +223,8 @@ export default function ManagerStudentDirectory() {
       {/* Top bar: Heading + Add button */}
       <header className="flex items-start justify-between">
         <div>
-          <h2 className="section-header text-primary">Student Directory</h2>
-          <p className="section-sub mt-0.5">Manage members and hall access requests</p>
+          <h2 className="section-header text-primary">Students</h2>
+          <p className="section-sub mt-0.5">Manage all students and their memberships</p>
         </div>
         <Link href="/manager/students/add">
           <button className="btn-sm-minimal bg-primary text-on-primary border-none hover:bg-primary-container h-8 px-3 flex items-center gap-1.5">
@@ -251,25 +251,25 @@ export default function ManagerStudentDirectory() {
         )}
       </div>
 
-      {/* Filters row: Status tabs (centered) + Room dropdown */}
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        {/* Status tabs — centered */}
-        <div className="tab-bar flex-1 flex justify-center">
+      {/* Filters row: full-width status tabs + Room dropdown */}
+      <div className="flex flex-col sm:flex-row items-stretch gap-3">
+        {/* Status tabs — full width */}
+        <div className="tab-bar w-full flex">
           <button
             onClick={() => setFilter('active')}
-            className={`tab-bar-item !py-1.5 !px-4 ${filter === 'active' ? 'active' : ''}`}
+            className={`tab-bar-item flex-1 !py-2 !px-3 text-center ${filter === 'active' ? 'active' : ''}`}
           >
             Active
           </button>
           <button
             onClick={() => setFilter('expired')}
-            className={`tab-bar-item !py-1.5 !px-4 ${filter === 'expired' ? 'active' : ''}`}
+            className={`tab-bar-item flex-1 !py-2 !px-3 text-center ${filter === 'expired' ? 'active' : ''}`}
           >
             Expired
           </button>
           <button
             onClick={() => setFilter('requests')}
-            className={`tab-bar-item !py-1.5 !px-4 relative ${filter === 'requests' ? 'active' : ''}`}
+            className={`tab-bar-item flex-1 !py-2 !px-3 relative text-center ${filter === 'requests' ? 'active' : ''}`}
           >
             Requests
             {requests.length > 0 && (
@@ -285,7 +285,7 @@ export default function ManagerStudentDirectory() {
             <select
               value={roomFilter}
               onChange={e => setRoomFilter(e.target.value)}
-              className="pl-8 pr-8 h-9 bg-surface-container-low border border-outline-variant/30 rounded-xl text-xs font-medium text-on-surface appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+              className="pl-8 pr-8 h-full min-h-[38px] w-full sm:w-auto bg-surface-container-low border border-outline-variant/30 rounded-xl text-xs font-medium text-on-surface appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
             >
               <option value="all">All Rooms</option>
               {uniqueRooms.map(r => <option key={r} value={r}>{r}</option>)}
@@ -298,7 +298,7 @@ export default function ManagerStudentDirectory() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 text-outline/50">
           <span className="material-symbols-outlined animate-spin mb-3 font-light">progress_activity</span>
-          <span className="text-xs font-bold uppercase tracking-widest">Hydrating records...</span>
+          <span className="text-xs font-bold uppercase tracking-widest">Loading students...</span>
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 bg-surface-container-low rounded-2xl border border-outline-variant/30 text-center">
@@ -326,8 +326,11 @@ export default function ManagerStudentDirectory() {
                     <div className="flex items-center gap-3 text-on-surface-variant text-[11px] font-bold">
                        <span className="material-symbols-outlined icon-xs text-outline/40">mail</span> {req.student?.email}
                     </div>
-                    <div className="flex items-center gap-3 text-on-surface-variant text-[11px] font-bold">
-                       <span className="material-symbols-outlined icon-xs text-outline/40">call</span> {req.student?.phone || 'No phone'}
+                    <div className="flex items-center gap-3 text-xs font-black text-primary/90">
+                       <span className="material-symbols-outlined icon-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>call</span>
+                       <span className={req.student?.phone && req.student?.phone !== 'No phone' ? '' : 'text-outline/30 italic font-medium text-[11px]'}>
+                          {req.student?.phone || 'No phone'}
+                       </span>
                     </div>
                  </div>
                  <div className="flex gap-2">
@@ -369,7 +372,7 @@ export default function ManagerStudentDirectory() {
                           : 'bg-amber-50 text-amber-700 border-amber-200'
                       }`}
                     >
-                      {student.paymentStatus === 'paid' ? '✓ Paid' : student.paymentStatus === 'overdue' ? '⚠ Overdue' : '● Due'}
+                      {student.paymentStatus === 'paid' ? '✓ Paid' : student.paymentStatus === 'overdue' ? '⚠ Overdue' : 'Fee Due'}
                     </button>
                     {/* Subscription status */}
                     <span className={`px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border ${
@@ -397,9 +400,9 @@ export default function ManagerStudentDirectory() {
                     <span className="material-symbols-outlined icon-xs text-outline/40">mail</span>
                     <span className="truncate">{student.email}</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-[11px] font-medium text-on-surface-variant">
-                    <span className="material-symbols-outlined icon-xs text-outline/40">call</span>
-                    <span className={student.phone ? '' : 'text-outline/30 italic'}>
+                  <div className="flex items-center gap-2.5 text-xs font-black text-primary/90">
+                    <span className="material-symbols-outlined icon-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>call</span>
+                    <span className={student.phone && student.phone !== 'No phone' ? '' : 'text-outline/30 italic font-medium text-[11px]'}>
                       {student.phone || 'No phone'}
                     </span>
                   </div>
@@ -408,7 +411,7 @@ export default function ManagerStudentDirectory() {
                 {/* Member cycle */}
                 <div className="p-3 bg-surface-container-low/60 rounded-xl border border-outline-variant/10">
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[8px] font-bold text-outline uppercase tracking-widest">Member Cycle</span>
+                    <span className="text-[8px] font-bold text-outline uppercase tracking-widest">Membership Dates</span>
                     {student.warning && <span className="bg-error text-white px-1.5 py-0.5 rounded text-[7px] font-bold uppercase tracking-widest">{student.warning}</span>}
                   </div>
                   <div className="flex justify-between items-center text-[10px] font-bold text-on-surface font-mono">

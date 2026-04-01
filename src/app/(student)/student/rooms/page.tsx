@@ -66,38 +66,38 @@ export default function StudentRooms() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-700 pb-32">
       {/* Header row */}
-      <section className="mb-4 flex justify-between items-center px-2">
+      <section className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/10 pb-8">
         <div>
-          <p className="text-secondary text-[11px] font-medium uppercase tracking-wider mb-0.5">Scholar Portal</p>
-          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface">My Reading Rooms</h2>
+          <h2 className="font-headline text-4xl font-black text-on-surface tracking-tight italic">Study Rooms</h2>
+          <p className="text-[11px] font-bold text-outline uppercase tracking-[.25em] mt-2 opacity-70">Your joined rooms</p>
         </div>
         <button 
           onClick={() => setShowJoinModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-outline text-on-surface text-xs font-medium rounded-lg hover:bg-surface-container-low transition-colors active:scale-95"
+          className="flex items-center gap-2.5 px-6 py-2.5 bg-primary text-on-primary text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
         >
-          <span className="material-symbols-outlined text-sm">add</span>
-          <span className="hidden sm:inline">Join Room</span>
+          <span className="material-symbols-outlined text-[18px]">add_circle</span>
+          Join New Room
         </button>
       </section>
 
       {/* Search bar */}
-      <div className="relative mb-6 px-2">
-        <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-outline/50 text-base pointer-events-none select-none">
+      <div className="relative group">
+        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-sm pointer-events-none group-focus-within:scale-110 transition-transform">
           search
         </span>
         <input
           type="text"
-          placeholder="Search rooms..."
+          placeholder="Search your rooms..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl pl-10 pr-10 py-2.5 text-sm text-on-surface placeholder:text-outline/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl pl-12 pr-12 py-4 text-sm font-bold text-on-surface placeholder:text-outline/30 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all shadow-sm"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery('')}
-            className="absolute right-5 top-1/2 -translate-y-1/2 text-outline/50 hover:text-on-surface transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-outline/40 hover:text-on-surface transition-colors"
           >
             <span className="material-symbols-outlined text-base">close</span>
           </button>
@@ -105,28 +105,28 @@ export default function StudentRooms() {
       </div>
 
       {/* Room List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredRooms.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-24 bg-surface-container-low rounded-2xl border border-outline-variant/30">
-            <div className="w-16 h-16 bg-surface-container-highest rounded-full flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-outline text-3xl">
-                {searchQuery ? 'search_off' : 'meeting_room'}
+          <div className="col-span-full flex flex-col items-center justify-center py-32 bg-surface-container-low/50 rounded-3xl border border-dashed border-outline-variant/30">
+            <div className="w-20 h-20 bg-surface-container-highest rounded-3xl flex items-center justify-center mb-6 shadow-sm">
+              <span className="material-symbols-outlined text-outline/40 text-4xl font-light">
+                {searchQuery ? 'manage_search' : 'sensors_off'}
               </span>
             </div>
-            <h3 className="font-headline font-semibold text-lg text-on-surface mb-1">
-              {searchQuery ? `No rooms matching "${searchQuery}"` : 'No joined rooms yet'}
+            <h3 className="font-headline font-black text-xl text-on-surface mb-2">
+              {searchQuery ? 'Room Not Found' : 'No Joined Rooms'}
             </h3>
-            <p className="text-on-surface-variant text-sm max-w-xs text-center mb-6">
+            <p className="text-[10px] font-bold text-outline uppercase tracking-[.2em] opacity-60 max-w-xs text-center mb-8">
               {searchQuery
-                ? 'Try a different search term.'
-                : 'Join a reading room using a key provided by your manager.'}
+                ? 'Try searching for something else'
+                : 'Enter a code to join your first reading room'}
             </p>
             {!searchQuery && (
               <button 
                 onClick={() => setShowJoinModal(true)}
-                className="px-4 py-2 bg-primary text-on-primary rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
+                className="px-8 py-3 bg-surface-container-high text-on-surface rounded-xl text-[10px] font-black uppercase tracking-widest border border-outline-variant/10 hover:bg-surface-container-highest transition-all"
               >
-                Join Your First Room
+                Join Room
               </button>
             )}
           </div>
@@ -136,44 +136,48 @@ export default function StudentRooms() {
             if (!room) return null
             
             return (
-              <div key={sub.id} className="bg-surface border border-outline-variant/30 rounded-xl p-5 transition-all duration-200 hover:border-outline-variant/60 group shadow-sm hover:shadow-md">
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-headline text-lg font-semibold text-on-surface group-hover:text-primary transition-colors">{room.name}</h3>
-                      <p className="text-on-surface-variant text-xs mt-1 line-clamp-2 leading-relaxed">
-                        {room.description || 'Dedicated reading space for focused learning.'}
+              <div key={sub.id} className="card p-6 flex flex-col bg-surface-container-low/30 border border-outline-variant/10 group hover:border-primary/30 transition-all duration-500 shadow-sm hover:shadow-xl overflow-hidden relative">
+                {/* Visual Texture */}
+                <div className="absolute -top-6 -right-6 w-24 h-24 bg-primary/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                <div className="flex flex-col h-full relative z-10">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Joined</span>
+                      </div>
+                      <h3 className="font-headline text-2xl font-black text-on-surface group-hover:text-primary transition-colors tracking-tight italic">{room.name}</h3>
+                      <p className="text-[10px] font-medium text-outline line-clamp-1 opacity-70">
+                        {room.description || 'A quiet place to study.'}
                       </p>
-                    </div>
-                    <button className="btn-ghost scale-90">
-                      <span className="material-symbols-outlined icon-sm">more_vert</span>
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4 py-4 border-y border-outline-variant/10 my-4">
-                    <div>
-                      <p className="text-[9px] text-outline uppercase tracking-widest mb-1 font-bold">Joined</p>
-                      <p className="font-mono text-[10px] font-medium text-on-surface">
-                        {new Date(sub.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-outline uppercase tracking-widest mb-1 font-bold">Expires</p>
-                      <p className="font-mono text-[10px] font-medium text-secondary">
-                        {new Date(sub.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-outline uppercase tracking-widest mb-1 font-bold">Seat</p>
-                      <p className="font-mono text-[10px] font-bold text-primary">{sub.seat_number}</p>
                     </div>
                   </div>
                   
-                  <div className="mt-auto">
+                  <div className="grid grid-cols-2 gap-4 py-5 border-y border-outline-variant/10 my-6">
+                    <div className="space-y-1">
+                      <p className="text-[8px] text-outline uppercase tracking-widest font-black opacity-40">Valid Till</p>
+                      <div className="flex items-center gap-2">
+                         <span className="material-symbols-outlined text-[10px] text-primary">calendar_today</span>
+                         <p className="font-headline text-xs font-bold text-on-surface">
+                           {new Date(sub.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                         </p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] text-outline uppercase tracking-widest font-black opacity-40">Your Seat</p>
+                      <div className="flex items-center gap-2">
+                         <span className="material-symbols-outlined text-[10px] text-secondary">chair</span>
+                         <p className="font-headline text-xs font-black text-secondary uppercase italic">{sub.seat_number}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-auto pt-2">
                     <Link href={`/student/rooms/${room.id}`}>
-                      <button className="w-full py-2.5 bg-surface-container-low border border-outline-variant/30 text-on-surface hover:bg-primary hover:text-on-primary hover:border-primary rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                        <span>Enter Room</span>
-                        <span className="material-symbols-outlined icon-xs font-bold">east</span>
+                      <button className="w-full py-3.5 bg-surface-container-high text-on-surface hover:bg-primary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-[.25em] flex items-center justify-center gap-3 transition-all active:scale-[0.98] border border-outline-variant/5">
+                        Open Room
+                        <span className="material-symbols-outlined text-[16px] font-black">arrow_forward_ios</span>
                       </button>
                     </Link>
                   </div>

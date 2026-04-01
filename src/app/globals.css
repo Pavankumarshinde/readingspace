@@ -1,162 +1,114 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand Colors - From Design Specs */
-  --color-primary: #002954;
-  --color-primary-container: #1c3f6e;
+  /* Obsidian Design Palette - High Contrast Minimal */
+  --color-primary: #0D6E6E;
+  --color-primary-container: #0D6E6E15;
   --color-on-primary: #ffffff;
   
-  --color-secondary: #006a66;
-  --color-secondary-container: #7df6ef;
-  --color-secondary-fixed: #7df6ef;
+  --color-secondary: #0A1628;
+  --color-secondary-container: #0A162810;
   --color-on-secondary: #ffffff;
   
-  --color-tertiary: #3f2200;
-  --color-tertiary-fixed: #f9ba7b; /* Refined tertiary fixed dim */
+  --color-tertiary: #148B8A;
+  --color-tertiary-container: #148B8A15;
   
-  --color-background: #f8f9fa;
-  --color-surface: #f8f9fa;
-  --color-on-surface: #191c1d;
-  --color-on-surface-variant: #43474f;
+  --color-background: #F7F6F3;
+  --color-surface: #F7F6F3;
+  --color-on-surface: #0A1628;
+  --color-on-surface-variant: #0A162870;
   
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f3f4f5;
-  --color-surface-container: #edeeef;
-  --color-surface-container-high: #e7e8e9;
-  --color-surface-container-highest: #e1e3e4;
+  --color-surface-container-low: #F0EFEC;
+  --color-surface-container: #E9E8E5;
+  --color-surface-container-high: #E2E1DE;
+  --color-surface-container-highest: #DBDAD7;
   
-  --color-outline: #747780;
-  --color-outline-variant: #c3c6d0;
+  --color-outline: #0A162830;
+  --color-outline-variant: #0A162815;
   
   --color-error: #ba1a1a;
   --color-error-container: #ffdad6;
   --color-on-error: #ffffff;
-  
-  --color-primary-fixed: #d6e3ff;
 
-  /* Semantic Aliases */
-  --navy: var(--color-primary);
-  --teal: var(--color-secondary);
-  --red: var(--color-error);
-  
-  --nav-height: 80px;
-
-  --font-headline: "Plus Jakarta Sans", sans-serif;
-  --font-body: "Inter", sans-serif;
+  /* Typography Hierarchy */
+  --font-headline: "Plus Jakarta Sans", "Inter", sans-serif;
+  --font-body: "Inter", "General Sans", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 }
 
 @layer base {
   body {
-    @apply bg-surface text-on-surface font-body antialiased;
+    @apply bg-background text-on-surface font-body antialiased;
     min-height: 100dvh;
     overflow-x: hidden;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    letter-spacing: -0.01em;
-  }
-
-  /* Redpath Minimalistic Design Tokens */
-  .text-xxs { font-size: 0.625rem; line-height: 1rem; }
-  .text-xs-tight { font-size: 0.75rem; line-height: 1.1; letter-spacing: -0.01em; }
-  
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
-    @apply transition-all duration-200;
-  }
-
-  .material-symbols-outlined.fill-icon {
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  }
-
-  .material-symbols-outlined.icon-sm {
-    font-size: 1.125rem; /* 18px */
-  }
-
-  .material-symbols-outlined.icon-xs {
-    font-size: 1rem; /* 16px */
   }
 
   /* Responsive Containers */
   .responsive-container {
-    @apply w-full max-w-[480px] mx-auto md:max-w-4xl lg:max-w-7xl px-4 md:px-8 lg:px-12;
-  }
-
-  .nav-blur {
-    @apply bg-surface/80 backdrop-blur-md border-outline-variant/20 border-b md:border-b-0 md:border-r;
+    @apply w-full max-w-[480px] mx-auto md:max-w-4xl lg:max-w-7xl px-6 md:px-10 lg:px-16;
   }
 }
 
-
 @layer components {
-  /* Typography */
+  /* Obsidian Component Overhaul */
   .section-header {
-    @apply font-headline text-xl font-semibold tracking-tight text-primary;
+    @apply font-headline text-2xl font-black tracking-tight text-secondary italic uppercase;
   }
   
   .section-sub {
-    @apply text-[11px] font-medium text-on-surface-variant uppercase tracking-wider;
+    @apply text-[10px] font-black text-on-surface-variant uppercase tracking-[.3em] mt-1 italic;
   }
 
-  /* Cards */
+  /* Obsidian Cards - Soft surfaces */
   .card {
-    @apply bg-surface-container-lowest rounded-xl border border-outline-variant/30 transition-all duration-300;
+    @apply bg-surface-container-lowest rounded-[2rem] border border-outline-variant/10 shadow-[0_8px_32px_-12px_rgba(10,22,40,0.05)] transition-all duration-500;
   }
   
   .card-hover {
-    @apply hover:shadow-[0px_8px_24px_rgba(0,41,84,0.06)];
+    @apply hover:shadow-[0_12px_48px_-16px_rgba(13,110,110,0.12)] hover:-translate-y-1;
   }
 
-  /* Buttons - Small Minimalistic */
+  /* Obsidian Buttons - Rounded & Premium */
   .btn-primary {
-    @apply bg-primary text-on-primary px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-primary-container transition-all active:scale-95 shadow-md shadow-primary/10 flex items-center justify-center gap-2;
+    @apply bg-primary text-on-primary px-8 py-3.5 rounded-full text-[11px] font-black uppercase tracking-[.25em] transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-primary/20 flex items-center justify-center gap-3;
+  }
+
+  .btn-secondary {
+     @apply bg-secondary text-on-secondary px-8 py-3.5 rounded-full text-[11px] font-black uppercase tracking-[.25em] transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-secondary/10 flex items-center justify-center gap-3;
   }
   
   .btn-sm-minimal {
-    @apply flex items-center gap-1.5 px-3 py-1.5 border border-outline text-on-surface text-[10px] font-medium rounded-lg hover:bg-surface-container-low transition-colors active:scale-95;
+    @apply flex items-center gap-2 px-4 py-2 border border-outline/20 text-secondary text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-surface-container-low transition-all active:scale-95;
   }
 
   .btn-ghost {
-    @apply text-outline hover:bg-surface-container p-1.5 rounded-full transition-colors flex items-center justify-center;
+    @apply text-outline hover:bg-surface-container p-2 rounded-full transition-all flex items-center justify-center active:scale-95;
   }
 
-  /* Progress Bar */
-  .progress-bar {
-    @apply h-1.5 w-full bg-surface-container rounded-full overflow-hidden;
-  }
-  
-  .progress-fill {
-    @apply h-full bg-secondary transition-all duration-500;
-  }
-
-  /* Tab Bar */
-  .tab-bar {
-    @apply flex gap-1 p-0.5 bg-surface-container-low rounded-xl overflow-x-auto whitespace-nowrap;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-  
-  .tab-bar-item {
-    @apply px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all;
-  }
-  
-  .tab-bar-item.active {
-    @apply bg-surface-container-lowest text-primary shadow-sm;
-  }
-
-  /* Inputs */
+  /* Obsidian Inputs - Pill shaped & Soft surfaces */
   .input-label {
-    @apply text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 block;
+    @apply text-[9px] font-black text-secondary uppercase tracking-[.3em] mb-2 block ml-1 italic;
   }
   
   .input {
-    @apply w-full bg-surface-container-low border border-outline-variant/30 rounded-lg px-3 py-2 text-sm placeholder:text-outline/40 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all;
+    @apply w-full bg-surface-container-low/50 border border-outline-variant/10 rounded-2xl px-5 py-3.5 text-sm font-bold text-secondary placeholder:text-outline/40 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/30 transition-all;
+  }
+
+  /* Tab Bar Overhaul */
+  .tab-bar {
+    @apply flex gap-1.5 p-1.5 bg-surface-container-low/50 rounded-full overflow-x-auto whitespace-nowrap border border-outline-variant/10;
+    scrollbar-width: none;
+  }
+  
+  .tab-bar-item {
+    @apply px-5 py-2.5 text-[10px] font-black rounded-full transition-all text-on-surface-variant uppercase tracking-widest;
+  }
+  
+  .tab-bar-item.active {
+    @apply bg-primary text-white shadow-lg shadow-primary/20;
   }
 }
-
 
 @theme {
   --animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
