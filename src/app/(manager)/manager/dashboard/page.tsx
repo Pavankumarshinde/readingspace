@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, ArrowRight, Info, Building, Calendar, LayoutGrid, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Building, Calendar, LayoutGrid, Clock, Users, Database, ShieldAlert, Award } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-
 import { 
   format, 
   addMonths, 
@@ -14,10 +13,8 @@ import {
   startOfWeek, 
   endOfWeek, 
   isSameDay, 
-  isSameMonth, 
   startOfDay, 
   endOfDay,
-  eachDayOfInterval,
   getDaysInMonth,
   getDay,
   setDate
@@ -113,7 +110,6 @@ export default function ManagerDashboard() {
       // 2. Fetch Attendance for Current View / Filter
       setAttendanceLoading(true)
       
-      // Calculate Date Range based on timeframe + selectedDate
       let rangeStart: Date;
       let rangeEnd: Date;
       
@@ -128,7 +124,6 @@ export default function ManagerDashboard() {
         rangeEnd = endOfMonth(selectedDate)
       }
 
-      // Fetch logs for the period
       const { data: logsData } = await supabase
         .from('attendance_logs')
         .select(`*, student:profiles!inner(name, email)`)
@@ -137,7 +132,6 @@ export default function ManagerDashboard() {
         .lte('timestamp', rangeEnd.toISOString())
         .order('timestamp', { ascending: false })
 
-      // Fetch dots for the viewed month heatmap
       const monthStart = startOfMonth(viewDate)
       const monthEnd = endOfMonth(viewDate)
       const { data: monthDots } = await supabase
@@ -154,12 +148,10 @@ export default function ManagerDashboard() {
       })
       setHeatmap(heatMapData)
 
-      // Sync Attendance List State
       if (logsData) {
         setAttendanceLogs(logsData)
         setFilteredCount(logsData.length)
         
-        // Compute Stars (Consistency)
         const freq: Record<string, { count: number, name: string }> = {}
         logsData.forEach(log => {
            if (!freq[log.student_id]) freq[log.student_id] = { count: 0, name: (log.student as any).name || 'Unknown' }
@@ -185,50 +177,44 @@ export default function ManagerDashboard() {
   }, [selectedRoomId, timeframe, selectedDate, viewDate])
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface">
-      {/* Dynamic Header */}
-      <header className="w-full sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/10">
-        <div className="flex justify-between items-center px-6 h-16 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col min-h-screen bg-slate-50">
+      {/* Prism Header */}
+      <header className="w-full sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div className="flex justify-between items-center px-8 h-18 max-w-7xl mx-auto w-full">
           <div className="flex flex-col">
-            <h1 className="font-headline font-black text-xl text-primary tracking-tight leading-none uppercase italic">Today&apos;s Overview</h1>
-            <p className="text-[9px] font-black text-outline uppercase tracking-[.3em] mt-1 opacity-50">Managed by {profile?.name || 'Administrator'}</p>
+            <h1 className="font-headline font-extrabold text-2xl text-on-surface tracking-tight leading-none">Dashboard</h1>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 opacity-80">Administering Reading Rooms</p>
           </div>
           
           <div className="flex items-center gap-4">
-            <select 
-              className="bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2 text-[10px] font-black text-primary uppercase tracking-widest focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-              value={selectedRoomId}
-              onChange={(e) => setSelectedRoomId(e.target.value)}
-            >
-              <option value="all">Refresh</option>
-              {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+            <div className="flex items-center bg-slate-50 p-1 rounded-2xl border border-slate-200">
+              <select 
+                className="bg-transparent px-4 py-2 text-xs font-bold text-primary uppercase tracking-wider outline-none cursor-pointer"
+                value={selectedRoomId}
+                onChange={(e) => setSelectedRoomId(e.target.value)}
+              >
+                <option value="all">All Rooms</option>
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-12 w-full pb-40">
+      <main className="max-w-7xl mx-auto px-8 py-10 space-y-12 w-full pb-40">
         
-        {/* Tactical Control Row: Toggle & Calendar */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        {/* Analytics & Calendar Overview */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           
-          {/* Calendar & Filters */}
-          <div className="lg:col-span-12 space-y-6">
-            {/* Full-width Toggle matching User Reference */}
-            <div className="relative p-1 bg-surface-container-low rounded-3xl border border-outline-variant/10 flex h-14 md:h-16 shadow-inner w-full group">
-               <div 
-                 className="absolute top-1 bottom-1 rounded-2xl bg-white shadow-xl shadow-black/5 transition-all duration-500 ease-out z-0"
-                 style={{ 
-                    left: timeframe === 'day' ? '4px' : timeframe === 'week' ? '33.333%' : '66.666%', 
-                    width: 'calc(33.333% - 8px)'
-                 }}
-               />
+          <div className="lg:col-span-12 space-y-8">
+            {/* Professional Segmented Control */}
+            <div className="p-1.5 bg-white rounded-3xl border border-slate-200 flex h-16 shadow-sm w-full">
                {(['day', 'week', 'month'] as Timeframe[]).map((tf) => (
                   <button
                     key={tf}
                     onClick={() => setTimeframe(tf)}
-                    className={`relative z-10 flex-1 flex items-center justify-center font-headline text-xs font-black uppercase tracking-[.25em] transition-colors duration-500 ${
-                      timeframe === tf ? 'text-primary' : 'text-outline/50 hover:text-on-surface'
+                    className={`relative flex-1 flex items-center justify-center text-xs font-extrabold uppercase tracking-widest transition-all rounded-[1.25rem] ${
+                       timeframe === tf ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-slate-400 hover:text-on-surface hover:bg-slate-50'
                     }`}
                   >
                     {tf}
@@ -236,11 +222,16 @@ export default function ManagerDashboard() {
                ))}
             </div>
 
-               {/* Minimalist Calendar Card */}
-               <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+               {/* Modern Calendar Card */}
+               <div className="card p-10 bg-white shadow-xl shadow-slate-200/50">
                   <div className="flex items-center justify-between mb-10">
-                    <h3 className="font-sans text-xl font-medium text-slate-800">{format(viewDate, 'MMMM yyyy')}</h3>
-                    <div className="flex gap-4">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary">
+                          <Calendar size={24} />
+                       </div>
+                       <h3 className="font-headline text-2xl font-extrabold text-on-surface tracking-tight">{format(viewDate, 'MMMM yyyy')}</h3>
+                    </div>
+                    <div className="flex gap-2">
                        <button 
                           onClick={() => {
                              const prev = subMonths(viewDate, 1)
@@ -249,9 +240,9 @@ export default function ManagerDashboard() {
                              const daysInPrev = getDaysInMonth(prev)
                              setSelectedDate(setDate(prev, day <= daysInPrev ? day : 15))
                           }} 
-                          className="text-slate-400 hover:text-slate-800 transition-colors"
+                          className="btn-ghost"
                        >
-                          <span className="material-symbols-outlined text-xl">chevron_left</span>
+                           <ChevronLeft size={22} />
                        </button>
                        <button 
                           onClick={() => {
@@ -261,16 +252,16 @@ export default function ManagerDashboard() {
                              const daysInNext = getDaysInMonth(next)
                              setSelectedDate(setDate(next, day <= daysInNext ? day : 15))
                           }} 
-                          className="text-slate-400 hover:text-slate-800 transition-colors"
+                          className="btn-ghost"
                        >
-                          <span className="material-symbols-outlined text-xl">chevron_right</span>
+                           <ChevronRight size={22} />
                        </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-7 gap-y-4">
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                      <div key={`${day}-${i}`} className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest pb-4">{day}</div>
+                  <div className="grid grid-cols-7 gap-y-6">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                      <div key={`${day}-${i}`} className="text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest pb-4">{day}</div>
                     ))}
                     {Array.from({ length: getDay(startOfMonth(viewDate)) }).map((_, i) => <div key={`empty-${i}`} />)}
                     {Array.from({ length: getDaysInMonth(viewDate) }).map((_, i) => {
@@ -281,14 +272,13 @@ export default function ManagerDashboard() {
                         <div key={i} className="flex justify-center">
                           <button
                             onClick={() => setSelectedDate(date)}
-                            className={`w-8 h-8 relative flex items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                              isSelected 
-                                ? 'bg-[#004d40] text-white shadow-sm' 
-                                : 'text-slate-600 hover:bg-slate-50'
+                            className={`w-10 h-10 relative flex items-center justify-center rounded-2xl text-sm font-bold transition-all ${
+                              isSelected                                 ? 'bg-primary text-white shadow-2xl shadow-primary/30 scale-110' 
+                                 : 'text-slate-600 hover:bg-slate-100 hover:text-on-surface'
                             }`}
                           >
                             {i + 1}
-                            {!isSelected && hasLogs && <div className="absolute top-1 right-1 w-1 h-1 rounded-full bg-primary/30" />}
+                            {!isSelected && hasLogs && <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-primary" />}
                           </button>
                         </div>
                       )
@@ -296,89 +286,98 @@ export default function ManagerDashboard() {
                   </div>
                </div>
 
-               {/* Minimalist Metrics In-line below calendar */}
-               <div className="flex items-center gap-12 pt-4 px-2">
-                  <div className="flex flex-col gap-1">
-                     <p className="text-[8px] font-black text-outline uppercase tracking-[.2em] opacity-40 italic">Students Present</p>
-                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-headline font-black text-on-surface leading-none">{occupancy.active}</span>
-                        <span className="text-[10px] font-black text-primary uppercase tracking-tighter opacity-70">/ {occupancy.total}</span>
+               {/* Quick Info Grid */}
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="card p-8 flex flex-col gap-1 border-primary/10 bg-gradient-to-br from-white to-primary/5">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Occupancy</p>
+                     <div className="flex items-baseline gap-2 mt-2">
+                        <span className="text-3xl font-extrabold text-on-surface leading-none">{occupancy.active}</span>
+                        <span className="text-sm font-bold text-primary opacity-80">/ {occupancy.total} seats</span>
                      </div>
                   </div>
-                  <div className="w-px h-8 bg-outline-variant/10" />
-                  <div className="flex flex-col gap-1">
-                     <p className="text-[8px] font-black text-outline uppercase tracking-[.2em] opacity-40 italic">Check-ins Today</p>
-                     <p className="text-2xl font-headline font-black text-on-surface leading-none">{filteredCount}</p>
+                  <div className="card p-8 flex flex-col gap-1 border-secondary/10 bg-gradient-to-br from-white to-secondary/5">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Today&apos;s Check-ins</p>
+                     <p className="text-3xl font-extrabold text-on-surface leading-none mt-2">{filteredCount}</p>
                   </div>
                </div>
             </div>
         </section>
 
-        {/* Secondary Modules: Expiring Plans & Stars */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* Secondary Modules */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
-          {/* Expiring Plans - Tactical Box Style */}
+          {/* Expiring Memberships */}
           <div className="lg:col-span-8 space-y-6">
-            <div className="flex items-center gap-3 px-1">
-              <span className="material-symbols-outlined text-error" style={{ fontVariationSettings: "'FILL' 1" }}>rule</span>
-              <h3 className="font-headline text-xl font-black text-on-surface tracking-tight uppercase italic">Expiring Memberships</h3>
+            <div className="flex items-center gap-4 px-1">
+              <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error border border-error/5">
+                <ShieldAlert size={20} />
+              </div>
+              <h3 className="font-headline text-xl font-extrabold text-on-surface tracking-tight">Expiring Memberships</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                {expiringPlans.length === 0 ? (
-                 <div className="col-span-full h-32 flex flex-col items-center justify-center bg-surface-container-low/30 rounded-3xl border border-outline-variant/10 italic text-[10px] text-outline/40 tracking-widest uppercase">
-                    No memberships expiring this month
+                 <div className="col-span-full h-40 flex flex-col items-center justify-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60">No pending renewals this period</p>
                  </div>
                ) : expiringPlans.map((plan, i) => (
-                 <div key={i} className={`p-5 rounded-2xl border flex flex-col justify-between h-36 transition-all hover:scale-[1.02] ${
-                    plan.isExpired ? 'bg-error/5 border-error/20' : 'bg-surface-container-low border-outline-variant/10'
+                 <div key={i} className={`p-6 rounded-[2rem] border shadow-sm transition-all hover:scale-[1.02] flex flex-col justify-between min-h-[160px] ${
+                    plan.isExpired ? 'bg-red-50 border-red-100 shadow-red-100' : 'bg-white border-slate-200'
                  }`}>
                     <div className="flex justify-between items-start">
-                       <div className="flex flex-col">
-                          <h4 className="font-headline font-black text-on-surface text-sm tracking-tight">{plan.name}</h4>
-                          <p className="text-[8px] font-black text-outline uppercase tracking-widest opacity-50 mt-1">Seat Assignment: {plan.seat}</p>
+                       <div>
+                          <h4 className="font-extrabold text-on-surface text-base">{plan.name}</h4>
+                          <p className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-sm">chair_alt</span> 
+                            SEAT {plan.seat}
+                          </p>
                        </div>
-                       <div className="px-2 py-1 bg-surface-container-high rounded text-[8px] font-black text-primary uppercase">{plan.initial}</div>
+                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-extrabold text-primary border border-primary/5">{plan.initial}</div>
                     </div>
-                    <div className="pt-4 border-t border-outline-variant/5 mt-4">
-                       <p className={`text-[10px] font-black uppercase tracking-widest ${plan.isExpired ? 'text-error' : 'text-primary'}`}>
-                          {plan.isExpired ? 'Status: EXPIRED' : `Valid for ${plan.daysLeft} Cycles`}
-                       </p>
-                       <p className="text-[8px] font-bold text-outline uppercase opacity-40 mt-1">Terminal Close: {plan.expiry}</p>
+                    <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between">
+                       <span className={`text-[11px] font-extrabold uppercase tracking-wider ${plan.isExpired ? 'text-red-500' : 'text-primary'}`}>
+                          {plan.isExpired ? 'Plan Expired' : `${plan.daysLeft} days remaining`}
+                       </span>
+                       <p className="text-[10px] font-bold text-slate-400 opacity-60">Ends {plan.expiry}</p>
                     </div>
                  </div>
                ))}
             </div>
           </div>
 
-          {/* Consistency Trophies */}
+          {/* Activity Leaders */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="flex items-center gap-3 px-1">
-              <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
-               <h3 className="font-headline text-xl font-black text-on-surface tracking-tight uppercase italic">Most Active Students</h3>
+            <div className="flex items-center gap-4 px-1">
+               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/5">
+                 <Award size={20} />
+               </div>
+               <h3 className="font-headline text-xl font-extrabold text-on-surface tracking-tight">Active Students</h3>
             </div>
-            <div className="card p-8 bg-surface-container-low/50 flex flex-col justify-center min-h-[200px]">
+            <div className="card p-8 bg-white border border-slate-100 min-h-[200px] flex flex-col shadow-xl shadow-slate-200/40">
                {stars.length === 0 ? (
-                  <p className="text-center text-[10px] uppercase font-black tracking-widest text-outline/30 italic">No rankings to synchronize</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+                    <Users size={32} className="opacity-20 mb-4" />
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-40">No activity data</p>
+                  </div>
                ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                      {stars.map((star, i) => (
                         <div key={i} className="flex items-center justify-between group">
                            <div className="flex items-center gap-4">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] transition-transform group-hover:scale-110 ${
-                                 i === 0 ? 'bg-primary text-white' : 'bg-surface-container-high text-outline'
+                              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-extrabold text-xs transition-all shadow-md group-hover:scale-110 ${
+                                 i === 0 ? 'bg-primary text-white shadow-primary/20' : 'bg-slate-100 text-slate-600'
                               }`}>
                                  {star.initials}
                               </div>
                               <div>
-                                 <p className="text-xs font-black text-on-surface leading-none">{star.name}</p>
-                                 <div className="mt-1 flex gap-0.5">
+                                 <p className="text-sm font-extrabold text-on-surface leading-tight">{star.name}</p>
+                                 <div className="mt-1.5 flex gap-1">
                                     {[1,2,3,4,5].map(s => (
-                                       <span key={s} className={`material-symbols-outlined text-[8px] ${s <= (3 - i) ? 'text-primary fill-icon' : 'text-outline/10'}`}>star</span>
+                                       <div key={s} className={`w-1 h-1 rounded-full ${s <= (3 - i) ? 'bg-primary' : 'bg-slate-200'}`} />
                                     ))}
                                  </div>
                               </div>
                            </div>
-                           <p className="text-[10px] font-black text-primary italic uppercase tracking-tighter">{star.days} Visit</p>
+                           <p className="text-xs font-extrabold text-primary">{star.days} Sessions</p>
                         </div>
                      ))}
                   </div>
@@ -387,65 +386,72 @@ export default function ManagerDashboard() {
           </div>
         </section>
 
-        {/* Integrated Attendance Hub - Tactical Feed */}
+        {/* Attendance Activity Log */}
         <section className="space-y-8 pt-8">
            <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-4">
-                 <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>database</span>
+                 <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl shadow-primary/25">
+                    <Database size={22} />
+                 </div>
                  <div className="flex flex-col">
-                    <h3 className="font-headline text-2xl font-black text-on-surface tracking-tight uppercase italic leading-none">Today&apos;s Activity Log</h3>
-                    <p className="text-[10px] font-black text-outline uppercase tracking-[.25em] mt-1 opacity-50 italic">All check-ins on {format(selectedDate, 'dd MMM yyyy')}</p>
+                    <h3 className="font-headline text-2xl font-extrabold text-on-surface tracking-tight leading-none">Activity Feed</h3>
+                    <p className="text-xs font-bold text-slate-400 mt-2 flex items-center gap-2">
+                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                       Live check-ins for {format(selectedDate, 'MMMM dd, yyyy')}
+                    </p>
                  </div>
               </div>
            </div>
 
-           <div className="bg-surface-container-low/50 rounded-3xl border border-outline-variant/10 overflow-hidden shadow-sm">
+           <div className="bg-white rounded-[2.5rem] border border-slate-200/60 overflow-hidden shadow-2xl shadow-slate-200/50">
               <div className="overflow-x-auto">
                  <table className="w-full text-left border-collapse">
                     <thead>
-                       <tr className="bg-surface shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.05)]">
-                          <th className="px-6 py-5 text-[10px] font-black text-outline uppercase tracking-widest">Student Name</th>
-                          <th className="px-6 py-5 text-[10px] font-black text-outline uppercase tracking-widest">Check-in Time</th>
-                          <th className="px-6 py-5 text-[10px] font-black text-outline uppercase tracking-widest">Entry Status</th>
-                          <th className="px-6 py-5 text-[10px] font-black text-outline uppercase tracking-widest text-right">Entry ID</th>
+                       <tr className="bg-slate-50/50">
+                          <th className="px-8 py-6 text-xs font-extrabold text-slate-400 uppercase tracking-widest">Student</th>
+                          <th className="px-8 py-6 text-xs font-extrabold text-slate-400 uppercase tracking-widest">Logged Time</th>
+                          <th className="px-8 py-6 text-xs font-extrabold text-slate-400 uppercase tracking-widest">Status</th>
+                          <th className="px-8 py-6 text-xs font-extrabold text-slate-400 uppercase tracking-widest text-right">Reference</th>
                        </tr>
                     </thead>
-                    <tbody className="divide-y divide-outline-variant/5">
+                    <tbody className="divide-y divide-slate-100">
                        {attendanceLoading ? (
                           <tr>
-                             <td colSpan={4} className="px-6 py-20 text-center">
-                                <span className="material-symbols-outlined animate-spin text-3xl text-outline/20">progress_activity</span>
+                             <td colSpan={4} className="px-8 py-24 text-center">
+                                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
                              </td>
                           </tr>
                        ) : attendanceLogs.length === 0 ? (
                           <tr>
-                             <td colSpan={4} className="px-6 py-20 text-center italic text-xs text-outline/30 tracking-widest uppercase">Null Records in Active Buffer</td>
+                             <td colSpan={4} className="px-8 py-24 text-center">
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60">No activity recorded for this period</p>
+                             </td>
                           </tr>
                        ) : (
                           attendanceLogs.map((log, i) => (
-                             <tr key={i} className="hover:bg-surface-container-high/50 transition-colors group">
-                                <td className="px-6 py-4">
-                                   <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center font-black text-primary text-[10px] border border-primary/5 group-hover:scale-105 transition-transform">
+                             <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                                <td className="px-8 py-5">
+                                   <div className="flex items-center gap-4">
+                                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-extrabold text-primary text-[11px] group-hover:bg-primary group-hover:text-white transition-all">
                                          {log.student?.name?.substring(0,2).toUpperCase()}
                                       </div>
                                       <div className="flex flex-col">
-                                         <p className="text-xs font-black text-on-surface leading-none">{log.student?.name}</p>
-                                         <p className="text-[9px] font-bold text-outline mt-1 opacity-50">{log.student?.email}</p>
+                                         <p className="text-sm font-extrabold text-on-surface leading-none">{log.student?.name}</p>
+                                         <p className="text-[11px] font-medium text-slate-400 mt-1.5">{log.student?.email}</p>
                                       </div>
                                    </div>
                                 </td>
-                                <td className="px-6 py-4 font-mono text-[10px] font-black text-primary italic uppercase tracking-tighter">
+                                <td className="px-8 py-5 font-mono text-xs font-extrabold text-primary">
                                    {format(new Date(log.timestamp), 'HH:mm:ss')}
                                 </td>
-                                <td className="px-6 py-4">
-                                   <div className="flex items-center gap-2">
-                                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                      <span className="text-[10px] font-black text-secondary tracking-widest uppercase">Entry Allowed</span>
+                                <td className="px-8 py-5">
+                                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                      <span className="text-[10px] font-extrabold uppercase tracking-widest">Authenticated</span>
                                    </div>
                                 </td>
-                                <td className="px-6 py-4 text-right">
-                                   <span className="text-[10px] font-black text-outline uppercase tracking-widest opacity-40">RSID-{log.id.substring(0,6)}</span>
+                                <td className="px-8 py-5 text-right">
+                                   <span className="text-[11px] font-bold text-slate-400 opacity-40">#{log.id.substring(0,8).toUpperCase()}</span>
                                 </td>
                              </tr>
                           ))

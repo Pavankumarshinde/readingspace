@@ -13,11 +13,24 @@ import {
   isSameDay, 
   subDays, 
   isToday, 
-  isYesterday,
   differenceInDays,
   parseISO
 } from 'date-fns'
-
+import { 
+  ArrowLeft, 
+  MapPin, 
+  Calendar, 
+  Armchair, 
+  Flame, 
+  Trophy, 
+  ChevronLeft, 
+  ChevronRight, 
+  QrCode,
+  ShieldCheck,
+  AlertCircle,
+  Loader2,
+  Lock
+} from 'lucide-react'
 
 export default function RoomDetail({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params)
@@ -27,7 +40,6 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
   const [room, setRoom] = useState<any>(null)
   const [subscription, setSubscription] = useState<any>(null)
   const [logs, setLogs] = useState<any[]>([])
-  const [profile, setProfile] = useState<any>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   
   const [streak, setStreak] = useState(0)
@@ -44,21 +56,9 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
         return
       }
 
-      // 1. Fetch Profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      setProfile(profileData)
-
-      // 2. Fetch Subscription and Room
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
-        .select(`
-          *,
-          rooms (*)
-        `)
+        .select(`*, rooms (*)`)
         .eq('room_id', roomId)
         .eq('student_id', user.id)
         .single()
@@ -67,7 +67,6 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
       setSubscription(subData)
       setRoom(subData.rooms)
 
-      // 3. Fetch All Attendance Logs for this room (to calculate streaks)
       const { data: logsData } = await supabase
         .from('attendance_logs')
         .select('*')
@@ -77,13 +76,10 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
 
       const attendanceLogs = logsData || []
       setLogs(attendanceLogs)
-
-      // 4. Calculate Streak
       calculateStreaks(attendanceLogs)
 
     } catch (err: any) {
-      toast.error('Failed to load room details')
-      console.error(err)
+      toast.error('Failed to sync room details')
     } finally {
       setLoading(false)
     }
@@ -101,7 +97,6 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
     let best = 0
     let tempStreak = 0
 
-    // Current Streak logic
     const today = format(new Date(), 'yyyy-MM-dd')
     const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
     
@@ -123,7 +118,6 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
     }
     setStreak(current)
 
-    // Best Streak logic
     uniqueDates.forEach((date, index) => {
       if (index === 0) {
         tempStreak = 1
@@ -150,7 +144,7 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
   const startCheckIn = async () => {
     if (room.latitude && room.longitude) {
       if (!navigator.geolocation) {
-        toast.error("Geolocation is required for attendance")
+        toast.error("Geolocation required for check-in")
         return
       }
 
@@ -159,16 +153,13 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
         const position = await new Promise<GeolocationPosition | null>((resolve) => {
           navigator.geolocation.getCurrentPosition(
             (pos) => resolve(pos),
-            (err) => {
-              console.error(err)
-              resolve(null)
-            },
+            (err) => resolve(null),
             { enableHighAccuracy: true, timeout: 5000 }
           )
         })
 
         if (!position) {
-          toast.error("Failed to verify location. Please enable GPS and allow permissions.")
+          toast.error("Location verification timed out")
           return
         }
 
@@ -181,18 +172,17 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
         )
 
         if (distance > (room.radius || 200)) {
-          toast.error(`Out of range! You are ${Math.round(distance)}m away. Required: ${room.radius || 200}m`, { duration: 5000 })
+          toast.error(`Out of range (${Math.round(distance)}m). Move closer to ${room.name}.`, { duration: 5000 })
           return
         }
         
         setShowScanner(true)
       } catch (err) {
-        toast.error("Location verification failed")
+        toast.error("Authorization failed")
       } finally {
         setLoading(false)
       }
     } else {
-      toast.success("Geofence disabled. Initializing scanner...", { icon: '️🔓', duration: 3000 })
       setShowScanner(true)
     }
   }
@@ -214,17 +204,16 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
 
       if (error) {
         if (error.code === '23505') {
-          toast.error("You've already checked in today!")
+          toast.error("Session already logged for today")
         } else {
           throw error
         }
       } else {
-        toast.success('Attendance recorded successfully!')
+        toast.success('Session verified!')
         await fetchData()
       }
     } catch (err: any) {
-      toast.error('Check-in failed')
-      console.error(err)
+      toast.error('Sync failed')
     } finally {
       setLoading(false)
       setShowScanner(false)
@@ -233,172 +222,199 @@ export default function RoomDetail({ params }: { params: Promise<{ roomId: strin
 
   if (loading && !room) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
-         <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+      <div className="flex flex-col min-h-screen items-center justify-center bg-slate-50 text-slate-400">
+         <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+         <span className="text-xs font-bold uppercase tracking-widest opacity-60">Synchronizing workspace...</span>
       </div>
     )
   }
 
   if (!room) return null
 
-  // Calendar logic
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
   const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
-  
   const isAttended = (day: Date) => logs.some(l => isSameDay(parseISO(l.date), day))
-  const isPastGoal = (day: Date) => !isAttended(day) && day < new Date() && !isToday(day)
-
   const expiresIn = differenceInDays(parseISO(subscription.end_date), new Date())
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Sub-Header with Back Button */}
-      <section className="mb-6 flex items-center gap-4 px-1">
-        <button 
-          onClick={() => router.back()}
-          className="p-2 rounded-full hover:bg-surface-container-low transition-colors text-primary"
-        >
-          <span className="material-symbols-outlined font-bold">arrow_back</span>
-        </button>
-        <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface truncate">
-          {room.name}
-        </h2>
-      </section>
-
-      <main className="w-full space-y-8">
-        {/* Room Header & Location */}
-        <section className="px-2">
-          <div className="flex items-center text-secondary gap-1.5 mb-1">
-            <span className="material-symbols-outlined text-sm font-bold">location_on</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest">{room.description || 'Main Hall'}</span>
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-700 pb-32 px-6">
+      {/* Page Header */}
+      <header className="flex items-center justify-between pt-6">
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => router.back()}
+            className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary/30 transition-all"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex flex-col">
+            <h2 className="font-headline text-2xl font-extrabold text-on-surface tracking-tight leading-none">
+              {room.name}
+            </h2>
+            <div className="flex items-center gap-2 mt-2">
+               <MapPin size={12} className="text-primary" />
+               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{room.description || 'Verified Study Zone'}</span>
+            </div>
           </div>
-          <p className="text-on-surface-variant text-xs leading-relaxed max-w-sm">
-            Welcome to your dedicated study zone. Maintain silence and focus.
-          </p>
-        </section>
+        </div>
+      </header>
 
-        {/* Subscription Info Card */}
-        <section className="bg-surface border border-outline-variant/30 p-6 rounded-2xl relative overflow-hidden">
-           <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 bg-surface-container-low rounded-xl flex items-center justify-center text-primary border border-outline-variant/10">
-                    <span className="material-symbols-outlined text-xl">chair</span>
-                 </div>
-                 <div>
-                    <p className="text-[9px] text-outline uppercase tracking-widest mb-0.5">Your Seat</p>
-                    <p className="font-mono text-sm font-bold text-primary">{subscription.seat_number}</p>
-                 </div>
-              </div>
-           </div>
-           
-           <div className="h-px bg-outline-variant/10 w-full mb-4"></div>
-
-           <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-surface-container-low rounded-xl flex items-center justify-center text-secondary border border-outline-variant/10">
-                 <span className="material-symbols-outlined text-xl">calendar_today</span>
-              </div>
-              <div>
-                 <p className="text-[9px] text-outline uppercase tracking-widest mb-0.5">Membership Valid From – To</p>
-                 <p className="font-mono text-[10px] font-medium text-on-surface">
-                    {format(parseISO(subscription.start_date), 'dd MMM')} — {format(parseISO(subscription.end_date), 'dd MMM yyyy')}
-                 </p>
-              </div>
-           </div>
-        </section>
-
-        {/* Attendance Action */}
-        <section className="px-2">
+      <main className="space-y-8">
+        {/* Check-in Primary Action */}
+        <section>
           {isTodayAttended ? (
-            <div className="bg-surface-container-highest/20 border border-secondary/20 py-4 rounded-xl w-full flex items-center justify-center gap-3 text-secondary shadow-inner">
-               <span className="material-symbols-outlined text-lg fill-icon">check_circle</span>
-               <span className="text-xs font-bold uppercase tracking-widest">You&apos;ve already checked in today</span>
+            <div className="card p-8 bg-emerald-50 border-emerald-100 flex flex-col items-center justify-center text-center gap-4">
+               <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner">
+                  <ShieldCheck size={32} />
+               </div>
+               <div>
+                  <h3 className="text-lg font-extrabold text-emerald-800">Attendance Verified</h3>
+                  <p className="text-sm font-medium text-emerald-600 mt-1 opacity-80">Your study session for today is correctly logged.</p>
+               </div>
             </div>
           ) : (
             <button 
               disabled={loading}
               onClick={startCheckIn}
-              className="bg-primary text-on-primary py-4 rounded-xl w-full font-bold text-xs uppercase tracking-widest hover:opacity-95 active:scale-95 transition-all flex items-center justify-center gap-3"
+              className="w-full bg-gradient-to-br from-primary to-indigo-700 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all group relative overflow-hidden"
             >
-              {loading ? (
-                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                 <>
-                    <span className="material-symbols-outlined text-lg">qr_code_scanner</span>
-                    <span>Mark My Attendance</span>
-                 </>
-              )}
+               {/* Decorative */}
+               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-24 -mt-24 transition-transform group-hover:scale-125" />
+               
+               <div className="relative z-10 flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                     {loading ? <Loader2 size={32} className="animate-spin" /> : <QrCode size={32} />}
+                  </div>
+                  <div className="text-center">
+                     <span className="text-[11px] font-bold uppercase tracking-[0.3em] opacity-80">Session Auth</span>
+                     <h3 className="text-2xl font-extrabold mt-1">Start My Study Session</h3>
+                  </div>
+               </div>
             </button>
           )}
         </section>
 
-        {/* Expiring Banner */}
+        {/* Info Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           {/* Subscription Card */}
+           <section className="card p-8 bg-white border-slate-100 space-y-8 flex flex-col">
+              <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-secondary/10 rounded-2xl flex items-center justify-center text-secondary border border-secondary/5">
+                       <Armchair size={24} />
+                    </div>
+                    <div>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assigned Seat</p>
+                       <p className="text-lg font-extrabold text-on-surface">Seat {subscription.seat_number}</p>
+                    </div>
+                 </div>
+              </div>
+              
+              <div className="pt-6 border-t border-slate-50 mt-auto">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border border-primary/5">
+                       <Calendar size={20} />
+                    </div>
+                    <div>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Membership</p>
+                       <p className="text-xs font-bold text-on-surface">
+                          {format(parseISO(subscription.start_date), 'dd MMM')} — {format(parseISO(subscription.end_date), 'dd MMM yyyy')}
+                       </p>
+                    </div>
+                 </div>
+              </div>
+           </section>
+
+           {/* Metrics Card */}
+           <section className="grid grid-cols-1 gap-6">
+              <div className="card p-8 bg-white border-slate-100 flex flex-col items-center justify-center text-center group">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Current Streak</p>
+                 <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-100 shadow-sm group-hover:scale-110 transition-transform">
+                       <Flame size={28} />
+                    </div>
+                    <div className="text-left">
+                       <p className="text-3xl font-extrabold text-on-surface leading-none">{streak}</p>
+                       <p className="text-xs font-bold text-slate-400 uppercase mt-1">Consective Days</p>
+                    </div>
+                 </div>
+              </div>
+              <div className="card p-8 bg-white border-slate-100 flex flex-col items-center justify-center text-center group">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Personal Best</p>
+                 <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center text-primary border border-primary/5 shadow-sm group-hover:scale-110 transition-transform">
+                       <Trophy size={28} />
+                    </div>
+                    <div className="text-left">
+                       <p className="text-3xl font-extrabold text-on-surface leading-none">{bestStreak}</p>
+                       <p className="text-xs font-bold text-slate-400 uppercase mt-1">Record Streak</p>
+                    </div>
+                 </div>
+              </div>
+           </section>
+        </div>
+
+        {/* Expiring Alert */}
         {expiresIn <= 7 && expiresIn >= 0 && (
-          <section className="bg-error/5 border border-error/20 p-4 rounded-2xl flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-error">timer</span>
+          <section className="bg-rose-50 border border-rose-100 p-6 rounded-[2rem] flex items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
+                <AlertCircle size={24} />
+              </div>
               <div>
-                <p className="text-[9px] font-bold text-error uppercase tracking-widest">Plan expiring soon</p>
-                <p className="text-xs font-semibold text-on-surface">{expiresIn === 0 ? 'Today' : `In ${expiresIn} days`}</p>
+                <p className="text-sm font-extrabold text-rose-800">Membership expiring soon</p>
+                <p className="text-xs font-bold text-rose-600 opacity-80">{expiresIn === 0 ? 'Last day of access today' : `Only ${expiresIn} days of access left`}</p>
               </div>
             </div>
-            <button className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-primary border border-primary/20 rounded-lg bg-white">
-              Renew
+            <button className="px-6 py-2.5 bg-white border border-rose-200 text-rose-500 text-xs font-extrabold uppercase tracking-widest rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+              Renew Now
             </button>
           </section>
         )}
 
-        {/* Streak Stats (Minimalized) */}
-        <section className="grid grid-cols-2 gap-4">
-           <div className="bg-surface border border-outline-variant/30 p-5 rounded-2xl flex flex-col items-center">
-              <p className="text-[9px] text-outline uppercase tracking-widest mb-1.5">Study Streak</p>
-              <div className="flex items-center gap-2">
-                 <span className="material-symbols-outlined text-secondary text-xl font-bold">local_fire_department</span>
-                 <p className="font-headline text-lg font-bold text-on-surface">{streak} <span className="text-xs font-medium text-outline">Days</span></p>
-              </div>
-           </div>
-           <div className="bg-surface border border-outline-variant/30 p-5 rounded-2xl flex flex-col items-center">
-              <p className="text-[9px] text-outline uppercase tracking-widest mb-1.5">Best Streak</p>
-              <p className="font-headline text-lg font-bold text-on-surface">{bestStreak} <span className="text-xs font-medium text-outline">Days</span></p>
-           </div>
-        </section>
-
-        {/* Calendar Widget (Simplified) */}
-        <section className="bg-surface border border-outline-variant/30 p-6 rounded-2xl">
-          <div className="flex items-center justify-between mb-8 px-1">
-            <h3 className="font-headline text-base font-semibold text-on-surface">
-               {format(currentMonth, 'MMMM yyyy')}
+        {/* Calendar Visualization */}
+        <section className="card p-10 bg-white border-slate-100 shadow-xl shadow-slate-200/50">
+          <div className="flex items-center justify-between mb-8 px-2">
+            <h3 className="font-headline text-xl font-extrabold text-on-surface">
+               Attendance History
             </h3>
-            <div className="flex gap-1">
-              <button onClick={() => setCurrentMonth(subDays(monthStart, 1))} className="p-1 hover:bg-surface-container-low rounded-lg">
-                <span className="material-symbols-outlined text-outline text-lg">chevron_left</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setCurrentMonth(subDays(monthStart, 1))} 
+                className="w-10 h-10 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 transition-all"
+              >
+                <ChevronLeft size={20} />
               </button>
-              <button onClick={() => setCurrentMonth(subDays(monthEnd, -1))} className="p-1 hover:bg-surface-container-low rounded-lg">
-                <span className="material-symbols-outlined text-outline text-lg">chevron_right</span>
+              <button 
+                onClick={() => setCurrentMonth(subDays(monthEnd, -1))} 
+                className="w-10 h-10 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 transition-all"
+              >
+                <ChevronRight size={20} />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 text-center text-[9px] font-bold text-outline/40 mb-4 uppercase tracking-widest">
-            <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+          <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d}>{d}</div>)}
           </div>
 
-          <div className="grid grid-cols-7 gap-y-3">
+          <div className="grid grid-cols-7 gap-y-4">
             {calendarDays.map((day, i) => {
               const attended = isAttended(day)
-              const missed = isPastGoal(day)
               const today = isToday(day)
               
               return (
-                <div key={i} className="relative flex items-center justify-center py-1">
-                  <span className={`font-mono text-[11px] font-medium relative z-10 ${
-                    attended ? 'text-white' : today ? 'text-primary font-bold' : 'text-on-surface'
+                <div key={i} className="flex items-center justify-center relative">
+                  <div className={`w-10 h-10 flex items-center justify-center rounded-2xl text-sm font-bold transition-all ${
+                    attended 
+                      ? 'bg-secondary text-white shadow-xl shadow-secondary/20 scale-110' 
+                      : today 
+                        ? 'border-2 border-primary text-primary' 
+                        : 'text-slate-400'
                   }`}>
                     {format(day, 'd')}
-                  </span>
-                  {attended && <div className="absolute w-7 h-7 bg-secondary rounded-lg shadow-sm" />}
-                  {missed && <div className="absolute w-1 h-1 bottom-0 bg-error/40 rounded-full" />}
-                  {today && !attended && <div className="absolute w-7 h-7 border border-primary/30 rounded-lg" />}
+                  </div>
                 </div>
               )
             })}

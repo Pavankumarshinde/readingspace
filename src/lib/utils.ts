@@ -43,9 +43,16 @@ export function getInitials(name: string): string {
 }
 
 // Consistent avatar color based on name
+// Vibrant Modern (Prism) Color Spectrum
 const AVATAR_COLORS = [
-  '#0D2137', '#00A896', '#7C3AED', '#2563EB',
-  '#DC2626', '#059669', '#D97706', '#DB2777',
+  '#4F46E5', // Indigo-600
+  '#0D6E6E', // Primary Teal
+  '#06B6D4', // Cyan-500
+  '#8B5CF6', // Violet-500
+  '#10B981', // Emerald-500
+  '#F43F5E', // Rose-500
+  '#6366F1', // Indigo-500
+  '#14B8A6', // Teal-500
 ]
 export function avatarColor(name: string): string {
   let hash = 0

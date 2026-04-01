@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, MoreVertical, QrCode, Monitor, Pencil, Trash2, Users, MapPin, Key } from 'lucide-react'
+import { Plus, QrCode, Pencil, MapPin, Users, Info, Search, X, Settings2, ShieldCheck } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import QRDisplay from '@/components/manager/QRDisplay'
 import { createClient } from '@/lib/supabase/client'
@@ -19,7 +19,7 @@ export default function ManagerRooms() {
   const [showAddRoom, setShowAddRoom] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
-    id: null,
+    id: null as string | null,
     name: '',
     description: '',
     capacity: 50,
@@ -80,7 +80,7 @@ export default function ManagerRooms() {
       return
     }
 
-    toast.loading("Fetching coordinates...", { id: 'geo' })
+    toast.loading("Capturing precise coordinates...", { id: 'geo' })
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setFormData(prev => ({
@@ -89,11 +89,11 @@ export default function ManagerRooms() {
           longitude: pos.coords.longitude
         }))
         toast.dismiss('geo')
-        toast.success("Location captured!")
+        toast.success("Location anchored successfully")
       },
       (err) => {
         toast.dismiss('geo')
-        toast.error("Geolocation failed: " + err.message)
+        toast.error("Location access denied: " + err.message)
       }
     )
   }
@@ -112,16 +112,16 @@ export default function ManagerRooms() {
       })
 
       if (res.ok) {
-        toast.success(`Node ${isEdit ? 'updated' : 'deployed'} successfully!`)
+        toast.success(`Room ${isEdit ? 'updated' : 'added'} successfully`)
         setShowAddRoom(false)
         setFormData({ id: null, name: '', description: '', capacity: 50, tier: 'standard', latitude: null, longitude: null, radius: 200 })
         fetchRooms()
       } else {
         const err = await res.json()
-        toast.error(err.error || "Failed to save configuration")
+        toast.error(err.error || "Failed to process request")
       }
     } catch (e) {
-      toast.error("Network synchronization error")
+      toast.error("Network connection failure")
     } finally {
       setSaving(false)
     }
@@ -141,205 +141,237 @@ export default function ManagerRooms() {
     setShowAddRoom(true)
   }
 
+  const filteredRooms = rooms.filter(r => 
+    r.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    r.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
-    <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-700 pb-32">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/10 pb-8">
+    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-700 pb-32 px-8">
+      {/* Header Section */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="font-headline text-4xl font-black text-on-surface tracking-tight">Study Rooms</h2>
-          <p className="text-[11px] font-bold text-outline uppercase tracking-[.2em] mt-2 opacity-70">Manage all your reading rooms</p>
+           <p className="text-primary text-xs font-bold uppercase tracking-widest mb-1.5 opacity-80">Infrastructure Management</p>
+           <h2 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">Study Rooms</h2>
+           <p className="text-sm font-medium text-slate-500 mt-2">Oversee room occupancy, access keys, and security parameters.</p>
         </div>
         <button 
           onClick={() => {
             setFormData({ id: null, name: '', description: '', capacity: 50, tier: 'standard', latitude: null, longitude: null, radius: 200 })
             setShowAddRoom(true)
           }}
-          className="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+          className="btn-primary"
         >
-          <span className="material-symbols-outlined text-sm">add_circle</span>
-          Add New Room
+          <Plus size={20} />
+          <span>Add New Room</span>
         </button>
       </header>
 
-      {/* Search filtration */}
-      <div className="relative max-w-lg">
-        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/50 text-base">search_activity</span>
-        <input
-          type="text"
-          placeholder="Search rooms..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl pl-12 pr-10 py-3.5 text-xs font-bold text-on-surface placeholder:text-outline/40 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all shadow-sm"
-        />
-        {searchQuery && (
-          <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-outline/50 hover:text-on-surface transition-colors">
-            <span className="material-symbols-outlined text-base">close</span>
-          </button>
-        )}
+      {/* Control Bar */}
+      <div className="flex flex-col md:flex-row gap-6 items-center">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+          <input
+            type="text"
+            placeholder="Search by room name or location..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-14 pr-10 py-4 text-sm font-medium text-on-surface placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all shadow-sm"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 transition-colors">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 px-4 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
+           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Rooms:</span>
+           <span className="text-sm font-extrabold text-primary">{rooms.length}</span>
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 text-outline/30">
-          <span className="material-symbols-outlined animate-spin mb-4 text-4xl">scan</span>
-          <span className="text-[10px] font-black uppercase tracking-[.4em]">Querying Hardware Nodes...</span>
+        <div className="flex flex-col items-center justify-center py-40 text-slate-300">
+           <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6"></div>
+           <span className="text-xs font-bold uppercase tracking-[0.3em] opacity-60">Synchronizing Room Data...</span>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-           {rooms.filter(r => r.name?.toLowerCase().includes(searchQuery.toLowerCase()) || r.location?.toLowerCase().includes(searchQuery.toLowerCase())).map((room) => (
-             <div key={room.id} className="card p-6 flex flex-col gap-8 group hover:border-primary/20 transition-all">
-                <div className="flex justify-between items-start">
-                   <div className="space-y-1.5">
-                      <h3 className="font-headline font-black text-xl text-on-surface leading-none group-hover:text-primary transition-colors">{room.name}</h3>
-                      <p className="text-[10px] font-black text-outline uppercase tracking-widest flex items-center gap-1.5 opacity-60">
-                         <span className="material-symbols-outlined text-xs">location_searching</span>
+           {filteredRooms.length === 0 ? (
+             <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
+                   <Search size={32} />
+                </div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60">No rooms match your search</p>
+             </div>
+           ) : filteredRooms.map((room) => (
+             <div key={room.id} className="card p-10 flex flex-col gap-8 group hover:border-primary/30 h-full relative overflow-hidden">
+                {/* Visual Accent */}
+                <div className={`absolute top-0 right-0 w-24 h-24 blur-[60px] opacity-10 transition-opacity group-hover:opacity-20 ${room.premium ? 'bg-primary' : 'bg-slate-400'}`} />
+                
+                <div className="flex justify-between items-start z-10">
+                   <div className="space-y-2">
+                      <h3 className="font-headline font-extrabold text-2xl text-on-surface leading-tight transition-colors">{room.name}</h3>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                         <MapPin size={12} className="text-slate-300" />
                          {room.location}
                       </p>
                    </div>
-                   <div className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border ${
-                     room.premium ? 'bg-primary/5 text-primary border-primary/10' : 'bg-outline-variant/5 text-outline border-outline-variant/10'
+                   <div className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest border-2 ${
+                     room.premium ? 'bg-indigo-50 text-primary border-primary/10' : 'bg-slate-50 text-slate-500 border-slate-100'
                    }`}>
-                           <option value="standard">Regular Room</option>
+                      {room.premium ? 'Premium' : 'Standard'}
                    </div>
                 </div>
 
-                <div className="space-y-4">
-                   <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tighter">
-                      <span className="text-outline/50 italic flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm">groups</span> Students Present
+                <div className="space-y-5 z-10">
+                   <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-slate-400 flex items-center gap-2">
+                        <Users size={14} className="text-slate-300" /> 
+                        Live Occupancy
                       </span>
-                      <span className="text-on-surface">{room.occupancy} / {room.total_seats}</span>
+                      <span className="text-on-surface font-extrabold">{room.occupancy} / {room.total_seats}</span>
                    </div>
-                   <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
                       <div 
-                         className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(var(--primary),0.3)]"
+                         className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(79,70,229,0.3)]"
                          style={{ width: `${Math.min((room.occupancy / room.total_seats) * 100, 100)}%` }}
                       />
                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                   <div className="bg-surface-container-low border border-outline-variant/10 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                       <p className="text-[8px] font-black text-outline/40 uppercase tracking-widest mb-1">Room Code</p>
-                      <p className="font-mono text-xs font-black text-secondary tracking-widest">{room.joinKey}</p>
+                <div className="grid grid-cols-2 gap-4 z-10">
+                   <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Access Key</p>
+                      <p className="font-mono text-sm font-extrabold text-secondary tracking-widest">{room.joinKey}</p>
                    </div>
-                   <div className="bg-surface-container-low border border-outline-variant/10 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                       <p className="text-[8px] font-black text-outline/40 uppercase tracking-widest mb-1">Check-in Range</p>
-                      <p className="font-mono text-xs font-black text-primary">{room.radius}m</p>
+                   <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Range</p>
+                      <p className="font-mono text-sm font-extrabold text-primary">{room.radius}m</p>
                    </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-3 mt-auto pt-4 z-10">
                    <button 
                      onClick={() => { setSelectedRoom(room); setShowQR(true); }}
-                     className="flex-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-outline-variant/10"
+                     className="flex-1 bg-white border border-slate-200 text-on-surface py-4 rounded-2xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all flex items-center justify-center gap-2 shadow-sm"
                    >
-                     <span className="material-symbols-outlined text-sm">qr_code_2</span>
-                     Show QR Code
+                     <QrCode size={16} />
+                     QR Scan
                    </button>
                    <button 
                      onClick={() => handleEditRoom(room)}
-                     className="w-12 h-12 bg-surface-container-low hover:bg-primary/5 text-outline hover:text-primary transition-all rounded-xl border border-outline-variant/10 flex items-center justify-center"
+                     className="w-14 h-14 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center text-primary hover:bg-primary-container hover:border-primary/20 transition-all shadow-sm"
                    >
-                      <span className="material-symbols-outlined text-lg">settings</span>
+                      <Settings2 size={20} />
                    </button>
                 </div>
              </div>
            ))}
         </div>
       )}
-      {/* Modal Overhaul */}
+
+      {/* Modals */}
       {showAddRoom && (
-         <Modal open={showAddRoom} onClose={() => setShowAddRoom(false)} title={formData.id ? "Edit Room Details" : "Add New Room"}>
+         <Modal open={showAddRoom} onClose={() => setShowAddRoom(false)} title={formData.id ? "Configure Room Parameters" : "Launch New Room"}>
             <form onSubmit={handleSaveRoom} className="space-y-8 pt-6 pb-2">
                <div className="space-y-6">
-                 <div className="space-y-2">
-                    <label className="text-[9px] font-black text-outline/50 uppercase tracking-widest ml-1 italic">Room Name</label>
+                 <div className="space-y-2.5">
+                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 ml-1">
+                      <Info size={14} className="text-primary" /> Room Name
+                    </label>
                     <input 
                        required
                        value={formData.name}
                        onChange={e => setFormData({...formData, name: e.target.value})}
-                       className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm font-bold focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all placeholder:text-outline/30"
-                       placeholder="e.g. South Reading Hub"
+                       className="input"
+                       placeholder="e.g. South Reading Block"
                     />
                  </div>
 
-                 <div className="space-y-2">
-                    <label className="text-[9px] font-black text-outline/50 uppercase tracking-widest ml-1 italic">Room Location</label>
+                 <div className="space-y-2.5">
+                    <label className="text-xs font-bold text-on-surface-variant ml-1">Room Location / Address</label>
                     <input 
                        value={formData.description}
                        onChange={e => setFormData({...formData, description: e.target.value})}
-                       className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all placeholder:text-outline/30"
-                       placeholder="e.g. Floor 2, Central Plaza"
+                       className="input"
+                       placeholder="e.g. 2nd Floor, Knowledge Park"
                     />
                  </div>
 
                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-[9px] font-black text-outline/50 uppercase tracking-widest ml-1 italic">Total Capacity</label>
+                    <div className="space-y-2.5">
+                       <label className="text-xs font-bold text-on-surface-variant ml-1">Total Capacity</label>
                        <input 
                           type="number"
                           value={formData.capacity}
                           onChange={e => setFormData({...formData, capacity: parseInt(e.target.value) || 0})}
-                          className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm font-bold focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all"
+                          className="input font-bold"
                        />
                     </div>
-                    <div className="space-y-2">
-                       <label className="text-[9px] font-black text-outline/50 uppercase tracking-widest ml-1 italic">Room Type</label>
+                    <div className="space-y-2.5">
+                       <label className="text-xs font-bold text-on-surface-variant ml-1">Room Tier</label>
                        <select 
                           value={formData.tier}
                           onChange={e => setFormData({...formData, tier: e.target.value})}
-                          className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm font-bold focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all appearance-none cursor-pointer"
+                          className="input font-extrabold cursor-pointer"
                        >
-                          <option value="standard">Regular Room</option>
-                          <option value="premium">Premium Node</option>
+                          <option value="standard">Standard</option>
+                          <option value="premium">Premium Elite</option>
                        </select>
                     </div>
                  </div>
 
-                 <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 space-y-5">
+                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-200 space-y-6 shadow-inner">
                     <div className="flex items-center justify-between">
                        <div className="flex flex-col">
-                          <p className="text-[10px] font-black text-primary uppercase tracking-[.2em] italic">Check-in Range</p>
-                          <p className="text-[8px] font-bold text-outline uppercase tracking-widest opacity-50">Spatial strictness (mtrs)</p>
+                          <p className="text-[11px] font-extrabold text-primary uppercase tracking-widest">Geofence strictness</p>
+                          <p className="text-[10px] font-bold text-slate-400 mt-1">Check-in radius in meters</p>
                        </div>
                        <button 
                          type="button"
                          onClick={handleGetCurrentLocation}
-                         className="px-3 py-1.5 bg-white border border-primary/20 text-primary text-[9px] font-black uppercase tracking-widest rounded-lg hover:shadow-sm transition-all flex items-center gap-1.5"
+                         className="px-4 py-2 bg-white border border-slate-200 text-primary text-[10px] font-extrabold uppercase tracking-widest rounded-xl hover:shadow-md hover:border-primary transition-all flex items-center gap-2"
                        >
-                          <span className="material-symbols-outlined text-[14px]">share_location</span>
-                          Get Location
+                          <MapPin size={14} />
+                          Locate
                        </button>
                     </div>
                     
-                    <input 
-                       type="range"
-                       min="10"
-                       max="500"
-                       step="10"
-                       value={formData.radius}
-                       onChange={e => setFormData({...formData, radius: parseInt(e.target.value)})}
-                       className="w-full h-1 bg-primary/20 rounded-full appearance-none cursor-pointer accent-primary"
-                    />
-                    <div className="flex justify-between font-mono text-[8px] font-black text-outline tracking-widest italic opacity-40">
-                       <span>TACTICAL (10m)</span>
-                       <span>WIDE (500m)</span>
+                    <div className="space-y-4">
+                       <div className="flex items-center gap-4">
+                          <input 
+                             type="range"
+                             min="10"
+                             max="500"
+                             step="10"
+                             value={formData.radius}
+                             onChange={e => setFormData({...formData, radius: parseInt(e.target.value)})}
+                             className="flex-1 h-2 bg-slate-200 rounded-full appearance-none cursor-pointer accent-primary"
+                          />
+                          <span className="w-16 text-center text-sm font-extrabold text-primary bg-white px-2 py-1 rounded-lg border border-slate-100">{formData.radius}m</span>
+                       </div>
+                       <div className="flex justify-between text-[9px] font-extrabold text-slate-400 tracking-widest">
+                          <span>HIGH SECURITY (10m)</span>
+                          <span>FLEXIBLE (500m)</span>
+                       </div>
                     </div>
                  </div>
                </div>
 
                <button 
                   disabled={saving}
-                  className="w-full py-4 rounded-2xl bg-primary text-white text-[11px] font-black uppercase tracking-[.3em] shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50"
+                  className="btn-primary w-full py-4.5 rounded-2xl shadow-2xl shadow-primary/30"
                >
-                  {saving ? 'UPDATING...' : 'SAVE ROOM'}
+                  <ShieldCheck size={20} />
+                  <span>{saving ? 'UPDATING...' : 'SAVE CONFIGURATION'}</span>
                </button>
             </form>
          </Modal>
       )}
 
-      {/* QR Code Modal */}
       {showQR && (
-        <Modal open={showQR} onClose={() => setShowQR(false)} title="Room QR Code">
+        <Modal open={showQR} onClose={() => setShowQR(false)} title="Security Access QR">
           <QRDisplay roomId={selectedRoom?.id} roomName={selectedRoom?.name} />
         </Modal>
       )}

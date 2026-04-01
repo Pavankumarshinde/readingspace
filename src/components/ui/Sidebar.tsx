@@ -29,35 +29,37 @@ export default function Sidebar({ role }: { role: UserRole }) {
   const filteredItems = navItems.filter(item => item.role === role || item.role === 'all')
 
   return (
-    <aside className="hidden md:flex flex-col h-screen sticky top-0 bg-surface border-r border-outline-variant/20 transition-all duration-300 w-20 lg:w-64 shrink-0 overflow-y-auto">
+    <aside className="hidden md:flex flex-col h-screen sticky top-0 bg-white border-r border-slate-200 transition-all duration-300 w-20 lg:w-64 shrink-0 overflow-y-auto">
       {/* Brand Header */}
-      <div className="p-6 flex items-center gap-3">
-        <span className="material-symbols-outlined text-primary scale-110" style={{ fontVariationSettings: "'FILL' 1" }}>
-          menu_book
-        </span>
-        <h1 className="hidden lg:block font-headline font-bold text-lg tracking-tighter text-primary">
-          ReadingSpace
+      <div className="p-8 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
+          <span className="material-symbols-outlined scale-110" style={{ fontVariationSettings: "'FILL' 1" }}>
+            library_books
+          </span>
+        </div>
+        <h1 className="hidden lg:block font-headline font-extrabold text-lg tracking-tight text-on-surface">
+          Reading<span className="text-primary">Space</span>
         </h1>
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 px-3 space-y-1 mt-4">
+      <nav className="flex-1 px-4 space-y-1.5 mt-6">
         {filteredItems.map((item) => {
           const isActive = pathname === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-4 px-3 py-2.5 rounded-xl transition-all group ${
+              className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all group ${
                 isActive 
-                  ? 'bg-primary/5 text-primary' 
-                  : 'text-outline hover:bg-surface-container-low hover:text-primary'
+                  ? 'bg-primary text-white shadow-xl shadow-primary/20' 
+                  : 'text-on-surface-variant hover:bg-slate-100 hover:text-on-surface'
               }`}
             >
-              <span className={`material-symbols-outlined icon-sm ${isActive ? 'fill-icon' : ''}`}>
+              <span className={`material-symbols-outlined text-[22px] ${isActive ? 'fill-icon' : 'opacity-70 group-hover:opacity-100'}`}>
                 {item.icon}
               </span>
-              <span className="hidden lg:block text-xs font-semibold tracking-tight">
+              <span className={`hidden lg:block text-sm font-bold tracking-tight ${isActive ? '' : 'opacity-80'}`}>
                 {item.label}
               </span>
             </Link>
@@ -66,17 +68,17 @@ export default function Sidebar({ role }: { role: UserRole }) {
       </nav>
 
       {/* Footer / User Info Context */}
-      <div className="p-4 border-t border-outline-variant/10">
-        <div className="flex items-center gap-3 px-2 py-2 bg-surface-container-low rounded-2xl border border-outline-variant/5">
-           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-             <span className="material-symbols-outlined text-sm">shield_person</span>
+      <div className="p-6 border-t border-slate-100">
+        <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+           <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100 shrink-0">
+             <span className="material-symbols-outlined text-[20px]">account_circle</span>
            </div>
             <div className="hidden lg:block min-w-0">
-               <p className="text-[10px] font-black text-on-surface truncate uppercase tracking-widest leading-none">
-                 {role === 'manager' ? 'Admin' : 'My Account'}
+               <p className="text-[11px] font-extrabold text-on-surface truncate uppercase tracking-wider mb-0.5">
+                 {role === 'manager' ? 'Admin' : 'Student'}
                </p>
-               <p className="text-[8px] text-outline truncate lowercase font-bold mt-1 opacity-50 italic">
-                 {role === 'manager' ? 'manager.readingspace.in' : 'student.readingspace.in'}
+               <p className="text-[10px] text-on-surface-variant truncate font-medium opacity-60">
+                 {role === 'manager' ? 'Control Panel' : 'User Portal'}
                </p>
             </div>
         </div>
@@ -84,3 +86,4 @@ export default function Sidebar({ role }: { role: UserRole }) {
     </aside>
   )
 }
+

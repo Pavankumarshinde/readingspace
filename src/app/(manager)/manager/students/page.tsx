@@ -2,28 +2,43 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import Avatar from '@/components/ui/Avatar'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import Modal from '@/components/ui/Modal'
-import { Calendar, User, Mail, Phone, MapPin, Key, Check, X, ShieldCheck, Plus, Search, Filter, Group, PersonStanding, AlertCircle } from 'lucide-react'
+import { format } from 'date-fns'
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  CheckCircle2, 
+  XCircle, 
+  ShieldCheck, 
+  Plus, 
+  Search, 
+  Filter, 
+  Users, 
+  Calendar,
+  CreditCard,
+  ChevronRight,
+  ArrowRightCircle
+} from 'lucide-react'
 
 // Helper functions for formatting
 const getStatusStyle = (status: string) => {
   switch (status) {
-    case 'active': return 'bg-emerald-100 text-emerald-700'
-    case 'due': return 'bg-amber-100 text-amber-700'
+    case 'active': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
+    case 'due': return 'bg-amber-50 text-amber-600 border-amber-100'
     case 'expired': 
-    case 'overdue': return 'bg-rose-100 text-rose-700'
-    default: return 'bg-slate-100 text-slate-600'
+    case 'overdue': return 'bg-rose-50 text-rose-600 border-rose-100'
+    default: return 'bg-slate-50 text-slate-500 border-slate-100'
   }
 }
 
 const colors = [
-  'bg-blue-100 text-blue-700',
-  'bg-indigo-100 text-indigo-700',
-  'bg-purple-100 text-purple-700',
-  'bg-teal-100 text-teal-700'
+  'bg-indigo-50 text-indigo-600 border-indigo-100',
+  'bg-cyan-50 text-cyan-600 border-cyan-100',
+  'bg-violet-50 text-violet-600 border-violet-100',
+  'bg-emerald-50 text-emerald-600 border-emerald-100'
 ]
 
 const calculateWarning = (endDate: string) => {
@@ -31,7 +46,7 @@ const calculateWarning = (endDate: string) => {
   const now = new Date()
   const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 3600 * 24))
   if (diffDays <= 0) return 'Expired'
-  if (diffDays <= 7) return `Expiring in ${diffDays} days`
+  if (diffDays <= 7) return `${diffDays} days left`
   return null
 }
 
@@ -55,7 +70,6 @@ export default function ManagerStudentDirectory() {
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   })
 
-  // Final Action Loading States
   const [acting, setActing] = useState(false)
 
   const fetchData = async () => {
@@ -67,7 +81,6 @@ export default function ManagerStudentDirectory() {
       if (authError) throw authError
       if (!user) return
 
-      // Fetch Subscriptions (Active/Expired)
       const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select(`
@@ -98,7 +111,6 @@ export default function ManagerStudentDirectory() {
         setStudents(formatted)
       }
 
-      // Fetch Join Requests
       const { data: reqsData, error: reqsError } = await supabase
         .from('join_requests')
         .select(`
@@ -113,12 +125,9 @@ export default function ManagerStudentDirectory() {
       if (reqsData) setRequests(reqsData)
 
     } catch (err: any) {
-      if (err.name === 'NavigatorLockAcquireTimeoutError' || err.message?.includes('Lock')) {
-        console.warn('Supabase auth lock contention - ignoring second call')
-        return
-      }
+      if (err.name === 'NavigatorLockAcquireTimeoutError' || err.message?.includes('Lock')) return
       console.error('Fetch error:', err)
-      toast.error('Sync failed: ' + err.message)
+      toast.error('Sync failed')
     } finally {
       setLoading(false)
       fetching.current = false
@@ -138,10 +147,10 @@ export default function ManagerStudentDirectory() {
          .eq('id', requestId)
     
        if (error) throw error
-       toast.success('Request declined')
+       toast.success('Request removed')
        fetchData()
      } catch (err: any) {
-       toast.error('Failed to reject: ' + err.message)
+       toast.error('Operation failed')
      } finally {
        setActing(false)
      }
@@ -153,7 +162,6 @@ export default function ManagerStudentDirectory() {
     setActing(true)
 
     try {
-      // 1. Create Subscription
       const { error: subError } = await supabase
         .from('subscriptions')
         .insert({
@@ -168,7 +176,6 @@ export default function ManagerStudentDirectory() {
 
       if (subError) throw subError
 
-      // 2. Update Join Request
       const { error: reqUpdateError } = await supabase
         .from('join_requests')
         .update({ status: 'accepted' })
@@ -176,40 +183,20 @@ export default function ManagerStudentDirectory() {
 
       if (reqUpdateError) throw reqUpdateError
 
-      toast.success('Student membership activated!')
+      toast.success('Membership activated!')
       setShowApproveModal(false)
       fetchData()
     } catch (err: any) {
-      toast.error(err.message || 'Approval failed')
+      toast.error('Approval failed')
     } finally {
       setActing(false)
-    }
-  }
-
-  const handleUpdatePaymentStatus = async (subscriptionId: string, currentStatus: string) => {
-    const cycle: Record<string, string> = { paid: 'due', due: 'overdue', overdue: 'paid' }
-    const nextStatus = cycle[currentStatus] || 'due'
-    try {
-      const res = await fetch('/api/manager/students/payment-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptionId, paymentStatus: nextStatus })
-      })
-      if (res.ok) {
-        setStudents(prev => prev.map(s => s.subscriptionId === subscriptionId ? { ...s, paymentStatus: nextStatus } : s))
-        toast.success(`Payment marked as ${nextStatus}`)
-      } else {
-        toast.error('Failed to update payment status')
-      }
-    } catch {
-      toast.error('Network error')
     }
   }
 
   const uniqueRooms = Array.from(new Set(students.map(s => s.roomName).filter(Boolean)))
 
   const filteredItems = filter === 'requests' 
-    ? requests.filter(r => (r.student?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (r.student?.email || '').toLowerCase().includes(searchTerm.toLowerCase()))
+    ? requests.filter(r => (r.student?.name || '').toLowerCase().includes(searchTerm.toLowerCase()))
     : students.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.email.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesFilter = filter === 'active' ? s.status === 'active' : s.status !== 'active'
@@ -218,207 +205,189 @@ export default function ManagerStudentDirectory() {
       })
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-500">
-
-      {/* Top bar: Heading + Add button */}
-      <header className="flex items-start justify-between">
+    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-32 px-8">
+      {/* Page Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="section-header text-primary">Students</h2>
-          <p className="section-sub mt-0.5">Manage all students and their memberships</p>
+           <p className="text-primary text-xs font-bold uppercase tracking-widest mb-1.5 opacity-80">Community Management</p>
+           <h2 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">Active Students</h2>
+           <p className="text-sm font-medium text-slate-500 mt-2">Manage student accounts, memberships, and enrollment requests.</p>
         </div>
         <Link href="/manager/students/add">
-          <button className="btn-sm-minimal bg-primary text-on-primary border-none hover:bg-primary-container h-8 px-3 flex items-center gap-1.5">
-            <span className="material-symbols-outlined icon-xs">add</span>
-            <span className="hidden sm:inline">Add Student</span>
+          <button className="btn-primary">
+            <Plus size={20} />
+            <span>Add Student</span>
           </button>
         </Link>
       </header>
 
-      {/* Search */}
-      <div className="relative">
-        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/50 text-base pointer-events-none select-none">search</span>
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl pl-10 pr-10 py-2.5 text-sm text-on-surface placeholder:text-outline/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
-        />
-        {searchTerm && (
-          <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-outline/50 hover:text-on-surface transition-colors">
-            <span className="material-symbols-outlined text-base">close</span>
-          </button>
-        )}
-      </div>
-
-      {/* Filters row: full-width status tabs + Room dropdown */}
-      <div className="flex flex-col sm:flex-row items-stretch gap-3">
-        {/* Status tabs — full width */}
-        <div className="tab-bar w-full flex">
-          <button
-            onClick={() => setFilter('active')}
-            className={`tab-bar-item flex-1 !py-2 !px-3 text-center ${filter === 'active' ? 'active' : ''}`}
-          >
-            Active
-          </button>
-          <button
-            onClick={() => setFilter('expired')}
-            className={`tab-bar-item flex-1 !py-2 !px-3 text-center ${filter === 'expired' ? 'active' : ''}`}
-          >
-            Expired
-          </button>
-          <button
-            onClick={() => setFilter('requests')}
-            className={`tab-bar-item flex-1 !py-2 !px-3 relative text-center ${filter === 'requests' ? 'active' : ''}`}
-          >
-            Requests
-            {requests.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-error text-white rounded-full text-[7px] flex items-center justify-center border-2 border-surface font-black">{requests.length}</span>
-            )}
-          </button>
+      {/* Control Bar: Search & Status Toggles */}
+      <div className="flex flex-col xl:flex-row gap-6 items-center">
+        <div className="relative flex-1 group w-full">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="input pl-14 pr-12 w-full"
+          />
         </div>
-
-        {/* Room filter dropdown */}
-        {filter !== 'requests' && uniqueRooms.length > 1 && (
-          <div className="relative shrink-0">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-sm pointer-events-none">meeting_room</span>
-            <select
-              value={roomFilter}
-              onChange={e => setRoomFilter(e.target.value)}
-              className="pl-8 pr-8 h-full min-h-[38px] w-full sm:w-auto bg-surface-container-low border border-outline-variant/30 rounded-xl text-xs font-medium text-on-surface appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
-            >
-              <option value="all">All Rooms</option>
-              {uniqueRooms.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-outline/50 text-sm pointer-events-none">expand_more</span>
+        
+        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+          <div className="tab-bar p-1.5 bg-white border border-slate-200">
+            {(['active', 'expired', 'requests'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setFilter(mode)}
+                className={`px-6 py-2.5 text-xs font-bold rounded-xl transition-all relative ${
+                  filter === mode 
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                    : 'text-slate-400 hover:text-on-surface'
+                }`}
+              >
+                <span className="capitalize">{mode}</span>
+                {mode === 'requests' && requests.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center border-2 border-white font-bold">
+                    {requests.length}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
-        )}
+
+          {filter !== 'requests' && uniqueRooms.length > 1 && (
+            <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 pr-4 group">
+               <div className="w-9 h-9 bg-slate-50 flex items-center justify-center text-slate-400 rounded-xl group-focus-within:text-primary group-focus-within:bg-primary-container transition-all">
+                  <Filter size={16} />
+               </div>
+               <select
+                 value={roomFilter}
+                 onChange={e => setRoomFilter(e.target.value)}
+                 className="bg-transparent text-xs font-extrabold text-on-surface-variant uppercase tracking-wider outline-none cursor-pointer"
+               >
+                 <option value="all">Every Room</option>
+                 {uniqueRooms.map(r => <option key={r} value={r}>{r}</option>)}
+               </select>
+            </div>
+          )}
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 text-outline/50">
-          <span className="material-symbols-outlined animate-spin mb-3 font-light">progress_activity</span>
-          <span className="text-xs font-bold uppercase tracking-widest">Loading students...</span>
+        <div className="flex flex-col items-center justify-center py-40 text-slate-300">
+           <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6"></div>
+           <span className="text-xs font-bold uppercase opacity-60">Synchronizing database...</span>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 bg-surface-container-low rounded-2xl border border-outline-variant/30 text-center">
-          <span className="material-symbols-outlined text-5xl mb-4 text-outline/20 font-light">person_off</span>
-          <h3 className="font-headline font-semibold text-lg text-on-surface">No records found</h3>
-          <p className="text-xs text-on-surface-variant mt-2 opacity-70">Adjust filters or refine search criteria.</p>
+        <div className="card p-20 text-center flex flex-col items-center bg-white border-dashed border-2">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
+             <Users size={32} />
+          </div>
+          <h3 className="text-xl font-extrabold text-on-surface">No student records</h3>
+          <p className="text-sm font-medium text-slate-500 mt-2">Try adjusting your filters or search terms.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filter === 'requests' ? (
             requests.map((req) => (
-              <div key={req.id} className="card p-5 group flex flex-col gap-6 relative overflow-hidden transition-all hover:shadow-md">
-                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-surface-container-highest rounded-xl flex items-center justify-center font-bold text-lg text-primary border border-outline-variant/30">
+               <div key={req.id} className="card p-10 group flex flex-col gap-8 relative overflow-hidden h-full">
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 bg-primary/10 rounded-[1.25rem] flex items-center justify-center font-extrabold text-xl text-primary border border-primary/5">
                        {req.student?.name?.[0]?.toUpperCase() || 'S'}
                     </div>
                     <div className="overflow-hidden">
-                       <h3 className="font-headline font-bold text-sm text-on-surface truncate">{req.student?.name}</h3>
-                       <p className="text-[10px] font-bold text-outline uppercase tracking-widest flex items-center gap-1.5 mt-1">
-                          <span className="material-symbols-outlined icon-xs text-primary">meeting_room</span> {req.room?.name}
+                       <h3 className="font-headline font-extrabold text-lg text-on-surface truncate">{req.student?.name}</h3>
+                       <p className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-primary">meeting_room</span> 
+                          {req.room?.name}
                        </p>
                     </div>
-                 </div>
-                 <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-on-surface-variant text-[11px] font-bold">
-                       <span className="material-symbols-outlined icon-xs text-outline/40">mail</span> {req.student?.email}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs font-black text-primary/90">
-                       <span className="material-symbols-outlined icon-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>call</span>
-                       <span className={req.student?.phone && req.student?.phone !== 'No phone' ? '' : 'text-outline/30 italic font-medium text-[11px]'}>
-                          {req.student?.phone || 'No phone'}
-                       </span>
-                    </div>
-                 </div>
-                 <div className="flex gap-2">
-                    <button 
-                       disabled={acting}
-                       onClick={() => { setSelectedRequest(req); setShowApproveModal(true); }}
-                       className="flex-1 btn-primary !py-2 !text-[11px] !border-none !gap-2"
-                    >
-                       <span className="material-symbols-outlined icon-xs">check</span> Accept
-                    </button>
-                    <button 
-                       disabled={acting}
-                       onClick={() => handleDeclineRequest(req.id)}
-                       className="btn-ghost bg-error/5 text-error w-10 h-10 flex items-center justify-center rounded-lg border border-error/10 hover:bg-error/10 transition-all disabled:opacity-50"
-                    >
-                       <span className="material-symbols-outlined icon-sm">close</span>
-                    </button>
-                 </div>
-              </div>
+                  </div>
+                  
+                  <div className="space-y-3.5">
+                     <div className="flex items-center gap-3 text-sm font-medium text-on-surface-variant opacity-80">
+                        <Mail size={16} className="text-slate-300" /> {req.student?.email}
+                     </div>
+                     <div className="flex items-center gap-3 text-sm font-bold text-primary">
+                        <Phone size={16} className="text-primary/60" /> {req.student?.phone || 'Not provided'}
+                     </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-auto">
+                     <button 
+                        disabled={acting}
+                        onClick={() => { setSelectedRequest(req); setShowApproveModal(true); }}
+                        className="flex-1 btn-primary py-3.5 rounded-2xl"
+                     >
+                        <ShieldCheck size={18} />
+                        Review
+                     </button>
+                     <button 
+                        disabled={acting}
+                        onClick={() => handleDeclineRequest(req.id)}
+                        className="w-14 h-14 bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl border border-slate-200 transition-all flex items-center justify-center"
+                     >
+                        <XCircle size={20} />
+                     </button>
+                  </div>
+               </div>
             ))
           ) : (
             filteredItems.map((student) => (
-              <div key={student.subscriptionId} className="card p-5 flex flex-col gap-4 group hover:border-primary/20 transition-all shadow-sm">
-                {/* Top row: Avatar + Status badges */}
+               <div key={student.subscriptionId} className="card p-10 flex flex-col gap-8 group hover:border-primary/30 h-full">
+                {/* Visual Header */}
                 <div className="flex justify-between items-start">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base ${student.color} border border-outline-variant/10 shrink-0`}>
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-extrabold text-lg border-2 ${student.color}`}>
                     {student.name.split(' ').map((n: any) => n[0]).join('').substring(0, 2).toUpperCase()}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* Payment status badge — clickable to cycle */}
-                    <button
-                      onClick={() => handleUpdatePaymentStatus(student.subscriptionId, student.paymentStatus)}
-                      title="Click to cycle payment status"
-                      className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all hover:scale-105 active:scale-95 cursor-pointer ${
-                        student.paymentStatus === 'paid'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : student.paymentStatus === 'overdue'
-                          ? 'bg-rose-50 text-rose-600 border-rose-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}
-                    >
-                      {student.paymentStatus === 'paid' ? '✓ Paid' : student.paymentStatus === 'overdue' ? '⚠ Overdue' : 'Fee Due'}
-                    </button>
-                    {/* Subscription status */}
-                    <span className={`px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border ${
-                      student.status === 'active'
-                        ? 'bg-secondary/5 text-secondary border-secondary/20'
-                        : 'bg-error/5 text-error border-error/20'
-                    }`}>
-                      {student.status}
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest border-2 ${getStatusStyle(student.status)}`}>
+                       {student.status}
                     </span>
                   </div>
                 </div>
 
-                {/* Name + Room */}
-                <div>
-                  <h3 className="font-headline font-bold text-sm text-on-surface group-hover:text-primary transition-colors">{student.name}</h3>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="material-symbols-outlined icon-xs text-primary" style={{fontSize:'11px'}}>meeting_room</span>
-                    <p className="text-[9px] font-bold text-primary/70 uppercase tracking-widest truncate">{student.roomName}</p>
-                  </div>
-                </div>
-
-                {/* Contact info */}
+                {/* Identity */}
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2.5 text-[11px] font-medium text-on-surface-variant truncate">
-                    <span className="material-symbols-outlined icon-xs text-outline/40">mail</span>
-                    <span className="truncate">{student.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs font-black text-primary/90">
-                    <span className="material-symbols-outlined icon-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>call</span>
-                    <span className={student.phone && student.phone !== 'No phone' ? '' : 'text-outline/30 italic font-medium text-[11px]'}>
-                      {student.phone || 'No phone'}
-                    </span>
-                  </div>
+                  <h3 className="font-headline font-extrabold text-xl text-on-surface group-hover:text-primary transition-colors">{student.name}</h3>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <ArrowRightCircle size={12} className="text-primary" />
+                    {student.roomName}
+                  </p>
                 </div>
 
-                {/* Member cycle */}
-                <div className="p-3 bg-surface-container-low/60 rounded-xl border border-outline-variant/10">
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[8px] font-bold text-outline uppercase tracking-widest">Membership Dates</span>
-                    {student.warning && <span className="bg-error text-white px-1.5 py-0.5 rounded text-[7px] font-bold uppercase tracking-widest">{student.warning}</span>}
-                  </div>
-                  <div className="flex justify-between items-center text-[10px] font-bold text-on-surface font-mono">
-                    <span>{new Date(student.start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
-                    <span className="material-symbols-outlined icon-xs text-outline/20">trending_flat</span>
-                    <span>{new Date(student.expiry).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
-                  </div>
+                {/* Details */}
+                <div className="space-y-3.5">
+                   <div className="flex items-center gap-3 text-sm font-medium text-slate-500 truncate">
+                      <Mail size={16} className="text-slate-300 shrink-0" />
+                      <span className="truncate">{student.email}</span>
+                   </div>
+                   <div className="flex items-center gap-3 text-sm font-bold text-primary">
+                      <Phone size={16} className="text-primary/60 shrink-0" />
+                      <span>{student.phone}</span>
+                   </div>
+                </div>
+
+                {/* Membership Summary */}
+                <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 mt-auto">
+                   <div className="flex justify-between items-center mb-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Service Period</span>
+                      {student.warning && (
+                        <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded text-[9px] font-extrabold uppercase">{student.warning}</span>
+                      )}
+                   </div>
+                   <div className="flex justify-between items-center text-sm font-bold text-on-surface">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-slate-300 uppercase mb-0.5">Start</span>
+                        <span>{format(new Date(student.start), 'dd MMM')}</span>
+                      </div>
+                      <ChevronRight size={16} className="text-slate-200" />
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] font-bold text-slate-300 uppercase mb-0.5">End</span>
+                        <span>{format(new Date(student.expiry), 'dd MMM')}</span>
+                      </div>
+                   </div>
                 </div>
               </div>
             ))
@@ -426,45 +395,45 @@ export default function ManagerStudentDirectory() {
         </div>
       )}
 
-      {/* Floating Add Button For Mobile Case */}
-      <Link href="/manager/students/add" className="fixed bottom-24 right-6 md:hidden z-40">
-         <button className="w-12 h-12 bg-primary text-on-primary rounded-xl shadow-xl flex items-center justify-center active:scale-90 transition-all">
-            <span className="material-symbols-outlined">add</span>
+      {/* Enroll Floating Button - Desktop Integrated/Mobile Floating */}
+      <Link href="/manager/students/add" className="fixed bottom-24 right-10 md:hidden z-50">
+         <button className="w-16 h-16 bg-primary text-white rounded-[2rem] shadow-2xl shadow-primary/40 flex items-center justify-center active:scale-90 transition-all border-4 border-white">
+            <Plus size={32} />
          </button>
       </Link>
 
-      {/* Approve Modal */}
+      {/* Review Modal */}
       {showApproveModal && selectedRequest && (
-        <Modal open={showApproveModal} onClose={() => setShowApproveModal(false)} title="Finalize Registration">
-           <form onSubmit={handleApproveSubmit} className="space-y-6 pt-4">
-              <div className="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl border border-outline-variant/10">
-                 <div className="w-12 h-12 bg-surface-container-highest rounded-xl flex items-center justify-center font-bold text-lg text-primary border border-outline-variant/30 shadow-sm">
+        <Modal open={showApproveModal} onClose={() => setShowApproveModal(false)} title="Registration Review">
+           <form onSubmit={handleApproveSubmit} className="space-y-8 pt-6">
+              <div className="flex items-center gap-5 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                 <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-extrabold text-xl text-primary shadow-sm border border-slate-100">
                     {selectedRequest.student?.name?.[0]?.toUpperCase() || 'S'}
                  </div>
                  <div>
-                    <h4 className="font-headline font-bold text-sm text-on-surface">{selectedRequest.student?.name}</h4>
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-widest mt-0.5">Request for {selectedRequest.room?.name}</p>
+                    <h4 className="font-extrabold text-lg text-on-surface leading-none">{selectedRequest.student?.name}</h4>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">{selectedRequest.room?.name}</p>
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                  <div>
-                    <label className="text-[9px] font-bold text-outline uppercase tracking-widest block mb-1.5 ml-1">Assign Seat</label>
+                    <label className="text-xs font-bold text-on-surface-variant ml-1 mb-2.5 block">Assign Seat</label>
                     <input 
                        type="text" 
                        required
-                       placeholder="e.g. B-12"
+                       placeholder="e.g. A-10"
                        value={approvalData.seatNumber}
                        onChange={e => setApprovalData({...approvalData, seatNumber: e.target.value})}
-                       className="input py-2 text-xs font-bold"
+                       className="input"
                     />
                  </div>
                  <div>
-                    <label className="text-[9px] font-bold text-outline uppercase tracking-widest block mb-1.5 ml-1">Member Tier</label>
+                    <label className="text-xs font-bold text-on-surface-variant ml-1 mb-2.5 block">Member Tier</label>
                     <select 
                        value={approvalData.tier}
                        onChange={e => setApprovalData({...approvalData, tier: e.target.value})}
-                       className="input py-2 text-xs font-bold appearance-none cursor-pointer"
+                       className="input cursor-pointer font-extrabold"
                     >
                        <option value="standard">Standard</option>
                        <option value="premium">Premium</option>
@@ -472,41 +441,41 @@ export default function ManagerStudentDirectory() {
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                  <div>
-                    <label className="text-[9px] font-bold text-outline uppercase tracking-widest block mb-1.5 ml-1">Start Date</label>
+                    <label className="text-xs font-bold text-on-surface-variant ml-1 mb-2.5 block">Start Date</label>
                     <input 
                        type="date" 
                        required
                        value={approvalData.startDate}
                        onChange={e => setApprovalData({...approvalData, startDate: e.target.value})}
-                       className="input py-2 text-xs font-bold"
+                       className="input"
                     />
                  </div>
                  <div>
-                    <label className="text-[9px] font-bold text-outline uppercase tracking-widest block mb-1.5 ml-1">End Date</label>
+                    <label className="text-xs font-bold text-on-surface-variant ml-1 mb-2.5 block">Expiry Date</label>
                     <input 
                        type="date" 
                        required
                        value={approvalData.endDate}
                        onChange={e => setApprovalData({...approvalData, endDate: e.target.value})}
-                       className="input py-2 text-xs font-bold"
+                       className="input"
                     />
                  </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-4 pt-4">
                  <button 
                     disabled={acting}
                     type="submit" 
-                    className="flex-[2] btn-primary !py-3 !text-[11px] !border-none"
+                    className="flex-[2] btn-primary py-4.5 rounded-2xl"
                  >
-                    {acting ? 'Processing...' : 'Confirm Activation'}
+                    {acting ? 'Processing...' : 'Authorize Access'}
                  </button>
                  <button 
                     type="button"
                     onClick={() => setShowApproveModal(false)}
-                    className="flex-1 btn-ghost bg-surface-container-low !py-3 !text-[11px]"
+                    className="flex-1 bg-white border border-slate-200 text-slate-500 py-4.5 rounded-2xl font-bold hover:bg-slate-50 transition-all shadow-sm"
                  >
                     Cancel
                  </button>

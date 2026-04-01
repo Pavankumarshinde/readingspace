@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { Mail, Lock, LogIn, ArrowRight } from 'lucide-react'
+import { Mail, Lock, ArrowRight } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -51,33 +51,35 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-surface relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-3xl opacity-50" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary/10 rounded-full blur-3xl opacity-50" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 relative overflow-hidden font-body">
+      {/* Decorative background gradients */}
+      <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-primary/10 rounded-full blur-[120px] opacity-60 animate-pulse-slow" />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[60%] h-[60%] bg-secondary/10 rounded-full blur-[120px] opacity-60" />
 
       <div className="w-full max-w-md z-10">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary text-on-primary rounded-3xl shadow-2xl shadow-primary/30 mb-6 group transition-transform hover:scale-105 active:scale-95">
-             <span className="material-symbols-outlined text-[40px] fill-icon">menu_book</span>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary text-white rounded-[2rem] shadow-2xl shadow-primary/30 mb-8 group transition-transform hover:scale-110 active:scale-95 border-4 border-white">
+             <span className="material-symbols-outlined text-[40px]" style={{ fontVariationSettings: "'FILL' 1" }}>library_books</span>
           </div>
-          <h1 className="font-headline text-4xl font-extrabold text-primary tracking-tight italic">ReadingSpace</h1>
-          <p className="text-on-surface-variant font-medium mt-2 opacity-60 uppercase tracking-[0.2em] text-[11px]">Premium Knowledge Quarters</p>
+          <h1 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">
+            Reading<span className="text-primary">Space</span>
+          </h1>
+          <p className="text-on-surface-variant font-semibold mt-3 text-sm tracking-wide opacity-80">Premium Reading Room Experience</p>
         </div>
 
-        <div className="card p-8 shadow-2xl shadow-primary/5 border-outline-variant/10">
+        <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200/60 shadow-[0_20px_50px_-12px_rgba(79,70,229,0.12)]">
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="input-label">Educational Email</label>
-              <div className="flex items-center gap-3 bg-surface-container-low p-1 rounded-2xl border border-outline-variant/10 transition-all focus-within:ring-2 focus-within:ring-primary/10">
-                 <div className="w-11 h-11 rounded-xl bg-surface-container-lowest flex-center text-primary shadow-sm">
+              <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">Email Address</label>
+              <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
+                 <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
                     <Mail size={20} />
                  </div>
                  <input 
                    type="email" 
                    required
-                   className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-semibold" 
-                   placeholder="scholar@reading.space"
+                   className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
+                   placeholder="name@example.com"
                    value={email}
                    onChange={(e) => setEmail(e.target.value)}
                  />
@@ -85,15 +87,15 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="input-label">Security Password</label>
-              <div className="flex items-center gap-3 bg-surface-container-low p-1 rounded-2xl border border-outline-variant/10 transition-all focus-within:ring-2 focus-within:ring-primary/10">
-                 <div className="w-11 h-11 rounded-xl bg-surface-container-lowest flex-center text-primary shadow-sm">
+              <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">Password</label>
+              <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
+                 <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
                     <Lock size={20} />
                  </div>
                  <input 
                    type="password" 
                    required
-                   className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-semibold" 
+                   className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
                    placeholder="••••••••"
                    value={password}
                    onChange={(e) => setPassword(e.target.value)}
@@ -104,27 +106,27 @@ export default function LoginPage() {
             <button 
               type="submit" 
               disabled={loading}
-              className="btn-gradient w-full py-5 rounded-2xl text-[16px] group/btn"
+              className="w-full bg-primary text-white py-4.5 rounded-2xl text-[15px] font-bold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
             >
               <span className="flex items-center justify-center gap-2">
-                {loading ? 'Authenticating...' : 'Enter ReadingSpace'}
-                {!loading && <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />}
+                 {loading ? 'Entering...' : 'Log In to Account'}
+                {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
               </span>
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-outline-variant/5 text-center">
-             <p className="text-on-surface-variant text-[13px] font-medium">
-                New to the platform?{' '}
-                <Link href="/signup" className="text-secondary font-bold hover:underline underline-offset-4">
-                  Create Account
+          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
+             <p className="text-on-surface-variant text-[14px] font-medium">
+                New member?{' '}
+                <Link href="/signup" className="text-primary font-bold hover:underline underline-offset-4 decoration-2 transition-all">
+                  Get Started
                 </Link>
              </p>
           </div>
         </div>
         
-        <p className="text-center mt-12 text-[10px] text-outline uppercase font-bold tracking-widest opacity-40">
-           ReadingSpace v1.0 • Built for Scholars
+        <p className="text-center mt-12 text-[11px] text-slate-400 font-bold tracking-widest">
+           READINGSPACE© 2026 • SMART MANAGEMENT
         </p>
       </div>
     </div>
