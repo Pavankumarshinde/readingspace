@@ -7,7 +7,8 @@ import JoinRoomModal from '@/components/student/JoinRoomModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Search, X, Plus, DoorOpen, Calendar, Armchair, ChevronRight, MapPin, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { StudentBrandHeader } from '@/components/student/StudentHeader'
 
 export default function StudentRooms() {
   const [showJoinModal, setShowJoinModal] = useState(false)
@@ -24,18 +25,18 @@ export default function StudentRooms() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
         return
       }
-
       const { data: subs, error } = await supabase
         .from('subscriptions')
         .select(`*, rooms (*)`)
         .eq('student_id', user.id)
         .eq('status', 'active')
-
       if (error) throw error
       setRooms(subs || [])
     } catch (err: any) {
@@ -46,137 +47,193 @@ export default function StudentRooms() {
     }
   }
 
-  const filteredRooms = rooms.filter(sub =>
+  const filteredRooms = rooms.filter((sub) =>
     sub.rooms?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen items-center justify-center bg-slate-50 text-slate-400">
-         <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-         <span className="text-xs font-bold uppercase tracking-widest opacity-60">Syncing your active spaces...</span>
+      <div className="flex flex-col min-h-screen items-center justify-center bg-surface">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-secondary/60">
+          Syncing rooms...
+        </span>
       </div>
     )
   }
 
-  return (
-    <div className="max-w-[1200px] mx-auto space-y-12 animate-in fade-in duration-1000 pb-32 px-8 pt-12">
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-10 border-b border-surface-container-low">
-        <div className="space-y-2">
-           <span className="section-sub">Personal Library</span>
-           <h2 className="section-header">Active Archive Rooms</h2>
+  // ── Shared Room Card ─────────────────────────────────────────────────────
+  const RoomCard = ({ sub }: { sub: any }) => {
+    const room = sub.rooms
+    if (!room) return null
+    return (
+      <div className="border border-outline-variant/30 rounded-lg p-3 bg-surface-container-low transition-all group hover:border-outline-variant/50">
+        {/* Card Header */}
+        <div className="flex justify-between items-start mb-2">
+          <div className="min-w-0 flex-1 mr-2">
+            <h3 className="font-headline text-lg font-bold text-on-surface leading-tight truncate">
+              {room.name}
+            </h3>
+            <p className="text-outline text-[10px] uppercase tracking-wider flex items-center gap-1 mt-0.5 font-body">
+              <span
+                className="material-symbols-outlined shrink-0"
+                style={{ fontSize: '12px' }}
+              >
+                location_on
+              </span>
+              <span className="truncate">{room.description || 'Study Zone'}</span>
+            </p>
+          </div>
+          <div className="text-emerald-700 text-[8px] font-bold tracking-widest flex items-center gap-1 uppercase shrink-0 mt-0.5">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+            Active
+          </div>
         </div>
-        <button 
-          onClick={() => setShowJoinModal(true)}
-           className="btn-primary"
-        >
-          <Plus size={20} />
-          <span>JOIN NEW ARCHIVE</span>
-        </button>
-      </section>
 
-      {/* Editorial Search Control */}
-      <div className="relative group max-w-2xl">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-on-surface-variant/30 group-focus-within:text-primary transition-colors" size={20} />
-        <input
-          type="text"
-          placeholder="Locate an archive room..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="input pl-14 pr-14 w-full py-4 text-sm shadow-ambient"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-6 top-1/2 -translate-y-1/2 text-on-surface-variant/20 hover:text-error transition-colors"
-          >
-            <X size={20} />
-          </button>
-        )}
+        {/* Card Footer — 3-col grid */}
+        <div className="grid grid-cols-3 gap-2 items-center border-t border-outline-variant/20 pt-2.5">
+          <div>
+            <p className="text-[8px] uppercase tracking-widest text-outline font-bold">
+              Expiration
+            </p>
+            <p className="text-[11px] font-semibold text-on-surface font-body">
+              {format(new Date(sub.end_date), 'dd MMM yyyy').toUpperCase()}
+            </p>
+          </div>
+          <div>
+            <p className="text-[8px] uppercase tracking-widest text-outline font-bold">
+              Seat
+            </p>
+            <p className="text-[11px] font-semibold text-on-surface font-body">
+              {sub.seat_number || '—'}
+            </p>
+          </div>
+          <div className="text-right">
+            <Link href={`/student/rooms/${room.id}`}>
+              <button className="inline-flex items-center gap-1 text-primary font-bold text-[9px] uppercase tracking-widest hover:translate-x-1 transition-transform">
+                Enter
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '14px' }}
+                >
+                  arrow_forward
+                </span>
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Empty State ──────────────────────────────────────────────────────────
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center py-16 text-center col-span-full">
+      <span
+        className="material-symbols-outlined text-outline/20 mb-3"
+        style={{ fontSize: '48px' }}
+      >
+        meeting_room
+      </span>
+      <h3 className="font-headline text-base font-bold text-on-surface mb-1">
+        {searchQuery ? 'No rooms found' : 'No active rooms'}
+      </h3>
+      <p className="text-[11px] text-secondary/60 max-w-[200px] mb-5 leading-relaxed">
+        {searchQuery
+          ? 'Try a different room name.'
+          : 'Enter a room code from your manager to get started.'}
+      </p>
+      {!searchQuery && (
+        <button
+          onClick={() => setShowJoinModal(true)}
+          className="px-6 py-2 bg-surface-container-low border border-outline-variant/30 text-secondary text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-surface-container transition-colors"
+        >
+          Join a Room
+        </button>
+      )}
+    </div>
+  )
+
+  return (
+    <>
+      <div className="md:hidden">
+        <StudentBrandHeader />
       </div>
 
-      {/* Augmented Room Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRooms.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-24 bg-white rounded-2xl border-2 border-dashed border-slate-100">
-            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 shadow-inner text-slate-200">
-               <DoorOpen size={32} />
-            </div>
-            <h3 className="text-lg font-extrabold text-on-surface mb-1.5">
-              {searchQuery ? 'Room not found' : 'No active memberships'}
-            </h3>
-            <p className="text-xs font-medium text-slate-400 max-w-xs text-center mb-8">
-              {searchQuery
-                ? 'Check the room name for any spelling errors or try a code search.'
-                : 'Enter a valid room code provided by your manager to start learning.'}
-            </p>
-            {!searchQuery && (
-              <button 
-                onClick={() => setShowJoinModal(true)}
-                className="px-8 py-3.5 bg-slate-100 text-slate-600 rounded-2xl text-xs font-extrabold uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm"
+      <main className="pt-16 pb-28 md:pt-8 md:pb-12 px-4 max-w-lg mx-auto md:max-w-none md:px-8 xl:max-w-[1400px]">
+        {/* Hero */}
+        <section className="mt-4 md:mt-0 mb-6 md:mb-8 text-left">
+          <h2 className="font-headline text-3xl md:text-4xl font-bold text-on-surface tracking-tight leading-none">
+            Study rooms
+          </h2>
+          <p className="text-secondary text-[10px] uppercase tracking-widest mt-1.5 md:mt-2 font-bold">
+            manage study halls
+          </p>
+        </section>
+
+        {/* Search + New Room */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-6 md:mb-8 w-full">
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="Search rooms..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 md:h-12 bg-surface-container-low border-none rounded-lg px-4 pr-12 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/50 transition-all font-body"
+            />
+            {searchQuery ? (
+              <button
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors text-outline hover:text-on-surface"
+                onClick={() => setSearchQuery('')}
               >
-                Enter Room Code
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+                  close
+                </span>
               </button>
+            ) : (
+              <span
+                className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
+                style={{ fontSize: '20px' }}
+              >
+                tune
+              </span>
             )}
           </div>
+          <button
+            onClick={() => setShowJoinModal(true)}
+            className="h-11 md:h-12 bg-primary text-white px-5 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-sm shrink-0"
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: '20px' }}
+            >
+              add
+            </span>
+            <span className="uppercase tracking-widest text-[11px] font-bold md:hidden">
+              New room
+            </span>
+          </button>
+        </div>
+
+        {/* Cards — Responsive Grid */}
+        {filteredRooms.length === 0 ? (
+          <EmptyState />
         ) : (
-          filteredRooms.map((sub) => {
-            const room = sub.rooms
-            if (!room) return null
-            
-            return (
-               <div key={sub.id} className="card shadow-ambient group hover:scale-[1.01] transition-all flex flex-col h-full relative border border-transparent hover:border-primary/5">
-                <div className="flex flex-col h-full relative z-10">
-                  <div className="space-y-4 mb-8">
-                    <div className="flex items-center gap-3">
-                       <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]" />
-                       <span className="text-[10px] font-bold text-secondary uppercase tracking-[0.1em]">Access Granted</span>
-                    </div>
-                    <h3 className="font-display text-2xl font-bold text-on-surface leading-tight group-hover:text-primary transition-colors italic">{room.name}</h3>
-                    <p className="text-sm font-medium text-on-surface-variant/60 line-clamp-2 min-h-[40px]">
-                       {room.description || 'Access restricted to authorized members only.'}
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-8 py-8 border-y border-surface-container-low my-8">
-                    <div className="space-y-2">
-                       <p className="text-[10px] text-on-surface-variant/30 uppercase tracking-[0.1em] font-bold">Expiration</p>
-                       <div className="flex items-center gap-3 text-on-surface">
-                          <p className="text-[13px] font-bold tracking-tight">
-                            {format(new Date(sub.end_date), 'dd MMM yyyy').toUpperCase()}
-                          </p>
-                       </div>
-                    </div>
-                    <div className="space-y-2">
-                       <p className="text-[10px] text-on-surface-variant/30 uppercase tracking-[0.1em] font-bold">Allocated Seat</p>
-                       <div className="flex items-center gap-3 text-on-surface">
-                          <p className="text-[13px] font-bold uppercase tracking-tight">SPOT {sub.seat_number}</p>
-                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-auto">
-                    <Link href={`/student/rooms/${room.id}`}>
-                       <button className="btn-primary w-full group/btn">
-                         <span>OPEN ARCHIVE</span>
-                         <ChevronRight size={18} className="transition-transform group-hover/btn:translate-x-1.5" />
-                       </button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )
-          })
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full">
+            {filteredRooms.map((sub) => (
+              <RoomCard key={sub.id} sub={sub} />
+            ))}
+          </div>
         )}
-      </div>
+      </main>
 
       {showJoinModal && (
-        <JoinRoomModal 
-          open={showJoinModal} 
+        <JoinRoomModal
+          open={showJoinModal}
           onClose={() => setShowJoinModal(false)}
           onSuccess={fetchData}
         />
       )}
-    </div>
+    </>
   )
 }

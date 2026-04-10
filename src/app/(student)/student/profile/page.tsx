@@ -1,12 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Avatar from '@/components/ui/Avatar'
-import { ProfileActions, ClearCacheButton } from './StudentProfileClient'
+import { ProfileActions, ClearCacheButton, SendQueryButton } from './StudentProfileClient'
+import { StudentBrandHeader } from '@/components/student/StudentHeader'
 
 export default async function StudentProfile() {
   const supabase = await createClient()
 
-  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser()
   if (!authUser) {
     redirect('/login')
   }
@@ -17,81 +19,109 @@ export default async function StudentProfile() {
     .eq('id', authUser.id)
     .single()
 
-  const { data: subData } = await supabase
-    .from('subscriptions')
-    .select('room:rooms(name)')
-    .eq('student_id', authUser.id)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle()
-
   const profile = {
     name: profileData?.name || authUser.email?.split('@')[0] || 'Member',
-    email: profileData?.email || authUser.email,
+    email: profileData?.email || authUser.email || '',
     phone: profileData?.phone || '',
-    activeRoom: (subData?.room as any)?.name || 'Not Enrolled'
   }
+
+  // Derive initials
+  const parts = profile.name.trim().split(' ')
+  const initials = parts
+    .map((p: string) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
 
   if (!profileData) return null
 
   return (
-    <div className="max-w-[480px] md:max-w-2xl lg:max-w-3xl mx-auto px-8 pb-32 animate-in fade-in duration-1000 pt-12">
-      {/* Editorial Header */}
-      <header className="flex flex-col gap-2 pb-10 border-b border-surface-container-low mb-12">
-        <div className="flex items-center justify-between">
-           <div className="space-y-1">
-             <span className="section-sub text-[10px]">Reader Identity</span>
-             <h1 className="section-header text-3xl">Private Profile</h1>
-           </div>
-           <ProfileActions />
+    <>
+      {/* Mobile-only brand header */}
+      <StudentBrandHeader />
+
+      <main className="pt-16 pb-28 md:pt-16 md:pb-12 px-4 max-w-md md:max-w-4xl mx-auto flex flex-col md:flex-row md:items-stretch gap-8 md:gap-12">
+        
+        {/* ── Desktop Left Column: Avatar + Name ─────────────────────── */}
+        <div className="md:w-1/3 flex flex-col items-center md:bg-surface-container-low rounded-2xl md:p-8 md:border md:border-outline-variant/10">
+          <section className="flex flex-col items-center mt-6 md:mt-2 mb-6 md:mb-2 w-full">
+            <div className="w-20 h-20 md:w-32 md:h-32 bg-tertiary-container rounded-2xl md:rounded-3xl flex items-center justify-center mb-4 md:mb-6 shadow-sm relative">
+              <span className="font-headline text-2xl md:text-5xl italic text-white tracking-widest">
+                {initials}
+              </span>
+              {/* Edit pencil */}
+              <div className="absolute -bottom-1.5 -right-1.5 md:-bottom-2 md:-right-2 w-8 h-8 md:w-10 md:h-10 bg-surface-container-lowest rounded-full shadow-md border border-outline-variant/10 flex items-center justify-center text-primary cursor-pointer hover:bg-surface-container-low transition-colors">
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '16px' }}
+                >
+                  edit
+                </span>
+              </div>
+            </div>
+
+            <div className="text-center w-full">
+              <h3 className="text-2xl md:text-3xl font-headline font-bold text-on-surface truncate px-2">
+                {profile.name}
+              </h3>
+              <p className="text-[10px] md:text-[11px] font-medium tracking-widest text-secondary uppercase opacity-80 mt-1 md:mt-2">
+                climbing new heights
+              </p>
+            </div>
+          </section>
         </div>
-      </header>
- 
-      <main className="space-y-8">
-        {/* Identity Portrait */}
-        <section className="card p-12 flex flex-col items-center text-center shadow-ambient">
-          <div className="mb-6 relative">
-             <Avatar name={profile.name} size={100} fontSize={32} />
-             <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full border-4 border-surface flex items-center justify-center">
-                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-             </div>
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-on-surface font-display italic tracking-tight">
-              {profile.name}
-            </h2>
-            <p className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em]">
-              CURRENT ARCHIVE: {profile.activeRoom}
-            </p>
-          </div>
-        </section>
- 
-        {/* Account dossier */}
-        <section className="card p-10 space-y-10 shadow-ambient">
-          <h3 className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.3em]">Credentials & Records</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="space-y-2">
-              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-[0.15em]">Digital Identifier</p>
-              <p className="text-base font-bold text-on-surface tracking-tight">{profile.email}</p>
+
+        {/* ── Desktop Right Column: Info & Actions ───────────────────── */}
+        <div className="flex-1 space-y-4 flex flex-col justify-center">
+          <div className="bg-surface-container-lowest p-4 md:p-6 rounded-2xl border border-outline-variant/10 space-y-4 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+               <span className="material-symbols-outlined" style={{ fontSize: '100px' }}>fingerprint</span>
             </div>
             
-            <div className="space-y-2">
-              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-[0.15em]">Comm Channel</p>
-              <p className="text-base font-bold text-primary tracking-tight">{profile.phone || 'NOT REGISTERED'}</p>
+            <div className="relative z-10">
+              <p className="text-[9px] md:text-[10px] font-bold tracking-widest text-secondary/60 uppercase mb-1">
+                Digital Identifier
+              </p>
+              <p className="text-sm md:text-base text-on-surface font-medium truncate">
+                {profile.email}
+              </p>
             </div>
+            {profile.phone && (
+              <div className="border-t border-outline-variant/10 pt-4 relative z-10">
+                <p className="text-[9px] md:text-[10px] font-bold tracking-widest text-secondary/60 uppercase mb-1">
+                  Contact String
+                </p>
+                <p className="text-sm md:text-base text-on-surface font-medium">
+                  {profile.phone}
+                </p>
+              </div>
+            )}
           </div>
-        </section>
- 
-        {/* Archive Integrity */}
-        <section className="card p-8 flex flex-col items-center justify-between gap-6 bg-surface-container-low">
-           <div className="text-center space-y-2">
-              <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-[0.2em]">System Integrity</p>
-              <p className="text-[11px] font-medium text-on-surface-variant/60 max-w-[280px]">Should you experience inconsistencies in your archive records, a local cache reset is recommended.</p>
-           </div>
-           <ClearCacheButton />
-        </section>
+
+          {/* ── Action Buttons ─────────────────────────────────────────── */}
+          <div className="pt-2 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <a
+                href="mailto:support@readingspace.in"
+                className="py-3 px-4 bg-surface-container-lowest border border-outline-variant/20 text-on-surface-variant text-[11px] font-bold tracking-widest uppercase rounded-xl hover:bg-surface-container-low transition-colors text-center shadow-sm flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>mail</span>
+                Reach Us
+              </a>
+              <SendQueryButton />
+            </div>
+            <ProfileActions />
+          </div>
+
+          {/* ── System Integrity ──────────────────────────────────────── */}
+          <div className="mt-8 pt-6 text-center border-t border-outline-variant/10">
+            <p className="text-[10px] text-on-surface-variant/50 leading-relaxed max-w-[260px] mx-auto mb-4 font-body">
+              Archive records are synchronized with the central repository. App configurations apply directly.
+            </p>
+            <ClearCacheButton />
+          </div>
+        </div>
       </main>
-    </div>
+    </>
   )
 }

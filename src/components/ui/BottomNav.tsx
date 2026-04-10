@@ -3,58 +3,92 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserRole } from '@/types'
-import { 
-  DoorOpen, 
-  Users, 
-  LayoutDashboard, 
-  User, 
-  Grid2X2, 
-  StickyNote 
-} from 'lucide-react'
+import { DoorOpen, Users, LayoutDashboard, User } from 'lucide-react'
 
-interface NavItem {
-  label: string
-  href: string
-  icon: string
-  role: UserRole | 'all'
-}
+// ── Student Nav Items (Material Symbols string IDs) ─────────────────────────
+const studentNavItems = [
+  { label: 'Rooms', href: '/student/rooms', icon: 'meeting_room' },
+  { label: 'Notes', href: '/student/notes', icon: 'description' },
+  { label: 'Profile', href: '/student/profile', icon: 'person' },
+]
 
-const navItems = [
-  // Manager Tabs (Aligned with newest UI)
-  { label: 'Rooms', href: '/manager/rooms', icon: DoorOpen, role: 'manager' as const },
-  { label: 'Students', href: '/manager/students', icon: Users, role: 'manager' as const },
-  { label: 'Dashboard', href: '/manager/dashboard', icon: LayoutDashboard, role: 'manager' as const },
-  { label: 'Profile', href: '/manager/profile', icon: User, role: 'manager' as const },
-  
-  // Student Tabs
-  { label: 'Rooms', href: '/student/rooms', icon: Grid2X2, role: 'student' as const },
-  { label: 'Notes', href: '/student/notes', icon: StickyNote, role: 'student' as const },
-  { label: 'Profile', href: '/student/profile', icon: User, role: 'student' as const },
+// ── Manager Nav Items (Lucide components)────────────────────────────────────
+const managerNavItems = [
+  { label: 'Rooms', href: '/manager/rooms', Icon: DoorOpen },
+  { label: 'Students', href: '/manager/students', Icon: Users },
+  { label: 'Dashboard', href: '/manager/dashboard', Icon: LayoutDashboard },
+  { label: 'Profile', href: '/manager/profile', Icon: User },
 ]
 
 export default function BottomNav({ role }: { role: UserRole }) {
   const pathname = usePathname()
 
-  const filteredItems = navItems.filter(
-    (item) => (item.role as string) === (role as string) || (item.role as string) === 'all'
-  )
+  // ── Student — Floating Pill ────────────────────────────────────────────────
+  if (role === 'student') {
+    return (
+      <nav className="fixed bottom-6 left-0 w-full z-50 flex justify-center pointer-events-none md:hidden">
+        <div className="bg-surface/90 backdrop-blur-xl w-[90%] max-w-sm rounded-full px-6 h-14 flex justify-around items-center shadow-lg border border-outline-variant/10 pointer-events-auto">
+          {studentNavItems.map((item) => {
+            const isActive =
+              pathname === item.href ||
+              (item.href === '/student/rooms' &&
+                pathname.startsWith('/student/rooms'))
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors ${
+                  isActive ? 'text-primary' : 'text-secondary/50'
+                }`}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    fontSize: '20px',
+                    fontVariationSettings: isActive
+                      ? "'FILL' 1, 'wght' 500"
+                      : "'FILL' 0, 'wght' 400",
+                  }}
+                >
+                  {item.icon}
+                </span>
+                <span className="text-[8px] font-bold uppercase tracking-wider">
+                  {item.label}
+                </span>
+                {isActive && (
+                  <div className="w-1 h-1 bg-primary rounded-full" />
+                )}
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
+    )
+  }
 
+  // ── Manager — Flat Bar ────────────────────────────────────────────────────
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 py-4 bg-surface/80 backdrop-blur-xl md:hidden h-20">
-      {filteredItems.map((item) => {
+    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 py-4 bg-surface/80 backdrop-blur-xl md:hidden h-20 border-t border-outline-variant/10">
+      {managerNavItems.map((item) => {
         const isActive = pathname === item.href
         return (
           <Link
             key={item.href}
             href={item.href}
             className={`flex flex-col items-center justify-center transition-all duration-300 relative ${
-              isActive 
-                ? 'text-primary' 
+              isActive
+                ? 'text-primary'
                 : 'text-on-surface-variant/50 hover:text-on-surface'
             }`}
           >
-            {isActive && <div className="absolute -top-4 w-1.5 h-1.5 bg-primary rounded-full" />}
-            <item.icon className="transition-transform duration-300" size={22} strokeWidth={isActive ? 2.5 : 2} />
+            {isActive && (
+              <div className="absolute -top-4 w-1.5 h-1.5 bg-primary rounded-full" />
+            )}
+            <item.Icon
+              className="transition-transform duration-300"
+              size={22}
+              strokeWidth={isActive ? 2.5 : 2}
+            />
             <span className="text-[10px] font-bold mt-1.5 tracking-[0.05em] uppercase">
               {item.label}
             </span>
