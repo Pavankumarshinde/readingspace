@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, email, phone, room, duration, seat, startDate, sendInvite } = await req.json()
+    const { name, email, phone, room, duration, seat, startDate, sendInvite, membershipType = 'digital' } = await req.json()
 
     if (!name || !email || !room || !duration || !startDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -53,7 +53,8 @@ export async function POST(req: Request) {
         user_metadata: {
           name,
           role: 'student',
-          phone: phone || ''
+          phone: phone || '',
+          membership_type: membershipType
         }
       })
 
@@ -67,15 +68,19 @@ export async function POST(req: Request) {
       // Note: The profile row is automatically created by the `handle_new_user` Postgres trigger!
     }
 
-    // MANDATORY SYNC: Explicitly update the profile document with provided mobile/name
-    // This ensures data parity for both existing and new students immediately.
-    const { error: profileUpdateError } = await supabaseAdmin
+    // MANDATORY SYNC: Explicitly 'upsert' the profile to handle race conditions with triggers.
+    const { error: profileUpsertError } = await supabaseAdmin
       .from('profiles')
-      .update({ name, phone: phone || '' })
-      .eq('id', studentId)
+      .upsert({ 
+        id: studentId,
+        name, 
+        email, // email is also needed for upsert if it's new
+        phone: phone || '',
+        membership_type: membershipType 
+      }, { onConflict: 'id' })
 
-    if (profileUpdateError) {
-       console.error('Warning: Profile sync failure:', profileUpdateError)
+    if (profileUpsertError) {
+       console.error('Warning: Profile sync failure:', profileUpsertError)
        // We'll not fail the subscription process but log for visibility
     }
 
@@ -96,7 +101,8 @@ export async function POST(req: Request) {
       start_date: startDate,
       end_date: endDate,
       status: 'active',
-      invite_sent: sendInvite
+      invite_sent: membershipType === 'managed' ? false : sendInvite,
+      membership_type: membershipType
     })
 
     if (subError) {
@@ -109,7 +115,8 @@ export async function POST(req: Request) {
     }
 
     // 5. Optionally send an email invite using Resend
-    if (sendInvite) {
+    // SKIP if Managed
+    if (sendInvite && membershipType !== 'managed') {
       try {
         const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`
         await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-invite`, {

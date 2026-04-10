@@ -20,8 +20,17 @@ import {
   Calendar,
   CreditCard,
   ChevronRight,
-  ArrowRightCircle
+  ArrowRightCircle,
+  QrCode,
+  Printer,
+  Info,
+  Armchair,
+  Pencil,
+  Trash2,
+  UserCircle,
+  DoorOpen
 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 
 // Helper functions for formatting
 const getStatusStyle = (status: string) => {
@@ -31,6 +40,14 @@ const getStatusStyle = (status: string) => {
     case 'expired': 
     case 'overdue': return 'bg-rose-50 text-rose-600 border-rose-100'
     default: return 'bg-slate-50 text-slate-500 border-slate-100'
+  }
+}
+
+const getMemberTypeStyle = (type: string) => {
+  switch (type) {
+    case 'managed': return 'bg-secondary/10 text-secondary border-secondary/20'
+    case 'digital': return 'bg-primary/10 text-primary border-primary/20'
+    default: return 'bg-slate-100 text-slate-500 border-slate-200'
   }
 }
 
@@ -57,8 +74,13 @@ export default function ManagerStudentDirectory() {
   const [students, setStudents] = useState<any[]>([])
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const supabase = createClient()
   const fetching = useRef(false)
+
+  // QR Modal State
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [selectedStudentQR, setSelectedStudentQR] = useState<any>(null)
 
   // Approval Modal State
   const [showApproveModal, setShowApproveModal] = useState(false)
@@ -72,6 +94,19 @@ export default function ManagerStudentDirectory() {
 
   const [acting, setActing] = useState(false)
 
+  // Edit Modal State
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<any>(null)
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    phone: '',
+    seat: '',
+    startDate: '',
+    endDate: '',
+    membershipType: 'digital',
+    status: 'active'
+  })
+
   const fetchData = async () => {
     if (fetching.current) return
     fetching.current = true
@@ -84,9 +119,9 @@ export default function ManagerStudentDirectory() {
       const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select(`
-          id, seat_number, tier, start_date, end_date, status, notes,
+          id, seat_number, tier, start_date, end_date, status, notes, membership_type,
           room:rooms!inner(name, manager_id),
-          student:profiles!inner(id, name, email, phone, gender)
+          student:profiles!inner(id, name, email, phone, gender, membership_type)
         `)
         .eq('room.manager_id', user.id)
 
@@ -96,6 +131,7 @@ export default function ManagerStudentDirectory() {
         const formatted = subsData.map((sub: any, index: number) => ({
           subscriptionId: sub.id,
           id: sub.id.substring(0, 8).toUpperCase(),
+          studentUid: sub.student.id,
           name: sub.student.name || 'Unknown',
           email: sub.student.email,
           phone: sub.student.phone || 'No phone',
@@ -104,6 +140,8 @@ export default function ManagerStudentDirectory() {
           start: sub.start_date,
           expiry: sub.end_date,
           roomName: sub.room.name || 'Unknown Room',
+          seatNumber: sub.seat_number || 'Unassigned',
+          membershipType: sub.membership_type || sub.student.membership_type || 'digital',
           note: sub.notes || `Assigned to ${sub.room.name}, Seat ${sub.seat_number}.`,
           color: colors[index % colors.length],
           warning: calculateWarning(sub.end_date)
@@ -126,8 +164,13 @@ export default function ManagerStudentDirectory() {
 
     } catch (err: any) {
       if (err.name === 'NavigatorLockAcquireTimeoutError' || err.message?.includes('Lock')) return
-      console.error('Fetch error:', err)
-      toast.error('Sync failed')
+      console.error('Fetch error details:', {
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+        code: err.code
+      })
+      toast.error(`Sync failed: ${err.message || 'Unknown error'}`)
     } finally {
       setLoading(false)
       fetching.current = false
@@ -136,6 +179,7 @@ export default function ManagerStudentDirectory() {
 
   useEffect(() => {
     fetchData()
+    setMounted(true)
   }, [])
 
   const handleDeclineRequest = async (requestId: string) => {
@@ -193,6 +237,74 @@ export default function ManagerStudentDirectory() {
     }
   }
 
+  const handleEditStudent = (student: any) => {
+    setSelectedStudentForEdit(student)
+    setEditFormData({
+      name: student.name,
+      phone: student.phone === 'No phone' ? '' : student.phone,
+      seat: student.seatNumber,
+      startDate: student.start,
+      endDate: student.expiry,
+      membershipType: student.membershipType,
+      status: student.status
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedStudentForEdit) return
+    setActing(true)
+    try {
+      const res = await fetch('/api/manager/students/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: selectedStudentForEdit.subscriptionId,
+          ...editFormData
+        })
+      })
+
+      if (res.ok) {
+        toast.success('Student details updated')
+        setShowEditModal(false)
+        fetchData()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Update failed')
+      }
+    } catch (e) {
+      toast.error('Network connection error')
+    } finally {
+      setActing(false)
+    }
+  }
+
+  const handleDeleteStudent = async (subscriptionId: string) => {
+    if (!confirm('Are you sure you want to remove this student? This will cancel their subscription for this room.')) return
+    
+    setActing(true)
+    try {
+      const res = await fetch('/api/manager/students/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId })
+      })
+
+      if (res.ok) {
+        toast.success('Student removed successfully')
+        fetchData()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to remove student')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setActing(false)
+    }
+  }
+
   const uniqueRooms = Array.from(new Set(students.map(s => s.roomName).filter(Boolean)))
 
   const filteredItems = filter === 'requests' 
@@ -204,51 +316,55 @@ export default function ManagerStudentDirectory() {
         return matchesSearch && matchesFilter && matchesRoom
       })
 
+  if (!mounted) {
+    return (
+      <div className="max-w-7xl mx-auto py-40 flex items-center justify-center">
+         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-32 px-8">
-      {/* Page Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-           <p className="text-primary text-xs font-bold uppercase tracking-widest mb-1.5 opacity-80">Community Management</p>
-           <h2 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">Active Students</h2>
-           <p className="text-sm font-medium text-slate-500 mt-2">Manage student accounts, memberships, and enrollment requests.</p>
+    <div className="max-w-[1600px] mx-auto space-y-12 animate-in fade-in duration-1000 pb-32 px-8 pt-12">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-10 border-b border-surface-container-low">
+        <div className="space-y-2">
+           <span className="section-sub">Administrative Services</span>
+           <h2 className="section-header">Student Archive Directory</h2>
         </div>
-        <Link href="/manager/students/add">
-          <button className="btn-primary">
-            <Plus size={20} />
-            <span>Add Student</span>
-          </button>
+        <Link href="/manager/students/add" className="btn-primary">
+          <Plus size={20} />
+          <span>ENROLL NEW READER</span>
         </Link>
       </header>
 
       {/* Control Bar: Search & Status Toggles */}
-      <div className="flex flex-col xl:flex-row gap-6 items-center">
-        <div className="relative flex-1 group w-full">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+      <div className="flex flex-col xl:flex-row gap-8 items-center">
+        <div className="relative flex-1 group w-full max-w-2xl">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-on-surface-variant/30 group-focus-within:text-primary transition-colors" size={20} />
           <input
             type="text"
-            placeholder="Search by name or email..."
+            placeholder="Locate reader by name or digital ID..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="input pl-14 pr-12 w-full"
+            className="input pl-14 pr-14 w-full py-4 text-sm shadow-ambient"
           />
         </div>
         
-        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
-          <div className="tab-bar p-1.5 bg-white border border-slate-200">
+        <div className="flex flex-wrap items-center gap-6 w-full xl:w-auto">
+          <div className="p-1.5 bg-surface-container-low rounded-[12px] flex h-12">
             {(['active', 'expired', 'requests'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setFilter(mode)}
-                className={`px-6 py-2.5 text-xs font-bold rounded-xl transition-all relative ${
+                className={`px-6 py-2 text-[10px] font-bold rounded-[8px] transition-all relative uppercase tracking-[0.08em] ${
                   filter === mode 
-                    ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-                    : 'text-slate-400 hover:text-on-surface'
+                    ? 'bg-surface-container-lowest text-primary shadow-ambient font-black' 
+                    : 'text-on-surface-variant/40 hover:text-on-surface'
                 }`}
               >
-                <span className="capitalize">{mode}</span>
+                <span>{mode}</span>
                 {mode === 'requests' && requests.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center border-2 border-white font-bold">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white rounded-full text-[9px] flex items-center justify-center border-2 border-surface font-black">
                     {requests.length}
                   </span>
                 )}
@@ -257,16 +373,16 @@ export default function ManagerStudentDirectory() {
           </div>
 
           {filter !== 'requests' && uniqueRooms.length > 1 && (
-            <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 pr-4 group">
-               <div className="w-9 h-9 bg-slate-50 flex items-center justify-center text-slate-400 rounded-xl group-focus-within:text-primary group-focus-within:bg-primary-container transition-all">
-                  <Filter size={16} />
+            <div className="bg-surface-container-low p-1 rounded-[12px] flex items-center gap-1 group">
+               <div className="w-10 h-10 flex items-center justify-center text-on-surface-variant/30">
+                  <Filter size={18} />
                </div>
                <select
                  value={roomFilter}
                  onChange={e => setRoomFilter(e.target.value)}
-                 className="bg-transparent text-xs font-extrabold text-on-surface-variant uppercase tracking-wider outline-none cursor-pointer"
+                 className="bg-transparent px-4 text-[10px] font-bold text-primary uppercase tracking-[0.08em] outline-none cursor-pointer"
                >
-                 <option value="all">Every Room</option>
+                 <option value="all">Every Archive Room</option>
                  {uniqueRooms.map(r => <option key={r} value={r}>{r}</option>)}
                </select>
             </div>
@@ -288,108 +404,116 @@ export default function ManagerStudentDirectory() {
           <p className="text-sm font-medium text-slate-500 mt-2">Try adjusting your filters or search terms.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filter === 'requests' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+           {filter === 'requests' ? (
             requests.map((req) => (
-               <div key={req.id} className="card p-10 group flex flex-col gap-8 relative overflow-hidden h-full">
+               <div key={req.id} className="card shadow-ambient group flex flex-col gap-8 h-full">
                   <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-primary/10 rounded-[1.25rem] flex items-center justify-center font-extrabold text-xl text-primary border border-primary/5">
+                    <div className="w-16 h-16 bg-primary/10 rounded-[14px] flex items-center justify-center font-bold text-2xl text-primary">
                        {req.student?.name?.[0]?.toUpperCase() || 'S'}
                     </div>
                     <div className="overflow-hidden">
-                       <h3 className="font-headline font-extrabold text-lg text-on-surface truncate">{req.student?.name}</h3>
-                       <p className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm text-primary">meeting_room</span> 
-                          {req.room?.name}
+                       <h3 className="font-headline text-lg font-bold text-on-surface truncate uppercase italic tracking-tight">{req.student?.name}</h3>
+                       <p className="text-[10px] font-bold text-secondary mt-1 uppercase tracking-[0.1em]">
+                          {req.room?.name} ARCHIVE
                        </p>
                     </div>
                   </div>
                   
-                  <div className="space-y-3.5">
-                     <div className="flex items-center gap-3 text-sm font-medium text-on-surface-variant opacity-80">
-                        <Mail size={16} className="text-slate-300" /> {req.student?.email}
-                     </div>
-                     <div className="flex items-center gap-3 text-sm font-bold text-primary">
-                        <Phone size={16} className="text-primary/60" /> {req.student?.phone || 'Not provided'}
-                     </div>
+                  <div className="space-y-4">
+                     <p className="text-sm font-medium text-on-surface-variant/60">{req.student?.email}</p>
+                     <p className="text-[11px] font-bold text-primary tracking-widest">{req.student?.phone || 'NO CONTACT PROVIDED'}</p>
                   </div>
 
-                  <div className="flex gap-3 mt-auto">
+                  <div className="flex gap-4 mt-auto">
                      <button 
                         disabled={acting}
                         onClick={() => { setSelectedRequest(req); setShowApproveModal(true); }}
-                        className="flex-1 btn-primary py-3.5 rounded-2xl"
+                        className="flex-1 btn-primary"
                      >
-                        <ShieldCheck size={18} />
-                        Review
+                        REVIEW APPLICATION
                      </button>
                      <button 
                         disabled={acting}
                         onClick={() => handleDeclineRequest(req.id)}
-                        className="w-14 h-14 bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl border border-slate-200 transition-all flex items-center justify-center"
+                        className="w-14 h-14 bg-surface-container-low text-on-surface-variant/30 hover:text-error hover:bg-error/5 rounded-[12px] transition-all flex items-center justify-center"
                      >
-                        <XCircle size={20} />
+                        <XCircle size={22} />
                      </button>
                   </div>
                </div>
             ))
           ) : (
             filteredItems.map((student) => (
-               <div key={student.subscriptionId} className="card p-10 flex flex-col gap-8 group hover:border-primary/30 h-full">
-                {/* Visual Header */}
-                <div className="flex justify-between items-start">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-extrabold text-lg border-2 ${student.color}`}>
-                    {student.name.split(' ').map((n: any) => n[0]).join('').substring(0, 2).toUpperCase()}
+               <div key={student.subscriptionId} className="card shadow-ambient group hover:scale-[1.01] transition-all flex flex-col h-full relative border border-transparent hover:border-primary/5">
+                {/* Header: Name and Status */}
+                <div className="flex justify-between items-start gap-4 mb-8">
+                  <div className="flex flex-col gap-2">
+                    <h3 className="font-headline text-lg font-bold text-on-surface leading-tight uppercase italic tracking-tight group-hover:text-primary transition-colors">
+                       {student.name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                       <div className="w-1 h-1 rounded-full bg-primary" />
+                       <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-[0.1em]">{student.roomName}</p>
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest border-2 ${getStatusStyle(student.status)}`}>
+                    <span className={`px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-[0.1em] border-none bg-surface-container-highest text-on-surface`}>
+                       {student.membershipType}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-[0.1em] ring-1 ring-primary/20 bg-primary/5 text-primary`}>
                        {student.status}
                     </span>
                   </div>
                 </div>
 
-                {/* Identity */}
-                <div className="space-y-2">
-                  <h3 className="font-headline font-extrabold text-xl text-on-surface group-hover:text-primary transition-colors">{student.name}</h3>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                    <ArrowRightCircle size={12} className="text-primary" />
-                    {student.roomName}
-                  </p>
+                {/* Contact details */}
+                <div className="space-y-3 mb-8">
+                   <p className="text-sm font-medium text-on-surface-variant/60 truncate">{student.email}</p>
+                   <p className="text-[11px] font-bold text-primary tracking-widest uppercase">{student.phone}</p>
                 </div>
 
-                {/* Details */}
-                <div className="space-y-3.5">
-                   <div className="flex items-center gap-3 text-sm font-medium text-slate-500 truncate">
-                      <Mail size={16} className="text-slate-300 shrink-0" />
-                      <span className="truncate">{student.email}</span>
+                {/* Metrics Bar */}
+                <div className="p-6 bg-surface-container-low rounded-[16px] space-y-4 mb-8">
+                   <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.1em]">Allocation</span>
+                      <span className="text-[12px] font-bold text-on-surface">SPOT {student.seatNumber}</span>
                    </div>
-                   <div className="flex items-center gap-3 text-sm font-bold text-primary">
-                      <Phone size={16} className="text-primary/60 shrink-0" />
-                      <span>{student.phone}</span>
-                   </div>
-                </div>
-
-                {/* Membership Summary */}
-                <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 mt-auto">
-                   <div className="flex justify-between items-center mb-3">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Service Period</span>
-                      {student.warning && (
-                        <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded text-[9px] font-extrabold uppercase">{student.warning}</span>
-                      )}
-                   </div>
-                   <div className="flex justify-between items-center text-sm font-bold text-on-surface">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-slate-300 uppercase mb-0.5">Start</span>
-                        <span>{format(new Date(student.start), 'dd MMM')}</span>
-                      </div>
-                      <ChevronRight size={16} className="text-slate-200" />
-                      <div className="flex flex-col items-end">
-                        <span className="text-[9px] font-bold text-slate-300 uppercase mb-0.5">End</span>
-                        <span>{format(new Date(student.expiry), 'dd MMM')}</span>
+                   <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.1em]">Validity</span>
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-on-surface uppercase tracking-tight">
+                         <span>{format(new Date(student.start), 'dd MMM')}</span>
+                         <ChevronRight size={10} className="text-on-surface-variant/20" />
+                         <span>{format(new Date(student.expiry), 'dd MMM')}</span>
                       </div>
                    </div>
                 </div>
-              </div>
+
+                {/* Actions Bar */}
+                <div className="mt-auto pt-8 border-t border-surface-container-low flex items-center justify-between gap-4">
+                   <button 
+                     onClick={() => { setSelectedStudentQR(student); setShowQRModal(true); }}
+                     className="text-[11px] font-bold text-primary uppercase tracking-[0.15em] hover:text-secondary transition-all"
+                   >
+                     ACCESS PASS
+                   </button>
+                   
+                   <div className="flex items-center gap-3">
+                      <button 
+                         onClick={() => handleEditStudent(student)}
+                         className="p-3 rounded-[10px] bg-surface-container-low text-on-surface-variant/30 hover:text-primary transition-all"
+                      >
+                         <Pencil size={16} />
+                      </button>
+                      <button 
+                         onClick={() => handleDeleteStudent(student.subscriptionId)}
+                         className="p-3 rounded-[10px] bg-surface-container-low text-on-surface-variant/30 hover:text-error transition-all"
+                      >
+                         <Trash2 size={16} />
+                      </button>
+                   </div>
+                </div>
+               </div>
             ))
           )}
         </div>
@@ -481,6 +605,172 @@ export default function ManagerStudentDirectory() {
                  </button>
               </div>
            </form>
+         </Modal>
+      )}
+
+      {/* Edit Student Modal */}
+      {showEditModal && selectedStudentForEdit && (
+        <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title="Update Student Parameters">
+           <form onSubmit={handleUpdateSubmit} className="space-y-6 pt-6">
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm border border-slate-100">
+                    <UserCircle size={24} />
+                 </div>
+                 <div>
+                    <h4 className="font-black text-on-surface tracking-tight uppercase">{selectedStudentForEdit.name}</h4>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedStudentForEdit.roomName}</p>
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                       <input 
+                          type="text"
+                          required
+                          value={editFormData.name}
+                          onChange={e => setEditFormData({...editFormData, name: e.target.value})}
+                          className="input px-4 py-3"
+                       />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                       <input 
+                          type="text"
+                          value={editFormData.phone}
+                          onChange={e => setEditFormData({...editFormData, phone: e.target.value})}
+                          className="input px-4 py-3"
+                          placeholder="e.g. 9876543210"
+                       />
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Assigned Seat</label>
+                       <input 
+                          type="text"
+                          required
+                          value={editFormData.seat}
+                          onChange={e => setEditFormData({...editFormData, seat: e.target.value})}
+                          className="input px-4 py-3"
+                       />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Type</label>
+                       <select 
+                          value={editFormData.membershipType}
+                          onChange={e => setEditFormData({...editFormData, membershipType: e.target.value})}
+                          className="input px-4 py-3 font-black uppercase cursor-pointer"
+                       >
+                          <option value="digital">Digital Client</option>
+                          <option value="managed">Managed Client</option>
+                       </select>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
+                       <input 
+                          type="date"
+                          required
+                          value={editFormData.startDate}
+                          onChange={e => setEditFormData({...editFormData, startDate: e.target.value})}
+                          className="input px-4"
+                       />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Expiry Date</label>
+                       <input 
+                          type="date"
+                          required
+                          value={editFormData.endDate}
+                          onChange={e => setEditFormData({...editFormData, endDate: e.target.value})}
+                          className="input px-4"
+                       />
+                    </div>
+                 </div>
+              </div>
+
+              <button 
+                 disabled={acting}
+                 className="btn-primary w-full py-4 rounded-2xl shadow-xl shadow-primary/20"
+              >
+                 {acting ? 'SYNCHRONIZING...' : 'UPDATE STUDENT PROFILE'}
+              </button>
+           </form>
+        </Modal>
+      )}
+
+      {/* Access Pass (QR) Modal */}
+      {showQRModal && selectedStudentQR && (
+        <Modal open={showQRModal} onClose={() => setShowQRModal(false)} title="Student Access Pass">
+          <div className="flex flex-col items-center py-10 gap-8">
+            {/* Identity Card Header */}
+            <div className="w-full flex flex-col items-center text-center">
+              <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center font-black text-2xl border-4 border-white shadow-xl mb-4 ${selectedStudentQR.color}`}>
+                {selectedStudentQR.name.split(' ').map((n: any) => n[0]).join('').substring(0, 2).toUpperCase()}
+              </div>
+              <h3 className="text-2xl font-black text-on-surface tracking-tight">{selectedStudentQR.name}</h3>
+              <div className="flex items-center gap-2 mt-2">
+                 <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${getMemberTypeStyle(selectedStudentQR.membershipType)}`}>
+                    {selectedStudentQR.membershipType === 'managed' ? 'Managed' : 'Digital'}
+                 </span>
+                 <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest border-2 ${getStatusStyle(selectedStudentQR.status)}`}>
+                    {selectedStudentQR.status}
+                 </span>
+              </div>
+            </div>
+
+            {/* QR Code Container */}
+            <div className="relative group p-8 bg-white rounded-[3rem] shadow-2xl shadow-primary/10 border border-slate-100">
+               <div className="absolute inset-0 bg-primary/5 rounded-[3rem] scale-105 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-2xl" />
+               <div className="relative bg-white p-4 rounded-2xl border border-slate-50">
+                <QRCodeSVG 
+                  value={JSON.stringify({ 
+                    type: 'access_verify', 
+                    uid: selectedStudentQR.studentUid 
+                  })} 
+                  size={220}
+                  level="H"
+                  includeMargin={true}
+                />
+               </div>
+               
+               {/* Decorative corners for QR frame */}
+               <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-primary/20 rounded-tl-lg" />
+               <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-primary/20 rounded-tr-lg" />
+               <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-primary/20 rounded-bl-lg" />
+               <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-primary/20 rounded-br-lg" />
+            </div>
+
+            {/* Info and Instructions */}
+            <div className="max-w-xs text-center space-y-4">
+               <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Room & Seat</p>
+                  <p className="text-base font-black text-on-surface">{selectedStudentQR.roomName} — {selectedStudentQR.seatNumber}</p>
+               </div>
+               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 text-left">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm">
+                     <Info size={18} />
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 leading-relaxed uppercase tracking-wider">
+                     This QR code is used for attendance logging. Scan it at the room entry point to verify access.
+                  </p>
+               </div>
+            </div>
+
+            {/* Print Button */}
+            <button 
+               onClick={() => window.print()}
+               className="btn-primary w-full max-w-xs py-4 rounded-2xl shadow-lg shadow-primary/20 flex justify-center gap-3"
+            >
+               <Printer size={18} />
+               <span>Print Student Pass</span>
+            </button>
+          </div>
         </Modal>
       )}
     </div>

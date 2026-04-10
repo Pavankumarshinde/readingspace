@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Library } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -59,7 +59,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md z-10">
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-primary text-white rounded-[2rem] shadow-2xl shadow-primary/30 mb-8 group transition-transform hover:scale-110 active:scale-95 border-4 border-white">
-             <span className="material-symbols-outlined text-[40px]" style={{ fontVariationSettings: "'FILL' 1" }}>library_books</span>
+             <Library size={40} />
           </div>
           <h1 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">
             Reading<span className="text-primary">Space</span>

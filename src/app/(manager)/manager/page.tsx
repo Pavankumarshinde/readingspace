@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 
 export default function ManagerRoot() {
   const router = useRouter()
@@ -12,7 +13,7 @@ export default function ManagerRoot() {
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] text-outline/20">
-      <span className="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
+      <Loader2 className="animate-spin text-4xl text-primary/40" />
     </div>
   )
 }

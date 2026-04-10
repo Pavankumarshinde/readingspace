@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, QrCode, Pencil, MapPin, Users, Info, Search, X, Settings2, ShieldCheck } from 'lucide-react'
+import { Plus, QrCode, Pencil, MapPin, Users, Info, Search, X, Settings2, ShieldCheck, ScanLine, Trash2, Key, RotateCw } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import QRDisplay from '@/components/manager/QRDisplay'
+import AttendanceScanner from '@/components/manager/AttendanceScanner'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
@@ -11,6 +12,8 @@ export default function ManagerRooms() {
   const [selectedRoom, setSelectedRoom] = useState<any>(null)
   const [showQR, setShowQR] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showScanner, setShowScanner] = useState(false)
+  const [scanningRoom, setScanningRoom] = useState<any>(null)
   
   const [rooms, setRooms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -141,42 +144,90 @@ export default function ManagerRooms() {
     setShowAddRoom(true)
   }
 
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!confirm('Are you sure you want to delete this room? This will also remove all subscriptions, attendance logs and pending requests.')) return
+    
+    setLoading(true)
+    try {
+      const res = await fetch('/api/manager/rooms/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId })
+      })
+
+      if (res.ok) {
+        toast.success('Room deleted successfully')
+        fetchRooms()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to delete room')
+        setLoading(false)
+      }
+    } catch (e) {
+      toast.error('Network failure')
+      setLoading(false)
+    }
+  }
+
+  const handleRegenerateKey = async (roomId: string) => {
+    if (!confirm('This will invalidate the current Join Key. Existing members will stay, but new members will need the new key. Proceed?')) return
+    
+    setLoading(true)
+    try {
+      const res = await fetch('/api/manager/rooms/regenerate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId })
+      })
+
+      if (res.ok) {
+        toast.success('Join Key rotated successfully')
+        fetchRooms()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to rotate key')
+        setLoading(false)
+      }
+    } catch (e) {
+      toast.error('Network failure')
+      setLoading(false)
+    }
+  }
+
   const filteredRooms = rooms.filter(r => 
     r.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     r.location?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-700 pb-32 px-8">
-      {/* Header Section */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-700 pb-20 px-6">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
         <div>
-           <p className="text-primary text-xs font-bold uppercase tracking-widest mb-1.5 opacity-80">Infrastructure Management</p>
-           <h2 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">Study Rooms</h2>
-           <p className="text-sm font-medium text-slate-500 mt-2">Oversee room occupancy, access keys, and security parameters.</p>
+           <h2 className="font-headline text-2xl font-extrabold text-on-surface tracking-tight leading-none">Study Rooms</h2>
+           <p className="text-[10px] md:text-xs font-semibold text-indigo-600 mt-1.5 opacity-90">Manage occupancy and security.</p>
         </div>
         <button 
           onClick={() => {
             setFormData({ id: null, name: '', description: '', capacity: 50, tier: 'standard', latitude: null, longitude: null, radius: 200 })
             setShowAddRoom(true)
           }}
-          className="btn-primary"
+          className="btn-primary py-2 px-6 rounded-xl text-[10px]"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           <span>Add New Room</span>
         </button>
       </header>
 
       {/* Control Bar */}
-      <div className="flex flex-col md:flex-row gap-6 items-center">
+      <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={16} />
           <input
             type="text"
             placeholder="Search by room name or location..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-2xl pl-14 pr-10 py-4 text-sm font-medium text-on-surface placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-10 py-2.5 text-xs font-medium text-on-surface placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all shadow-sm"
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 transition-colors">
@@ -196,77 +247,92 @@ export default function ManagerRooms() {
            <span className="text-xs font-bold uppercase tracking-[0.3em] opacity-60">Synchronizing Room Data...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
            {filteredRooms.length === 0 ? (
-             <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
-                   <Search size={32} />
+             <div className="col-span-full py-16 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center px-6">
+                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-3">
+                   <Search size={24} />
                 </div>
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60">No rooms match your search</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest opacity-60">No rooms match your search</p>
              </div>
            ) : filteredRooms.map((room) => (
-             <div key={room.id} className="card p-10 flex flex-col gap-8 group hover:border-primary/30 h-full relative overflow-hidden">
+             <div key={room.id} className="card p-4 flex flex-col gap-4 group hover:border-primary/20 h-full relative overflow-hidden rounded-[1.5rem] shadow-sm">
                 {/* Visual Accent */}
                 <div className={`absolute top-0 right-0 w-24 h-24 blur-[60px] opacity-10 transition-opacity group-hover:opacity-20 ${room.premium ? 'bg-primary' : 'bg-slate-400'}`} />
                 
+                {/* Header: Name, Location, Edit */}
                 <div className="flex justify-between items-start z-10">
-                   <div className="space-y-2">
-                      <h3 className="font-headline font-extrabold text-2xl text-on-surface leading-tight transition-colors">{room.name}</h3>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                         <MapPin size={12} className="text-slate-300" />
-                         {room.location}
-                      </p>
+                   <div className="overflow-hidden">
+                      <h3 className="font-headline font-black text-base text-on-surface leading-tight transition-colors truncate uppercase tracking-tight">{room.name}</h3>
+                      <div className="flex items-center gap-1.5 mt-1 opacity-60">
+                         <MapPin size={10} className="text-primary" />
+                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate whitespace-nowrap overflow-hidden">{room.location}</p>
+                      </div>
                    </div>
-                   <div className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest border-2 ${
-                     room.premium ? 'bg-indigo-50 text-primary border-primary/10' : 'bg-slate-50 text-slate-500 border-slate-100'
-                   }`}>
-                      {room.premium ? 'Premium' : 'Standard'}
-                   </div>
-                </div>
-
-                <div className="space-y-5 z-10">
-                   <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-slate-400 flex items-center gap-2">
-                        <Users size={14} className="text-slate-300" /> 
-                        Live Occupancy
-                      </span>
-                      <span className="text-on-surface font-extrabold">{room.occupancy} / {room.total_seats}</span>
-                   </div>
-                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                      <div 
-                         className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(79,70,229,0.3)]"
-                         style={{ width: `${Math.min((room.occupancy / room.total_seats) * 100, 100)}%` }}
-                      />
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 z-10">
-                   <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Access Key</p>
-                      <p className="font-mono text-sm font-extrabold text-secondary tracking-widest">{room.joinKey}</p>
-                   </div>
-                   <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Range</p>
-                      <p className="font-mono text-sm font-extrabold text-primary">{room.radius}m</p>
-                   </div>
-                </div>
-
-                <div className="flex gap-3 mt-auto pt-4 z-10">
-                   <button 
-                     onClick={() => { setSelectedRoom(room); setShowQR(true); }}
-                     className="flex-1 bg-white border border-slate-200 text-on-surface py-4 rounded-2xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all flex items-center justify-center gap-2 shadow-sm"
-                   >
-                     <QrCode size={16} />
-                     QR Scan
-                   </button>
                    <button 
                      onClick={() => handleEditRoom(room)}
-                     className="w-14 h-14 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center text-primary hover:bg-primary-container hover:border-primary/20 transition-all shadow-sm"
+                     className="w-8 h-8 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all border border-slate-100 shadow-sm shrink-0"
                    >
-                      <Settings2 size={20} />
+                     <Pencil size={14} />
                    </button>
                 </div>
-             </div>
+
+                {/* Metrics Bar: Same Line (Occupancy, Access Key, Range) */}
+                <div className="flex items-center justify-between gap-1.5 py-2 px-3 bg-slate-50/50 rounded-xl border border-slate-100/50 z-10 shrink-0">
+                   <div className="flex items-center gap-1 shrink-0">
+                      <Users size={11} className="text-primary/60" />
+                      <span className="text-[9px] font-black text-on-surface whitespace-nowrap">{room.occupancy}/{room.total_seats}</span>
+                   </div>
+                   
+                   <div className="h-3 w-[1px] bg-slate-200 shrink-0" />
+                   
+                   <div className="flex items-center gap-1 overflow-hidden min-w-0 group/key">
+                      <Key size={11} className="text-secondary/60 shrink-0" />
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter shrink-0 mr-0.5">Key:</span>
+                      <span className="text-[9px] font-black text-secondary tracking-widest truncate">{room.joinKey}</span>
+                      <button 
+                        onClick={() => handleRegenerateKey(room.id)}
+                        className="p-1 hover:bg-secondary/10 rounded-md text-secondary opacity-0 group-hover:opacity-100 transition-all"
+                        title="Regenerate Join Key"
+                      >
+                         <RotateCw size={10} />
+                      </button>
+                   </div>
+
+                   <div className="h-3 w-[1px] bg-slate-200 shrink-0" />
+
+                   <div className="flex items-center gap-1 shrink-0">
+                      <ScanLine size={11} className="text-primary/60" />
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mr-0.5">Range:</span>
+                      <span className="text-[9px] font-black text-primary whitespace-nowrap">{room.radius}m</span>
+                   </div>
+                </div>
+
+                {/* Actions Bar: Mix of icons and text */}
+                <div className="flex items-center justify-between gap-2.5 mt-auto pt-2 z-10">
+                    <button 
+                      onClick={() => { setSelectedRoom(room); setShowQR(true); }}
+                      className="w-10 h-10 bg-white border border-slate-100 text-on-surface rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center shadow-sm shrink-0"
+                      title="Room QR Code"
+                    >
+                      <QrCode size={18} />
+                    </button>
+                    <button 
+                      onClick={() => { setScanningRoom(room); setShowScanner(true); }}
+                      className="flex-1 h-10 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-2 shadow-md px-4"
+                    >
+                      <ScanLine size={16} />
+                      <span className="text-[10px] font-black uppercase tracking-widest leading-none">Attendance</span>
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteRoom(room.id)}
+                      className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center border border-rose-100 shadow-sm shrink-0"
+                      title="Delete Room"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+              </div>
            ))}
         </div>
       )}
@@ -328,17 +394,53 @@ export default function ManagerRooms() {
                           <p className="text-[11px] font-extrabold text-primary uppercase tracking-widest">Geofence strictness</p>
                           <p className="text-[10px] font-bold text-slate-400 mt-1">Check-in radius in meters</p>
                        </div>
-                       <button 
-                         type="button"
-                         onClick={handleGetCurrentLocation}
-                         className="px-4 py-2 bg-white border border-slate-200 text-primary text-[10px] font-extrabold uppercase tracking-widest rounded-xl hover:shadow-md hover:border-primary transition-all flex items-center gap-2"
-                       >
-                          <MapPin size={14} />
-                          Locate
-                       </button>
-                    </div>
-                    
-                    <div className="space-y-4">
+                        <button 
+                          type="button"
+                          onClick={handleGetCurrentLocation}
+                          className="px-4 py-2 bg-white border border-slate-200 text-primary text-[10px] font-extrabold uppercase tracking-widest rounded-xl hover:shadow-md hover:border-primary transition-all flex items-center gap-2"
+                        >
+                           <MapPin size={14} />
+                           Locate
+                        </button>
+                     </div>
+                     
+                     {formData.latitude !== null && formData.longitude !== null && (
+                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-1 duration-300">
+                           <div className="space-y-1.5">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Manual Latitude</label>
+                              <input 
+                                 type="number"
+                                 step="any"
+                                 value={formData.latitude || ''}
+                                 onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value) || 0})}
+                                 className="input py-2 text-[11px] font-bold"
+                                 placeholder="e.g. 28.6139"
+                              />
+                           </div>
+                           <div className="space-y-1.5">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Manual Longitude</label>
+                              <div className="relative group">
+                                 <input 
+                                    type="number"
+                                    step="any"
+                                    value={formData.longitude || ''}
+                                    onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value) || 0})}
+                                    className="input py-2 text-[11px] font-bold pr-10"
+                                    placeholder="e.g. 77.2090"
+                                 />
+                                 <button 
+                                   type="button"
+                                   onClick={() => setFormData({...formData, latitude: null, longitude: null})}
+                                   className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-all flex items-center justify-center"
+                                 >
+                                    <X size={14} />
+                                 </button>
+                              </div>
+                           </div>
+                        </div>
+                     )}
+
+                     <div className="space-y-4">
                        <div className="flex items-center gap-4">
                           <input 
                              type="range"
@@ -370,10 +472,16 @@ export default function ManagerRooms() {
          </Modal>
       )}
 
-      {showQR && (
         <Modal open={showQR} onClose={() => setShowQR(false)} title="Security Access QR">
           <QRDisplay roomId={selectedRoom?.id} roomName={selectedRoom?.name} />
         </Modal>
+
+      {showScanner && scanningRoom && (
+        <AttendanceScanner 
+           roomId={scanningRoom.id} 
+           roomName={scanningRoom.name} 
+           onClose={() => setShowScanner(false)} 
+        />
       )}
     </div>
   )

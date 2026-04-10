@@ -42,8 +42,8 @@ export default async function StudentLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
-           <div className="responsive-container py-2 md:py-4">
+        <main className="flex-1 overflow-y-auto pb-24 md:pb-4">
+           <div className="responsive-container py-1 md:py-1.5">
               {children}
            </div>
         </main>

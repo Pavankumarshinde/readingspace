@@ -23,7 +23,7 @@ export default async function ManagerLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
-           <div className="responsive-container py-2 md:py-4">
+           <div className="responsive-container py-1 md:py-1.5">
               {children}
            </div>
         </main>

@@ -19,7 +19,8 @@ export default function AddStudent() {
     seat: '',
     startDate: new Date().toISOString().split('T')[0],
     duration: '1', // months
-    sendInvite: true
+    sendInvite: true,
+    membershipType: 'digital' // 'digital' or 'managed'
   })
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function AddStudent() {
     <div className="flex flex-col min-h-screen bg-slate-50">
       {/* Precision Header */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-8 h-18 flex items-center justify-between w-full">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between w-full">
           <div className="flex items-center gap-6">
             <button 
               onClick={() => router.back()}
@@ -97,8 +98,8 @@ export default function AddStudent() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-8 pt-12 pb-32 w-full space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <form id="enroll-form" onSubmit={handleSave} className="space-y-10">
+      <main className="max-w-3xl mx-auto px-6 pt-8 pb-20 w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <form id="enroll-form" onSubmit={handleSave} className="space-y-6">
           
           {/* Progress Indicator (Visual) */}
           <div className="flex items-center gap-4 px-2">
@@ -113,30 +114,71 @@ export default function AddStudent() {
              </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column: Input Forms */}
-            <div className="lg:col-span-12 space-y-10">
+            <div className="lg:col-span-12 space-y-6">
               
               {/* Profile Section */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-3 px-1">
-                   <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/5">
-                      <UserPlus size={18} />
+              <section className="space-y-4">
+                <div className="flex items-center gap-2.5 px-1">
+                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/5">
+                      <UserPlus size={16} />
                    </div>
-                   <h2 className="text-xl font-extrabold text-on-surface tracking-tight">Personal Details</h2>
+                   <h2 className="text-lg font-extrabold text-on-surface tracking-tight">Personal Details</h2>
                 </div>
                 
-                <div className="card p-10 bg-white grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="card p-6 bg-white grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="md:col-span-2 space-y-4 pb-2 border-b border-slate-100 mb-2">
+                      <label className="text-xs font-bold text-on-surface-variant ml-1 uppercase tracking-widest opacity-60">Membership Classification</label>
+                      <div className="grid grid-cols-2 gap-4">
+                         <button
+                           type="button"
+                           onClick={() => setFormData({...formData, membershipType: 'digital'})}
+                           className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                             formData.membershipType === 'digital' 
+                               ? 'border-primary bg-primary/5 text-primary shadow-lg shadow-primary/10' 
+                               : 'border-slate-100 text-slate-400 hover:border-slate-200'
+                           }`}
+                         >
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${formData.membershipType === 'digital' ? 'bg-primary text-white' : 'bg-slate-100'}`}>
+                               <Send size={18} />
+                            </div>
+                            <div className="text-center">
+                               <p className="text-xs font-extrabold leading-none">Digital Member</p>
+                               <p className="text-[9px] font-bold opacity-60 mt-1">Uses Mobile App</p>
+                            </div>
+                         </button>
+
+                         <button
+                           type="button"
+                           onClick={() => setFormData({...formData, membershipType: 'managed'})}
+                           className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                             formData.membershipType === 'managed' 
+                               ? 'border-secondary bg-secondary/5 text-secondary shadow-lg shadow-secondary/10' 
+                               : 'border-slate-100 text-slate-400 hover:border-slate-200'
+                           }`}
+                         >
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${formData.membershipType === 'managed' ? 'bg-secondary text-white' : 'bg-slate-100'}`}>
+                               <ShieldCheck size={18} />
+                            </div>
+                            <div className="text-center">
+                               <p className="text-xs font-extrabold leading-none">Managed Member</p>
+                               <p className="text-[9px] font-bold opacity-60 mt-1">Offline Record</p>
+                            </div>
+                         </button>
+                      </div>
+                   </div>
+
                    <div className="md:col-span-2 space-y-2.5">
                       <label className="text-xs font-bold text-on-surface-variant ml-1">Full Identity Name</label>
                       <div className="relative group">
                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors">
-                            <ShieldCheck size={20} />
+                            <UserPlus size={18} />
                          </div>
                          <input 
                            type="text" 
                            required
-                           className="input pl-12" 
+                           className="input pl-11" 
                            placeholder="e.g. Vikram Batra"
                            value={formData.name}
                            onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -148,12 +190,12 @@ export default function AddStudent() {
                       <label className="text-xs font-bold text-on-surface-variant ml-1">Primary Email</label>
                       <div className="relative group">
                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors">
-                            <Mail size={18} />
+                            <Mail size={16} />
                          </div>
                          <input 
                            type="email" 
                            required
-                           className="input pl-12" 
+                           className="input pl-11" 
                            placeholder="student@domain.com"
                            value={formData.email}
                            onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -165,11 +207,11 @@ export default function AddStudent() {
                       <label className="text-xs font-bold text-on-surface-variant ml-1">Contact Number</label>
                       <div className="relative group">
                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors">
-                            <Phone size={18} />
+                            <Phone size={16} />
                          </div>
                          <input 
                            type="tel" 
-                           className="input pl-12" 
+                           className="input pl-11" 
                            placeholder="+91 XXXXX XXXXX"
                            value={formData.phone}
                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
@@ -180,15 +222,15 @@ export default function AddStudent() {
               </section>
 
               {/* Assignment Section */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-3 px-1">
-                   <div className="w-9 h-9 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/5">
-                      <Armchair size={18} />
+              <section className="space-y-4">
+                <div className="flex items-center gap-2.5 px-1">
+                   <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/5">
+                      <Armchair size={16} />
                    </div>
-                   <h2 className="text-xl font-extrabold text-on-surface tracking-tight">Membership Assignment</h2>
+                   <h2 className="text-lg font-extrabold text-on-surface tracking-tight">Membership Assignment</h2>
                 </div>
                 
-                <div className="card p-10 bg-white grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="card p-6 bg-white grid grid-cols-1 md:grid-cols-2 gap-6">
                    <div className="md:col-span-2 space-y-2.5">
                       <label className="text-xs font-bold text-on-surface-variant ml-1">Reading Room Node</label>
                       <div className="relative group">
@@ -245,31 +287,44 @@ export default function AddStudent() {
                 </div>
               </section>
 
-              {/* Notification Banner */}
-              <section className="bg-gradient-to-br from-primary to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl shadow-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
-                 {/* Decorative */}
-                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 transition-transform group-hover:scale-125" />
-                 
-                 <div className="flex items-center gap-6 relative z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/10">
-                       <Send size={28} />
-                    </div>
-                    <div>
-                       <h3 className="font-extrabold text-white text-xl leading-none">Automated Onboarding</h3>
-                       <p className="text-sm font-medium text-white/70 mt-2">Send instant magic link for initial profile configuration.</p>
-                    </div>
-                 </div>
+              {/* Notification Banner - Only for Digital */}
+              {formData.membershipType === 'digital' && (
+                <section className="bg-gradient-to-br from-primary to-indigo-700 p-6 rounded-3xl shadow-2xl shadow-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group animate-in slide-in-from-top-2 duration-300">
+                   {/* Decorative */}
+                   <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 transition-transform group-hover:scale-125" />
+                   
+                   <div className="flex items-center gap-5 relative z-10">
+                      <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/10">
+                         <Send size={22} />
+                      </div>
+                      <div>
+                         <h3 className="font-extrabold text-white text-lg leading-none">Automated Onboarding</h3>
+                         <p className="text-xs font-medium text-white/70 mt-1.5">Send instant magic link for initial profile configuration.</p>
+                      </div>
+                   </div>
 
-                 <label className="relative inline-flex items-center cursor-pointer relative z-10">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={formData.sendInvite} 
-                      onChange={(e) => setFormData({...formData, sendInvite: e.target.checked})}
-                    />
-                    <div className="w-16 h-9 bg-white/10 backdrop-blur-md rounded-full border border-white/20 peer peer-checked:bg-white peer-checked:border-white transition-all after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:after:translate-x-7 peer-checked:after:bg-primary shadow-xl"></div>
-                 </label>
-              </section>
+                   <label className="relative inline-flex items-center cursor-pointer relative z-10">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={formData.sendInvite} 
+                        onChange={(e) => setFormData({...formData, sendInvite: e.target.checked})}
+                      />
+                      <div className="w-16 h-9 bg-white/10 backdrop-blur-md rounded-full border border-white/20 peer peer-checked:bg-white peer-checked:border-white transition-all after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:after:translate-x-7 peer-checked:after:bg-primary shadow-xl"></div>
+                   </label>
+                </section>
+              )}
+
+              {formData.membershipType === 'managed' && (
+                <section className="bg-slate-100 p-5 rounded-3xl border border-slate-200 flex items-center gap-4 animate-in slide-in-from-top-2 duration-300">
+                   <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 border border-slate-200">
+                      <ShieldCheck size={20} />
+                   </div>
+                   <p className="text-xs font-bold text-slate-500">
+                     <span className="text-on-surface">Managed Account:</span> Membership is locally tracked. No invitation or login access will be granted to this member.
+                   </p>
+                </section>
+              )}
 
               <button 
                  type="submit" 

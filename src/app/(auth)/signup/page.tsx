@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { UserRole } from '@/types'
-import { User, Mail, Lock, Phone, Building, MapPin, ArrowRight } from 'lucide-react'
+import { User, Mail, Lock, Phone, Building, MapPin, ArrowRight, Library } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -75,7 +75,7 @@ export default function SignupPage() {
       <div className="w-full max-w-xl z-10">
         <div className="text-center mb-10">
           <Link href="/login" className="inline-flex items-center justify-center w-16 h-16 bg-primary text-on-primary rounded-2xl shadow-xl shadow-primary/20 mb-6 hover:scale-105 transition-transform">
-             <span className="material-symbols-outlined text-[30px] fill-icon">menu_book</span>
+             <Library size={30} />
           </Link>
           <h1 className="font-headline text-3xl font-extrabold text-primary tracking-tight italic">Scholar Registration</h1>
           <p className="text-on-surface-variant font-medium mt-1 opacity-60 uppercase tracking-[0.2em] text-[10px]">Select your role to continue</p>
