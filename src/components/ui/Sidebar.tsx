@@ -55,7 +55,9 @@ export default function Sidebar({ role }: { role: UserRole }) {
           const isActive =
             pathname === item.href ||
             (item.href === '/student/rooms' &&
-              pathname.startsWith('/student/rooms'))
+              pathname.startsWith('/student/rooms')) ||
+            (item.href === '/manager/rooms' &&
+              pathname.startsWith('/manager/rooms'))
           return (
             <Link
               key={item.href}

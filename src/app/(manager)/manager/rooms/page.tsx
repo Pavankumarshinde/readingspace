@@ -1,20 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, QrCode, Pencil, MapPin, Users, Info, Search, X, Settings2, ShieldCheck, ScanLine, Trash2, Key, RotateCw } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Pencil, MapPin, Users, Info, Search, X, ShieldCheck, ScanLine, Key, RotateCw, Loader2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
-import QRDisplay from '@/components/manager/QRDisplay'
-import AttendanceScanner from '@/components/manager/AttendanceScanner'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
 export default function ManagerRooms() {
-  const [selectedRoom, setSelectedRoom] = useState<any>(null)
-  const [showQR, setShowQR] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showScanner, setShowScanner] = useState(false)
-  const [scanningRoom, setScanningRoom] = useState<any>(null)
-  
+
   const [rooms, setRooms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -144,200 +139,206 @@ export default function ManagerRooms() {
     setShowAddRoom(true)
   }
 
-  const handleDeleteRoom = async (roomId: string) => {
-    if (!confirm('Are you sure you want to delete this room? This will also remove all subscriptions, attendance logs and pending requests.')) return
-    
-    setLoading(true)
-    try {
-      const res = await fetch('/api/manager/rooms/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId })
-      })
-
-      if (res.ok) {
-        toast.success('Room deleted successfully')
-        fetchRooms()
-      } else {
-        const err = await res.json()
-        toast.error(err.error || 'Failed to delete room')
-        setLoading(false)
-      }
-    } catch (e) {
-      toast.error('Network failure')
-      setLoading(false)
-    }
-  }
-
-  const handleRegenerateKey = async (roomId: string) => {
-    if (!confirm('This will invalidate the current Join Key. Existing members will stay, but new members will need the new key. Proceed?')) return
-    
-    setLoading(true)
-    try {
-      const res = await fetch('/api/manager/rooms/regenerate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId })
-      })
-
-      if (res.ok) {
-        toast.success('Join Key rotated successfully')
-        fetchRooms()
-      } else {
-        const err = await res.json()
-        toast.error(err.error || 'Failed to rotate key')
-        setLoading(false)
-      }
-    } catch (e) {
-      toast.error('Network failure')
-      setLoading(false)
-    }
-  }
-
   const filteredRooms = rooms.filter(r => 
     r.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     r.location?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-700 pb-20 px-6">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
-        <div>
-           <h2 className="font-headline text-2xl font-extrabold text-on-surface tracking-tight leading-none">Study Rooms</h2>
-           <p className="text-[10px] md:text-xs font-semibold text-indigo-600 mt-1.5 opacity-90">Manage occupancy and security.</p>
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-[60vh] items-center justify-center bg-surface">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-secondary/60">
+          Syncing rooms...
+        </span>
+      </div>
+    )
+  }
+
+  // ── Room Card ─────────────────────────────────────────────────────────────
+  const RoomCard = ({ room }: { room: any }) => (
+    <div className="border border-outline-variant/30 rounded-lg p-3 bg-surface-container-low transition-all group hover:border-outline-variant/50">
+      {/* Card Header */}
+      <div className="flex justify-between items-start mb-2">
+        <div className="min-w-0 flex-1 mr-2">
+          <h3 className="font-headline text-lg font-bold text-on-surface leading-tight truncate uppercase">
+            {room.name}
+          </h3>
+          <p className="text-outline text-[10px] uppercase tracking-wider flex items-center gap-1 mt-0.5 font-body">
+            <span
+              className="material-symbols-outlined shrink-0"
+              style={{ fontSize: '12px' }}
+            >
+              location_on
+            </span>
+            <span className="truncate">{room.location}</span>
+          </p>
         </div>
-        <button 
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button 
+            onClick={(e) => { e.preventDefault(); handleEditRoom(room); }}
+            className="w-7 h-7 rounded-full bg-surface-container text-outline flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all shrink-0"
+          >
+            <Pencil size={12} />
+          </button>
+        </div>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="flex items-center gap-2 text-[9px] font-bold text-outline mb-2.5">
+        <div className="flex items-center gap-1">
+          <Users size={10} className="text-primary/60" />
+          <span className="text-on-surface font-bold">{room.occupancy}/{room.total_seats}</span>
+        </div>
+        <span className="text-outline-variant">|</span>
+        <div className="flex items-center gap-1">
+          <Key size={10} className="text-secondary/60" />
+          <span className="uppercase tracking-tighter text-outline">Key:</span>
+          <span className="text-secondary tracking-wider truncate max-w-[60px]">{room.joinKey}</span>
+        </div>
+        <span className="text-outline-variant">|</span>
+        <div className="flex items-center gap-1">
+          <ScanLine size={10} className="text-primary/60" />
+          <span className="uppercase tracking-tighter text-outline">Range:</span>
+          <span className="text-primary">{room.radius}m</span>
+        </div>
+      </div>
+
+      {/* Card Footer */}
+      <div className="flex items-center justify-between border-t border-outline-variant/20 pt-2.5">
+        <div className="flex items-center gap-2">
+          <div className={`text-[8px] font-bold tracking-widest flex items-center gap-1 uppercase shrink-0 ${room.premium ? 'text-primary' : 'text-emerald-700'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${room.premium ? 'bg-primary' : 'bg-emerald-500'}`} />
+            {room.premium ? 'Premium' : 'Active'}
+          </div>
+        </div>
+        <Link href={`/manager/rooms/${room.id}`} prefetch={false} className="inline-flex items-center gap-1 text-primary font-bold text-[9px] uppercase tracking-widest hover:translate-x-1 transition-transform">
+          Enter
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '14px' }}
+          >
+            arrow_forward
+          </span>
+        </Link>
+      </div>
+    </div>
+  )
+
+  // ── Empty State ───────────────────────────────────────────────────────────
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center py-16 text-center col-span-full">
+      <span
+        className="material-symbols-outlined text-outline/20 mb-3"
+        style={{ fontSize: '48px' }}
+      >
+        meeting_room
+      </span>
+      <h3 className="font-headline text-base font-bold text-on-surface mb-1">
+        {searchQuery ? 'No rooms found' : 'No rooms yet'}
+      </h3>
+      <p className="text-[11px] text-secondary/60 max-w-[200px] mb-5 leading-relaxed">
+        {searchQuery
+          ? 'Try a different search term.'
+          : 'Create your first study room to get started.'}
+      </p>
+      {!searchQuery && (
+        <button
           onClick={() => {
             setFormData({ id: null, name: '', description: '', capacity: 50, tier: 'standard', latitude: null, longitude: null, radius: 200 })
             setShowAddRoom(true)
           }}
-          className="btn-primary py-2 px-6 rounded-xl text-[10px]"
+          className="px-6 py-2 bg-surface-container-low border border-outline-variant/30 text-secondary text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-surface-container transition-colors"
+        >
+          Add a Room
+        </button>
+      )}
+    </div>
+  )
+
+  return (
+    <>
+      <main className="pt-4 pb-28 md:pt-8 md:pb-12 px-4 max-w-lg mx-auto md:max-w-none md:px-8 xl:max-w-[1400px]">
+        {/* Hero */}
+        <section className="mt-4 md:mt-0 mb-6 md:mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="text-left">
+            <h2 className="font-headline text-3xl md:text-4xl font-bold text-on-surface tracking-tight leading-none">
+              Study Rooms
+            </h2>
+            <p className="text-secondary text-[10px] uppercase tracking-widest mt-1.5 md:mt-2 font-bold">
+              manage study halls
+            </p>
+          </div>
+          <button 
+            onClick={() => {
+              setFormData({ id: null, name: '', description: '', capacity: 50, tier: 'standard', latitude: null, longitude: null, radius: 200 })
+              setShowAddRoom(true)
+            }}
+            className="hidden md:flex btn-primary py-2.5 px-6 rounded-xl text-[10px]"
+          >
+            <Plus size={18} />
+            <span>Add New Room</span>
+          </button>
+        </section>
+
+        {/* Search + Counter */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-6 md:mb-8 w-full">
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="Search by room name or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 md:h-12 bg-surface-container-low border-none rounded-lg px-4 pr-12 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/50 transition-all font-body"
+            />
+            {searchQuery ? (
+              <button
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors text-outline hover:text-on-surface"
+                onClick={() => setSearchQuery('')}
+              >
+                <X size={18} />
+              </button>
+            ) : (
+              <span
+                className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
+                style={{ fontSize: '20px' }}
+              >
+                search
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-container-low rounded-lg border border-outline-variant/20 shrink-0 justify-center md:justify-start">
+            <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Total Rooms:</span>
+            <span className="text-sm font-extrabold text-primary">{rooms.length}</span>
+          </div>
+        </div>
+
+        {/* Mobile Add Button */}
+        <button
+          onClick={() => {
+            setFormData({ id: null, name: '', description: '', capacity: 50, tier: 'standard', latitude: null, longitude: null, radius: 200 })
+            setShowAddRoom(true)
+          }}
+          className="md:hidden w-full h-11 bg-primary text-white rounded-lg flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-sm mb-6"
         >
           <Plus size={18} />
-          <span>Add New Room</span>
+          <span className="uppercase tracking-widest text-[11px] font-bold">Add New Room</span>
         </button>
-      </header>
 
-      {/* Control Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={16} />
-          <input
-            type="text"
-            placeholder="Search by room name or location..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-10 py-2.5 text-xs font-medium text-on-surface placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all shadow-sm"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 transition-colors">
-              <X size={18} />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 px-4 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
-           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Rooms:</span>
-           <span className="text-sm font-extrabold text-primary">{rooms.length}</span>
-        </div>
-      </div>
+        {/* Cards — Responsive Grid */}
+        {filteredRooms.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full">
+            {filteredRooms.map((room) => (
+              <RoomCard key={room.id} room={room} />
+            ))}
+          </div>
+        )}
+      </main>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-40 text-slate-300">
-           <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6"></div>
-           <span className="text-xs font-bold uppercase tracking-[0.3em] opacity-60">Synchronizing Room Data...</span>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-           {filteredRooms.length === 0 ? (
-             <div className="col-span-full py-16 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center px-6">
-                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-3">
-                   <Search size={24} />
-                </div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest opacity-60">No rooms match your search</p>
-             </div>
-           ) : filteredRooms.map((room) => (
-             <div key={room.id} className="card p-4 flex flex-col gap-4 group hover:border-primary/20 h-full relative overflow-hidden rounded-[1.5rem] shadow-sm">
-                {/* Visual Accent */}
-                <div className={`absolute top-0 right-0 w-24 h-24 blur-[60px] opacity-10 transition-opacity group-hover:opacity-20 ${room.premium ? 'bg-primary' : 'bg-slate-400'}`} />
-                
-                {/* Header: Name, Location, Edit */}
-                <div className="flex justify-between items-start z-10">
-                   <div className="overflow-hidden">
-                      <h3 className="font-headline font-black text-base text-on-surface leading-tight transition-colors truncate uppercase tracking-tight">{room.name}</h3>
-                      <div className="flex items-center gap-1.5 mt-1 opacity-60">
-                         <MapPin size={10} className="text-primary" />
-                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate whitespace-nowrap overflow-hidden">{room.location}</p>
-                      </div>
-                   </div>
-                   <button 
-                     onClick={() => handleEditRoom(room)}
-                     className="w-8 h-8 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all border border-slate-100 shadow-sm shrink-0"
-                   >
-                     <Pencil size={14} />
-                   </button>
-                </div>
-
-                {/* Metrics Bar: Same Line (Occupancy, Access Key, Range) */}
-                <div className="flex items-center justify-between gap-1.5 py-2 px-3 bg-slate-50/50 rounded-xl border border-slate-100/50 z-10 shrink-0">
-                   <div className="flex items-center gap-1 shrink-0">
-                      <Users size={11} className="text-primary/60" />
-                      <span className="text-[9px] font-black text-on-surface whitespace-nowrap">{room.occupancy}/{room.total_seats}</span>
-                   </div>
-                   
-                   <div className="h-3 w-[1px] bg-slate-200 shrink-0" />
-                   
-                   <div className="flex items-center gap-1 overflow-hidden min-w-0 group/key">
-                      <Key size={11} className="text-secondary/60 shrink-0" />
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter shrink-0 mr-0.5">Key:</span>
-                      <span className="text-[9px] font-black text-secondary tracking-widest truncate">{room.joinKey}</span>
-                      <button 
-                        onClick={() => handleRegenerateKey(room.id)}
-                        className="p-1 hover:bg-secondary/10 rounded-md text-secondary opacity-0 group-hover:opacity-100 transition-all"
-                        title="Regenerate Join Key"
-                      >
-                         <RotateCw size={10} />
-                      </button>
-                   </div>
-
-                   <div className="h-3 w-[1px] bg-slate-200 shrink-0" />
-
-                   <div className="flex items-center gap-1 shrink-0">
-                      <ScanLine size={11} className="text-primary/60" />
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mr-0.5">Range:</span>
-                      <span className="text-[9px] font-black text-primary whitespace-nowrap">{room.radius}m</span>
-                   </div>
-                </div>
-
-                {/* Actions Bar: Mix of icons and text */}
-                <div className="flex items-center justify-between gap-2.5 mt-auto pt-2 z-10">
-                    <button 
-                      onClick={() => { setSelectedRoom(room); setShowQR(true); }}
-                      className="w-10 h-10 bg-white border border-slate-100 text-on-surface rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center shadow-sm shrink-0"
-                      title="Room QR Code"
-                    >
-                      <QrCode size={18} />
-                    </button>
-                    <button 
-                      onClick={() => { setScanningRoom(room); setShowScanner(true); }}
-                      className="flex-1 h-10 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-2 shadow-md px-4"
-                    >
-                      <ScanLine size={16} />
-                      <span className="text-[10px] font-black uppercase tracking-widest leading-none">Attendance</span>
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteRoom(room.id)}
-                      className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center border border-rose-100 shadow-sm shrink-0"
-                      title="Delete Room"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-              </div>
-           ))}
-        </div>
-      )}
-
-      {/* Modals */}
+      {/* ── Add/Edit Room Modal ──────────────────────────────────────────── */}
       {showAddRoom && (
          <Modal open={showAddRoom} onClose={() => setShowAddRoom(false)} title={formData.id ? "Configure Room Parameters" : "Launch New Room"}>
             <form onSubmit={handleSaveRoom} className="space-y-8 pt-6 pb-2">
@@ -388,16 +389,16 @@ export default function ManagerRooms() {
                     </div>
                  </div>
 
-                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-200 space-y-6 shadow-inner">
+                 <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/20 space-y-6">
                     <div className="flex items-center justify-between">
                        <div className="flex flex-col">
-                          <p className="text-[11px] font-extrabold text-primary uppercase tracking-widest">Geofence strictness</p>
-                          <p className="text-[10px] font-bold text-slate-400 mt-1">Check-in radius in meters</p>
+                          <p className="text-[11px] font-extrabold text-primary uppercase tracking-widest">Geofence Strictness</p>
+                          <p className="text-[10px] font-bold text-outline mt-1">Check-in radius in meters</p>
                        </div>
                         <button 
                           type="button"
                           onClick={handleGetCurrentLocation}
-                          className="px-4 py-2 bg-white border border-slate-200 text-primary text-[10px] font-extrabold uppercase tracking-widest rounded-xl hover:shadow-md hover:border-primary transition-all flex items-center gap-2"
+                          className="px-4 py-2 bg-surface-container-lowest border border-outline-variant/20 text-primary text-[10px] font-extrabold uppercase tracking-widest rounded-xl hover:border-primary transition-all flex items-center gap-2"
                         >
                            <MapPin size={14} />
                            Locate
@@ -407,7 +408,7 @@ export default function ManagerRooms() {
                      {formData.latitude !== null && formData.longitude !== null && (
                         <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-1 duration-300">
                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Manual Latitude</label>
+                              <label className="text-[9px] font-black text-outline uppercase tracking-widest ml-1">Manual Latitude</label>
                               <input 
                                  type="number"
                                  step="any"
@@ -418,7 +419,7 @@ export default function ManagerRooms() {
                               />
                            </div>
                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Manual Longitude</label>
+                              <label className="text-[9px] font-black text-outline uppercase tracking-widest ml-1">Manual Longitude</label>
                               <div className="relative group">
                                  <input 
                                     type="number"
@@ -431,7 +432,7 @@ export default function ManagerRooms() {
                                  <button 
                                    type="button"
                                    onClick={() => setFormData({...formData, latitude: null, longitude: null})}
-                                   className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-all flex items-center justify-center"
+                                   className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg hover:bg-error/10 text-outline hover:text-error transition-all flex items-center justify-center"
                                  >
                                     <X size={14} />
                                  </button>
@@ -449,11 +450,11 @@ export default function ManagerRooms() {
                              step="10"
                              value={formData.radius}
                              onChange={e => setFormData({...formData, radius: parseInt(e.target.value)})}
-                             className="flex-1 h-2 bg-slate-200 rounded-full appearance-none cursor-pointer accent-primary"
+                             className="flex-1 h-2 bg-outline-variant/30 rounded-full appearance-none cursor-pointer accent-primary"
                           />
-                          <span className="w-16 text-center text-sm font-extrabold text-primary bg-white px-2 py-1 rounded-lg border border-slate-100">{formData.radius}m</span>
+                          <span className="w-16 text-center text-sm font-extrabold text-primary bg-surface-container-lowest px-2 py-1 rounded-lg border border-outline-variant/20">{formData.radius}m</span>
                        </div>
-                       <div className="flex justify-between text-[9px] font-extrabold text-slate-400 tracking-widest">
+                       <div className="flex justify-between text-[9px] font-extrabold text-outline tracking-widest">
                           <span>HIGH SECURITY (10m)</span>
                           <span>FLEXIBLE (500m)</span>
                        </div>
@@ -471,18 +472,6 @@ export default function ManagerRooms() {
             </form>
          </Modal>
       )}
-
-        <Modal open={showQR} onClose={() => setShowQR(false)} title="Security Access QR">
-          <QRDisplay roomId={selectedRoom?.id} roomName={selectedRoom?.name} />
-        </Modal>
-
-      {showScanner && scanningRoom && (
-        <AttendanceScanner 
-           roomId={scanningRoom.id} 
-           roomName={scanningRoom.name} 
-           onClose={() => setShowScanner(false)} 
-        />
-      )}
-    </div>
+    </>
   )
 }

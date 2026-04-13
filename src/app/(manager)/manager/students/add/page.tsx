@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, UserPlus, Mail, Phone, Calendar, Armchair, Building, Clock, Send, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, Save, UserPlus, Mail, Phone, Calendar, Armchair, Building, Clock, Send, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 
-export default function AddStudent() {
+function AddStudentForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const routeRoomId = searchParams.get('room')
+
   const [loading, setLoading] = useState(false)
   const [rooms, setRooms] = useState<{ id: string, name: string }[]>([])
   
@@ -36,13 +39,15 @@ export default function AddStudent() {
       
       if (data) {
         setRooms(data)
-        if (data.length > 0) {
+        if (routeRoomId && data.some(r => r.id === routeRoomId)) {
+          setFormData(prev => ({ ...prev, room: routeRoomId }))
+        } else if (data.length > 0) {
           setFormData(prev => ({ ...prev, room: data[0].id }))
         }
       }
     }
     fetchRooms()
-  }, [])
+  }, [routeRoomId])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -339,5 +344,13 @@ export default function AddStudent() {
         </form>
       </main>
     </div>
+  )
+}
+
+export default function AddStudent() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <AddStudentForm />
+    </Suspense>
   )
 }

@@ -70,7 +70,8 @@ export default function BottomNav({ role }: { role: UserRole }) {
   return (
     <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 py-4 bg-surface/80 backdrop-blur-xl md:hidden h-20 border-t border-outline-variant/10">
       {managerNavItems.map((item) => {
-        const isActive = pathname === item.href
+        const isActive = pathname === item.href ||
+          (item.href === '/manager/rooms' && pathname.startsWith('/manager/rooms'))
         return (
           <Link
             key={item.href}

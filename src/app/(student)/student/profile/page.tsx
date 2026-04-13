@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ProfileActions, ClearCacheButton, SendQueryButton } from './StudentProfileClient'
+import { ProfileActions, ClearCacheButton, SendQueryButton, HowToUseButton, EditProfileFlow } from './StudentProfileClient'
 import { StudentBrandHeader } from '@/components/student/StudentHeader'
 
 export default async function StudentProfile() {
@@ -49,15 +49,7 @@ export default async function StudentProfile() {
               <span className="font-headline text-2xl md:text-5xl italic text-white tracking-widest">
                 {initials}
               </span>
-              {/* Edit pencil */}
-              <div className="absolute -bottom-1.5 -right-1.5 md:-bottom-2 md:-right-2 w-8 h-8 md:w-10 md:h-10 bg-surface-container-lowest rounded-full shadow-md border border-outline-variant/10 flex items-center justify-center text-primary cursor-pointer hover:bg-surface-container-low transition-colors">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '16px' }}
-                >
-                  edit
-                </span>
-              </div>
+              <EditProfileFlow profileData={profile} />
             </div>
 
             <div className="text-center w-full">
@@ -74,9 +66,6 @@ export default async function StudentProfile() {
         {/* ── Desktop Right Column: Info & Actions ───────────────────── */}
         <div className="flex-1 space-y-4 flex flex-col justify-center">
           <div className="bg-surface-container-lowest p-4 md:p-6 rounded-2xl border border-outline-variant/10 space-y-4 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-               <span className="material-symbols-outlined" style={{ fontSize: '100px' }}>fingerprint</span>
-            </div>
             
             <div className="relative z-10">
               <p className="text-[9px] md:text-[10px] font-bold tracking-widest text-secondary/60 uppercase mb-1">
@@ -101,13 +90,7 @@ export default async function StudentProfile() {
           {/* ── Action Buttons ─────────────────────────────────────────── */}
           <div className="pt-2 flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
-              <a
-                href="mailto:support@readingspace.in"
-                className="py-3 px-4 bg-surface-container-lowest border border-outline-variant/20 text-on-surface-variant text-[11px] font-bold tracking-widest uppercase rounded-xl hover:bg-surface-container-low transition-colors text-center shadow-sm flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>mail</span>
-                Reach Us
-              </a>
+              <HowToUseButton />
               <SendQueryButton />
             </div>
             <ProfileActions />
