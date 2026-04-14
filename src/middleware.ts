@@ -82,7 +82,7 @@ export async function middleware(request: NextRequest) {
 
   // 3. User is on public route (like /login) -> Redirect to their dashboard
   if (isAuthRoute) {
-    const target = role === 'manager' ? '/manager/dashboard' : '/student/rooms'
+    const target = role === 'manager' ? '/manager/rooms' : '/student/rooms'
     return NextResponse.redirect(new URL(target, request.url))
   }
 
@@ -91,7 +91,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/student/rooms', request.url))
   }
   if (isStudentRoute && role !== 'student') {
-    return NextResponse.redirect(new URL('/manager/dashboard', request.url))
+    return NextResponse.redirect(new URL('/manager/rooms', request.url))
   }
 
   return supabaseResponse

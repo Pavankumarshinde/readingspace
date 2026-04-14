@@ -165,15 +165,6 @@ export default function ManagerRooms() {
           <h3 className="font-headline text-lg font-bold text-on-surface leading-tight truncate uppercase">
             {room.name}
           </h3>
-          <p className="text-outline text-[10px] uppercase tracking-wider flex items-center gap-1 mt-0.5 font-body">
-            <span
-              className="material-symbols-outlined shrink-0"
-              style={{ fontSize: '12px' }}
-            >
-              location_on
-            </span>
-            <span className="truncate">{room.location}</span>
-          </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button 
@@ -196,12 +187,6 @@ export default function ManagerRooms() {
           <Key size={10} className="text-secondary/60" />
           <span className="uppercase tracking-tighter text-outline">Key:</span>
           <span className="text-secondary tracking-wider truncate max-w-[60px]">{room.joinKey}</span>
-        </div>
-        <span className="text-outline-variant">|</span>
-        <div className="flex items-center gap-1">
-          <ScanLine size={10} className="text-primary/60" />
-          <span className="uppercase tracking-tighter text-outline">Range:</span>
-          <span className="text-primary">{room.radius}m</span>
         </div>
       </div>
 
@@ -330,7 +315,7 @@ export default function ManagerRooms() {
         {filteredRooms.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 w-full">
             {filteredRooms.map((room) => (
               <RoomCard key={room.id} room={room} />
             ))}

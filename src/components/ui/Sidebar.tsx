@@ -16,8 +16,6 @@ import {
 const navItems = [
   // Manager Tabs
   { label: 'Rooms', href: '/manager/rooms', icon: DoorOpen, role: 'manager' as const },
-  { label: 'Students', href: '/manager/students', icon: Users, role: 'manager' as const },
-  { label: 'Dashboard', href: '/manager/dashboard', icon: LayoutDashboard, role: 'manager' as const },
   { label: 'Profile', href: '/manager/profile', icon: User, role: 'manager' as const },
 
   // Student Tabs

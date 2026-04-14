@@ -20,11 +20,20 @@ function AddStudentForm() {
     phone: '',
     room: '',
     seat: '',
-    startDate: new Date().toISOString().split('T')[0],
-    duration: '1', // months
+    startDate: '', // We will calculate this on mount to avoid SSR mismatch
+    endDate: '',
     sendInvite: true,
     membershipType: 'digital' // 'digital' or 'managed'
   })
+
+  // Hydrate dates safely on the client
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    }))
+  }, [])
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -274,18 +283,33 @@ function AddStudentForm() {
                    </div>
 
                    <div className="space-y-2.5">
-                      <label className="text-xs font-bold text-on-surface-variant ml-1">Subscription Cycle (Months)</label>
+                      <label className="text-xs font-bold text-on-surface-variant ml-1">Start Date</label>
                       <div className="relative group">
                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors">
                             <Calendar size={18} />
                          </div>
                          <input 
-                           type="number" 
+                           type="date" 
                            required
                            className="input pl-12 font-bold" 
-                           min="1"
-                           value={formData.duration}
-                           onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                           value={formData.startDate}
+                           onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                         />
+                      </div>
+                   </div>
+
+                   <div className="space-y-2.5">
+                      <label className="text-xs font-bold text-on-surface-variant ml-1">End Date</label>
+                      <div className="relative group">
+                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors">
+                            <Calendar size={18} />
+                         </div>
+                         <input 
+                           type="date" 
+                           required
+                           className="input pl-12 font-bold" 
+                           value={formData.endDate}
+                           onChange={(e) => setFormData({...formData, endDate: e.target.value})}
                          />
                       </div>
                    </div>

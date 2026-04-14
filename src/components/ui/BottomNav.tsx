@@ -15,8 +15,6 @@ const studentNavItems = [
 // ── Manager Nav Items (Lucide components)────────────────────────────────────
 const managerNavItems = [
   { label: 'Rooms', href: '/manager/rooms', Icon: DoorOpen },
-  { label: 'Students', href: '/manager/students', Icon: Users },
-  { label: 'Dashboard', href: '/manager/dashboard', Icon: LayoutDashboard },
   { label: 'Profile', href: '/manager/profile', Icon: User },
 ]
 

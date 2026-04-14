@@ -5,14 +5,21 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { Mail, Lock, ArrowRight, Library } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Library, KeyRound, ChevronLeft } from 'lucide-react'
+
+type AuthMode = 'login' | 'forgot_password' | 'verify_otp' | 'reset_password';
 
 export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
+  const [mode, setMode] = useState<AuthMode>('login')
+  
+  // Form State
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otp, setOtp] = useState('')
+  const [newPassword, setNewPassword] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,13 +45,74 @@ export default function LoginPage() {
         
         // Redirect directly to the correct dashboard
         if (profile?.role === 'manager') {
-          router.push('/manager/dashboard')
+          router.push('/manager/rooms')
         } else {
           router.push('/student/rooms')
         }
       }
     } catch (err: any) {
       toast.error(err.message || 'Invalid login credentials')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) {
+      toast.error('Please enter your email first')
+      return
+    }
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      if (error) throw error
+      toast.success('Recovery code sent to your email')
+      setMode('verify_otp')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send recovery code')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!otp) return
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: 'recovery'
+      })
+      if (error) throw error
+      toast.success('Code verified successfully!')
+      setMode('reset_password')
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid or expired code')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+      if (error) throw error
+      toast.success('Password updated successfully!')
+      setMode('login')
+      setPassword(newPassword)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update password')
     } finally {
       setLoading(false)
     }
@@ -68,61 +136,186 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200/60 shadow-[0_20px_50px_-12px_rgba(79,70,229,0.12)]">
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">Email Address</label>
-              <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
-                 <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
-                    <Mail size={20} />
-                 </div>
-                 <input 
-                   type="email" 
-                   required
-                   className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
-                   placeholder="name@example.com"
-                   value={email}
-                   onChange={(e) => setEmail(e.target.value)}
-                 />
+          {mode === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">Email Address</label>
+                <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
+                   <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
+                      <Mail size={20} />
+                   </div>
+                   <input 
+                     type="email" 
+                     required
+                     className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
+                     placeholder="name@example.com"
+                     value={email}
+                     onChange={(e) => setEmail(e.target.value)}
+                   />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">Password</label>
-              <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
-                 <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
-                    <Lock size={20} />
-                 </div>
-                 <input 
-                   type="password" 
-                   required
-                   className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
-                   placeholder="••••••••"
-                   value={password}
-                   onChange={(e) => setPassword(e.target.value)}
-                 />
+              <div>
+                <div className="flex items-center justify-between mb-2.5 ml-1 mr-1">
+                  <label className="text-xs font-bold text-on-surface-variant">Password</label>
+                  <button 
+                    type="button" 
+                    onClick={() => setMode('forgot_password')}
+                    className="text-[11px] font-bold text-primary hover:underline underline-offset-4"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
+                   <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
+                      <Lock size={20} />
+                   </div>
+                   <input 
+                     type="password" 
+                     required
+                     className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
+                     placeholder="••••••••"
+                     value={password}
+                     onChange={(e) => setPassword(e.target.value)}
+                   />
+                </div>
               </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-primary text-white py-4.5 rounded-2xl text-[15px] font-bold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+              >
+                <span className="flex items-center justify-center gap-2">
+                   {loading ? 'Entering...' : 'Log In to Account'}
+                  {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
+                </span>
+              </button>
+            </form>
+          )}
+
+          {mode === 'forgot_password' && (
+            <form onSubmit={handleForgotPassword} className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-on-surface">Reset Password</h2>
+                <p className="text-sm text-slate-500 mt-2">Enter your email to receive a secure recovery code.</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">Email Address</label>
+                <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
+                   <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
+                      <Mail size={20} />
+                   </div>
+                   <input 
+                     type="email" 
+                     required
+                     className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
+                     placeholder="name@example.com"
+                     value={email}
+                     onChange={(e) => setEmail(e.target.value)}
+                   />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full bg-primary text-white py-4.5 rounded-2xl text-[15px] font-bold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+                >
+                  {loading ? 'Sending...' : 'Send Recovery Code'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="w-full py-4.5 rounded-2xl text-[14px] font-bold text-slate-500 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <ChevronLeft size={16} /> Back to Login
+                </button>
+              </div>
+            </form>
+          )}
+
+          {mode === 'verify_otp' && (
+            <form onSubmit={handleVerifyOtp} className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-on-surface">Enter Code</h2>
+                <p className="text-sm text-slate-500 mt-2">Check your email for the 6-digit recovery code.</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">Recovery Code</label>
+                <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
+                   <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
+                      <KeyRound size={20} />
+                   </div>
+                   <input 
+                     type="text" 
+                     required
+                     maxLength={6}
+                     className="flex-1 bg-transparent border-none focus:ring-0 text-[18px] font-bold tracking-widest text-on-surface placeholder:text-slate-400" 
+                     placeholder="000000"
+                     value={otp}
+                     onChange={(e) => setOtp(e.target.value.trim())}
+                   />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading || otp.length < 6}
+                className="w-full bg-primary text-white py-4.5 rounded-2xl text-[15px] font-bold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+              >
+                {loading ? 'Verifying...' : 'Verify Code'}
+              </button>
+            </form>
+          )}
+
+          {mode === 'reset_password' && (
+            <form onSubmit={handleResetPassword} className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-on-surface">New Password</h2>
+                <p className="text-sm text-slate-500 mt-2">Enter a new password for your account.</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant mb-2.5 block ml-1">New Password</label>
+                <div className="flex items-center gap-4 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-200 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/30 transition-all">
+                   <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-slate-100">
+                      <Lock size={20} />
+                   </div>
+                   <input 
+                     type="password" 
+                     required
+                     className="flex-1 bg-transparent border-none focus:ring-0 text-[15px] font-bold text-on-surface placeholder:text-slate-400" 
+                     placeholder="••••••••"
+                     value={newPassword}
+                     onChange={(e) => setNewPassword(e.target.value)}
+                   />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-primary text-white py-4.5 rounded-2xl text-[15px] font-bold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+              >
+                {loading ? 'Updating...' : 'Set Password & Login'}
+              </button>
+            </form>
+          )}
+
+          {mode === 'login' && (
+            <div className="mt-10 pt-8 border-t border-slate-100 text-center animate-in fade-in">
+               <p className="text-on-surface-variant text-[14px] font-medium">
+                  New member?{' '}
+                  <Link href="/signup" className="text-primary font-bold hover:underline underline-offset-4 decoration-2 transition-all">
+                    Get Started
+                  </Link>
+               </p>
             </div>
-
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-primary text-white py-4.5 rounded-2xl text-[15px] font-bold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
-            >
-              <span className="flex items-center justify-center gap-2">
-                 {loading ? 'Entering...' : 'Log In to Account'}
-                {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
-              </span>
-            </button>
-          </form>
-
-          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
-             <p className="text-on-surface-variant text-[14px] font-medium">
-                New member?{' '}
-                <Link href="/signup" className="text-primary font-bold hover:underline underline-offset-4 decoration-2 transition-all">
-                  Get Started
-                </Link>
-             </p>
-          </div>
+          )}
         </div>
         
         <p className="text-center mt-12 text-[11px] text-slate-400 font-bold tracking-widest">
@@ -132,3 +325,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

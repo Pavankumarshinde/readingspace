@@ -7,7 +7,7 @@ import Modal from '@/components/ui/Modal'
 import { format } from 'date-fns'
 import { 
   User, Mail, Phone, CheckCircle2, XCircle, ShieldCheck, 
-  Plus, Search, Users, ChevronRight, UserCircle, Pencil, Trash2, Info 
+  Plus, Search, Users, ChevronRight, UserCircle, Pencil, Trash2, Info, QrCode, RefreshCw
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 
@@ -75,6 +75,13 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<any>(null)
   const [editFormData, setEditFormData] = useState({
     name: '', phone: '', seat: '', startDate: '', endDate: '', membershipType: 'digital', status: 'active'
+  })
+
+  // Renew Modal
+  const [showRenewModal, setShowRenewModal] = useState(false)
+  const [selectedStudentForRenew, setSelectedStudentForRenew] = useState<any>(null)
+  const [renewFormData, setRenewFormData] = useState({
+    startDate: '', endDate: ''
   })
 
   const fetchData = async () => {
@@ -206,6 +213,36 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
     }
   }
 
+  const handleRenewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedStudentForRenew) return
+    setActing(true)
+    try {
+      const res = await fetch('/api/manager/students/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: selectedStudentForRenew.subscriptionId,
+          startDate: renewFormData.startDate,
+          endDate: renewFormData.endDate,
+          status: 'active'
+        })
+      })
+
+      if (res.ok) {
+        toast.success('Subscription renewed')
+        setShowRenewModal(false)
+        fetchData()
+      } else {
+        toast.error('Failed to renew')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setActing(false)
+    }
+  }
+
   const handleDeleteStudent = async (subscriptionId: string) => {
     if (!confirm('Are you sure you want to remove this student?')) return
     setActing(true)
@@ -321,42 +358,78 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
             ))
           ) : (
             filteredItems.map((student) => (
-               <div key={student.subscriptionId} className="p-5 bg-white border border-outline-variant/10 rounded-2xl shadow-sm flex flex-col gap-4 relative">
-                  <div className="flex justify-between items-start">
-                    <div>
-                       <h3 className="font-bold text-base text-on-surface uppercase italic">{student.name}</h3>
-                       <div className="flex items-center gap-2 mt-1">
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getMemberTypeStyle(student.membershipType)}`}>
-                             {student.membershipType}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getStatusStyle(student.status)}`}>
-                             {student.status}
-                          </span>
-                       </div>
-                    </div>
-                    <div className="text-right">
-                       <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase">Seat</span>
-                       <p className="font-black text-lg text-primary">{student.seatNumber}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-[10px] font-bold text-secondary uppercase bg-surface-container-low p-2 rounded-lg">
-                    <span>{format(new Date(student.start), 'dd MMM')}</span>
-                    <ChevronRight size={12} className="text-outline/40" />
-                    <span>{format(new Date(student.expiry), 'dd MMM')}</span>
+               <div key={student.subscriptionId} className="group p-4 bg-surface-container-lowest hover:bg-surface-container-low transition-colors rounded-2xl border border-outline-variant/10 flex items-center justify-between">
+                  <div className="flex flex-col min-w-0 pr-4">
+                     <div className="flex items-center gap-2 mb-1.5">
+                        <h3 className="text-sm font-bold text-on-surface uppercase italic tracking-tight truncate">{student.name}</h3>
+                        <span className="shrink-0 text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest">
+                           {student.seatNumber}
+                        </span>
+                     </div>
+                     <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusStyle(student.status)}`}>
+                           {student.status}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${getMemberTypeStyle(student.membershipType)}`}>
+                           {student.membershipType}
+                        </span>
+                        <span className="text-[9px] text-secondary/60 font-bold uppercase tracking-widest flex items-center gap-1">
+                           <ChevronRight size={10} className="text-outline-variant/50" />
+                           EXP {format(new Date(student.expiry), 'dd MMM')}
+                        </span>
+                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center pt-2">
-                     <button 
-                        onClick={() => { setSelectedStudentQR(student); setShowQRModal(true); }}
-                        className="text-[10px] font-bold text-primary uppercase hover:underline"
-                     >
-                        View QR Pass
-                     </button>
-                     <div className="flex gap-2">
-                        <button onClick={() => { setSelectedStudentForEdit(student); setEditFormData({ name: student.name, phone: student.phone === 'No phone' ? '' : student.phone, seat: student.seatNumber, startDate: student.start, endDate: student.expiry, membershipType: student.membershipType, status: student.status }); setShowEditModal(true); }} className="p-1.5 text-on-surface-variant/40 hover:text-primary"><Pencil size={14} /></button>
-                        <button onClick={() => handleDeleteStudent(student.subscriptionId)} className="p-1.5 text-on-surface-variant/40 hover:text-error"><Trash2 size={14} /></button>
-                     </div>
+                  <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                      <button 
+                         onClick={() => { setSelectedStudentQR(student); setShowQRModal(true); }} 
+                         className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-primary hover:bg-primary hover:text-white transition-colors"
+                         title="View QR"
+                      >
+                         <QrCode size={14} />
+                      </button>
+                      {student.status !== 'active' && (
+                        <button 
+                           onClick={() => {
+                             setSelectedStudentForRenew(student);
+                             setRenewFormData({
+                               startDate: new Date().toISOString().split('T')[0],
+                               endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                             });
+                             setShowRenewModal(true);
+                           }}
+                           className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                           title="Renew"
+                        >
+                           <RefreshCw size={14} />
+                        </button>
+                      )}
+                      <button 
+                         onClick={() => { 
+                           setSelectedStudentForEdit(student); 
+                           setEditFormData({ 
+                             name: student.name, 
+                             phone: student.phone === 'No phone' ? '' : student.phone, 
+                             seat: student.seatNumber, 
+                             startDate: student.start, 
+                             endDate: student.expiry, 
+                             membershipType: student.membershipType, 
+                             status: student.status 
+                           }); 
+                           setShowEditModal(true); 
+                         }} 
+                         className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-primary transition-colors"
+                         title="Edit"
+                      >
+                         <Pencil size={14} />
+                      </button>
+                      <button 
+                         onClick={() => handleDeleteStudent(student.subscriptionId)} 
+                         className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-error transition-colors"
+                         title="Delete"
+                      >
+                         <Trash2 size={14} />
+                      </button>
                   </div>
                </div>
             ))
@@ -432,6 +505,28 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
                 </div>
               </div>
               <button disabled={acting} type="submit" className="w-full btn-primary mt-2">Update</button>
+            </form>
+         </Modal>
+      )}
+
+      {/* Renew Student Modal */}
+      {showRenewModal && selectedStudentForRenew && (
+         <Modal open={showRenewModal} onClose={() => setShowRenewModal(false)} title="Renew Subscription">
+            <form onSubmit={handleRenewSubmit} className="space-y-4 pt-4">
+              <p className="text-sm text-on-surface-variant mb-2">
+                Renew subscription for <span className="font-bold text-on-surface">{selectedStudentForRenew.name}</span>. This will set their status back to <strong>Active</strong>.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                   <label className="text-xs font-bold text-on-surface-variant">New Start Date</label>
+                   <input type="date" required className="input mt-1" value={renewFormData.startDate} onChange={e => setRenewFormData({...renewFormData, startDate: e.target.value})} />
+                </div>
+                <div>
+                   <label className="text-xs font-bold text-on-surface-variant">New End Date</label>
+                   <input type="date" required className="input mt-1" value={renewFormData.endDate} onChange={e => setRenewFormData({...renewFormData, endDate: e.target.value})} />
+                </div>
+              </div>
+              <button disabled={acting} type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold mt-4 transition-colors">Confirm Renewal</button>
             </form>
          </Modal>
       )}

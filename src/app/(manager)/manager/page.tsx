@@ -8,7 +8,7 @@ export default function ManagerRoot() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace('/manager/dashboard')
+    router.replace('/manager/rooms')
   }, [router])
 
   return (

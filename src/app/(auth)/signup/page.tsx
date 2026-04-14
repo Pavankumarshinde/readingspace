@@ -239,7 +239,7 @@ export default function SignupPage() {
               className="btn-gradient w-full py-5 rounded-2xl text-[16px] group/btn"
             >
               <span className="flex items-center justify-center gap-2">
-                {loading ? 'Creating Account...' : 'Continue to Dashboard'}
+                {loading ? 'Creating Account...' : 'Continue'}
                 {!loading && <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />}
               </span>
             </button>

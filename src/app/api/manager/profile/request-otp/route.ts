@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     try {
       const { error: emailError } = await resend.emails.send({
-        from: 'ReadingSpace Security <onboarding@resend.dev>',
+        from: 'ReadingSpace Security <noreply@readingspace.app>',
         to: [user.email || ''], 
         subject: `Manager Verification Code: ${otpCode}`,
         html: `

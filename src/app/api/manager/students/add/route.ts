@@ -10,9 +10,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, email, phone, room, duration, seat, startDate, sendInvite, membershipType = 'digital' } = await req.json()
+    const { name, email, phone, room, seat, startDate, endDate, sendInvite, membershipType = 'digital' } = await req.json()
 
-    if (!name || !email || !room || !duration || !startDate) {
+    if (!name || !email || !room || !startDate || !endDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
       if (authError) {
         console.error('Error creating auth user:', authError)
-        return NextResponse.json({ error: 'Failed to create student user' }, { status: 500 })
+        return NextResponse.json({ error: `Failed to create student user: ${authError.message}`, details: authError }, { status: 500 })
       }
 
       studentId = authData.user.id
@@ -84,11 +84,7 @@ export async function POST(req: Request) {
        // We'll not fail the subscription process but log for visibility
     }
 
-    // 3. Compute endDate from duration (in months)
-    const startObj = new Date(startDate)
-    const endObj = new Date(startObj)
-    endObj.setMonth(endObj.getMonth() + parseInt(duration, 10))
-    const endDate = endObj.toISOString().split('T')[0]
+    // 3. endDate is now directly provided in the request payload.
 
     // 4. Create the Subscription record
     // We can use the admin client or the manager user's client.
@@ -107,18 +103,32 @@ export async function POST(req: Request) {
 
     if (subError) {
       console.error('Error creating subscription:', subError)
-      // Check if it's a unique constraint violation
       if (subError.code === '23505') {
         return NextResponse.json({ error: 'Student already has a subscription for this room' }, { status: 400 })
       }
-      return NextResponse.json({ error: 'Failed to create subscription record' }, { status: 500 })
+      return NextResponse.json({ error: `Failed to create subscription: ${subError.message}`, details: subError }, { status: 500 })
     }
 
     // 5. Optionally send an email invite using Resend
     // SKIP if Managed
     if (sendInvite && membershipType !== 'managed') {
       try {
-        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`
+        let inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+        
+        try {
+          const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'recovery',
+            email: email,
+          });
+          if (linkData?.properties?.action_link) {
+            // we attach a param so the client knows it's an invite from manager if needed,
+            // but the action link itself already logs them in / lets them set password
+            inviteLink = linkData.properties.action_link;
+          }
+        } catch (e) {
+          console.error("Error generating secure link:", e);
+        }
+
         await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-invite`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -139,6 +149,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, message: 'Student successfully added' })
   } catch (err: any) {
     console.error('Unhandled server error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: `Internal server error: ${err.message}`, details: err }, { status: 500 })
   }
 }

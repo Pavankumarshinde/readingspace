@@ -16,7 +16,7 @@ export default async function Home() {
     .single()
 
   if (profile?.role === 'manager') {
-    redirect('/manager/dashboard')
+    redirect('/manager/rooms')
   } else {
     redirect('/student/rooms')
   }
