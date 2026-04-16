@@ -31,8 +31,22 @@ export function useRealtimeAttendance(roomId?: string) {
           table: 'attendance_logs',
           filter: roomId ? `room_id=eq.${roomId}` : undefined,
         },
-        (payload) => {
-          setLogs((prev) => [payload.new as AttendanceLog, ...prev])
+        async (payload) => {
+          const newLog = payload.new as any
+          
+          // Fetch student profile for the new log
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name, email')
+            .eq('id', newLog.student_id)
+            .single()
+            
+          const logWithProfile = {
+            ...newLog,
+            student: profile
+          }
+          
+          setLogs((prev) => [logWithProfile as AttendanceLog, ...prev])
         }
       )
       .subscribe()

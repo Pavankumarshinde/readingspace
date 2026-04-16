@@ -1,37 +1,52 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import {
   generateProofToken,
   getExpiryIso,
   getOtpConfig,
   hashSecret,
+  isEmailIdentifier,
+  normalizeEmail,
+  normalizePhone,
   timingSafeEqualHex,
 } from '@/lib/security/otp'
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
+    const { identifier, otpCode } = await req.json()
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!identifier || typeof identifier !== 'string' || !otpCode || typeof otpCode !== 'string') {
+      return NextResponse.json({ error: 'Identifier and OTP are required' }, { status: 400 })
     }
 
-    const { otpCode } = await req.json()
+    const trimmedIdentifier = identifier.trim()
+    const admin = await createAdminClient()
 
-    if (!otpCode || typeof otpCode !== 'string') {
-      return NextResponse.json({ error: 'OTP is required' }, { status: 400 })
+    const profileLookup = isEmailIdentifier(trimmedIdentifier)
+      ? admin
+          .from('profiles')
+          .select('id, email')
+          .eq('email', normalizeEmail(trimmedIdentifier))
+          .limit(1)
+          .maybeSingle()
+      : admin
+          .from('profiles')
+          .select('id, email')
+          .eq('phone', normalizePhone(trimmedIdentifier))
+          .limit(1)
+          .maybeSingle()
+
+    const { data: profile } = await profileLookup
+
+    if (!profile?.id || !profile.email) {
+      return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 400 })
     }
 
-    const { data: otpRow } = await supabase
+    const { data: otpRow } = await admin
       .from('profile_verification_otps')
       .select('*')
-      .eq('user_id', user.id)
-      .eq('purpose', 'profile_update')
+      .eq('user_id', profile.id)
+      .eq('purpose', 'forgot_password')
       .is('used_at', null)
       .is('consumed_at', null)
       .gte('expires_at', new Date().toISOString())
@@ -47,14 +62,14 @@ export async function POST(req: Request) {
     const attempts = typeof otpRow.attempt_count === 'number' ? otpRow.attempt_count : 0
 
     if (attempts >= maxAttempts) {
-      return NextResponse.json({ error: 'Too many attempts. Request a new OTP.' }, { status: 429 })
+      return NextResponse.json({ error: 'Too many attempts. Please request a new OTP.' }, { status: 429 })
     }
 
     const incomingHash = hashSecret(otpCode.trim())
-    const storedHash = otpRow.otp_hash || ''
+    const storedHash: string = otpRow.otp_hash || ''
 
     if (!storedHash || !timingSafeEqualHex(storedHash, incomingHash)) {
-      await supabase
+      await admin
         .from('profile_verification_otps')
         .update({ attempt_count: attempts + 1 })
         .eq('id', otpRow.id)
@@ -62,15 +77,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 400 })
     }
 
-    const proofToken = generateProofToken()
-    const proofHash = hashSecret(proofToken)
+    const resetToken = generateProofToken()
+    const resetHash = hashSecret(resetToken)
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from('profile_verification_otps')
       .update({
         used_at: new Date().toISOString(),
         verified_at: new Date().toISOString(),
-        proof_hash: proofHash,
+        proof_hash: resetHash,
         proof_expires_at: getExpiryIso(getOtpConfig().proofTtlMinutes),
       })
       .eq('id', otpRow.id)
@@ -81,11 +96,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'OTP verified securely',
-      proofToken,
+      resetToken,
       expiresInSec: getOtpConfig().proofTtlMinutes * 60,
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

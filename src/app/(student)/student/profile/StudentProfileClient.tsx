@@ -219,21 +219,34 @@ export function EditProfileFlow({ profileData }: { profileData: any }) {
   const [step, setStep] = useState<'idle' | 'otp' | 'form'>('idle')
   const [loading, setLoading] = useState(false)
   const [otp, setOtp] = useState('')
-  
+  const [otpProofToken, setOtpProofToken] = useState('')
+
   const [form, setForm] = useState({
     name: profileData.name || '',
     phone: profileData.phone || ''
   })
 
+  const needsOtpForCurrentChanges = () => {
+    const currentPhone = (profileData.phone || '').trim()
+    const nextPhone = (form.phone || '').trim()
+    return currentPhone !== nextPhone
+  }
+
   const handleRequestOTP = async () => {
+    if (!needsOtpForCurrentChanges()) {
+      setStep('form')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch('/api/student/profile/request-otp', { method: 'POST' })
-      if (!res.ok) throw new Error('Failed to send OTP')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send OTP')
       toast.success('Verification code sent to your email!')
       setStep('otp')
-    } catch {
-      toast.error('Network error. Check console logs in dev mode.')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send verification code')
     } finally {
       setLoading(false)
     }
@@ -248,11 +261,13 @@ export function EditProfileFlow({ profileData }: { profileData: any }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ otpCode: otp })
       })
-      if (!res.ok) throw new Error('Invalid code')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Invalid code')
+      setOtpProofToken(data.proofToken || '')
       toast.success('Identity verified')
       setStep('form')
-    } catch {
-      toast.error('Invalid or expired verification code')
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid or expired verification code')
     } finally {
       setLoading(false)
     }
@@ -260,19 +275,49 @@ export function EditProfileFlow({ profileData }: { profileData: any }) {
 
   const handleSaveProfile = async () => {
     if (!form.name.trim()) return toast.error('Name cannot be empty')
+
+    const sensitiveChanged = needsOtpForCurrentChanges()
+    if (sensitiveChanged && !otpProofToken) {
+      toast.error('Please verify OTP before saving phone changes')
+      setStep('otp')
+      return
+    }
+
     setLoading(true)
     try {
+      const originalName = profileData.name || ''
+      const originalPhone = profileData.phone || ''
+
+      const payload: Record<string, string> = {}
+      if (form.name.trim() !== originalName.trim()) payload.name = form.name.trim()
+      if (form.phone.trim() !== originalPhone.trim()) payload.phone = form.phone.trim()
+
+      if (Object.keys(payload).length === 0) {
+        toast.error('No changes to save')
+        setLoading(false)
+        return
+      }
+
+      if (sensitiveChanged) {
+        payload.otpProofToken = otpProofToken
+      }
+
       const res = await fetch('/api/student/profile/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       })
-      if (!res.ok) throw new Error('Failed to update')
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update')
+
       toast.success('Profile updated securely')
+      setOtp('')
+      setOtpProofToken('')
       setStep('idle')
-      router.refresh() // Reload page to show new name immediately
-    } catch {
-      toast.error('Error saving profile')
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'Error saving profile')
     } finally {
       setLoading(false)
     }
@@ -298,7 +343,7 @@ export function EditProfileFlow({ profileData }: { profileData: any }) {
           <div className="relative w-full max-w-sm bg-surface-container-lowest rounded-t-2xl md:rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom duration-300 md:slide-in-from-bottom-0 mx-auto border border-outline-variant/10">
             <h3 className="font-headline italic text-2xl font-bold text-on-surface mb-2">Security Check</h3>
             <p className="text-[13px] text-on-surface/60 font-body leading-relaxed mb-6">
-              To keep your data secure, we've sent a 6-digit verification code to your email. Check your dev console if testing locally!
+              To protect sensitive profile changes, we've sent a 6-digit verification code to your email.
             </p>
             <input
               type="text"

@@ -72,6 +72,20 @@ export default function AttendanceScanner({ roomId, roomName, onClose }: Attenda
                   scannedRef.current = false
                   setScanning(false)
                 }, 2000)
+              } else if (res.status === 409) {
+                toast(data.error || 'Already marked today', {
+                   icon: '⚠️',
+                   style: {
+                     borderRadius: '10px',
+                     background: '#fff8f0',
+                     color: '#9B4000',
+                     border: '1px solid #ffdbcb',
+                     fontSize: '12px',
+                     fontWeight: 'bold'
+                   },
+                })
+                scannedRef.current = false
+                setScanning(false)
               } else {
                 throw new Error(data.error || 'Failed to log attendance')
               }

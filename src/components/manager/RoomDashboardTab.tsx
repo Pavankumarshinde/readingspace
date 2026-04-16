@@ -8,6 +8,7 @@ import {
   startOfWeek, endOfWeek, isSameDay, startOfDay, endOfDay,
   getDaysInMonth, getDay
 } from 'date-fns'
+import { useRealtimeAttendance } from '@/hooks/useRealtimeAttendance'
 
 type Timeframe = 'day' | 'week' | 'month'
 
@@ -23,9 +24,17 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
   const [stars, setStars] = useState<any[]>([])
   const [heatmap, setHeatmap] = useState<Record<number, number>>({})
   const [filteredCount, setFilteredCount] = useState(0)
-  const [attendanceLogs, setAttendanceLogs] = useState<any[]>([])
   const [attendanceLoading, setAttendanceLoading] = useState(true)
   const [searchTermExpiring, setSearchTermExpiring] = useState('')
+
+  // Real-time logs for the room
+  const realtimeLogs = useRealtimeAttendance(roomId)
+  const attendanceLogs = timeframe === 'day' && isSameDay(selectedDate, new Date()) 
+    ? realtimeLogs 
+    : [] // We'll still fetch historical data in useEffect
+  
+  const [historicalLogs, setHistoricalLogs] = useState<any[]>([])
+  const displayLogs = attendanceLogs.length > 0 ? attendanceLogs : historicalLogs
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -84,7 +93,7 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
       setHeatmap(heatMapData)
 
       if (logsData) {
-        setAttendanceLogs(logsData)
+        setHistoricalLogs(logsData)
         setFilteredCount(logsData.length)
 
         const freq: Record<string, { count: number, name: string }> = {}
@@ -222,9 +231,9 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
             <tbody className="divide-y divide-surface-container-low">
               {attendanceLoading ? (
                  <tr><td colSpan={4} className="px-6 py-12 text-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></td></tr>
-              ) : attendanceLogs.length === 0 ? (
+              ) : displayLogs.length === 0 ? (
                  <tr><td colSpan={4} className="px-6 py-12 text-center text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">No activity</td></tr>
-              ) : attendanceLogs.map((log, i) => (
+              ) : displayLogs.map((log, i) => (
                  <tr key={i} className="hover:bg-surface-container-low/20 transition-colors">
                    <td className="px-6 py-4">
                      <div className="flex flex-col">

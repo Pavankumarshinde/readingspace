@@ -219,7 +219,8 @@ export function EditManagerProfileFlow({ profileData }: { profileData: any }) {
   const [step, setStep] = useState<'idle' | 'otp' | 'form'>('idle')
   const [loading, setLoading] = useState(false)
   const [otp, setOtp] = useState('')
-  
+  const [otpProofToken, setOtpProofToken] = useState('')
+
   const [form, setForm] = useState({
     name: profileData.name || '',
     business_name: profileData.business_name || '',
@@ -227,15 +228,35 @@ export function EditManagerProfileFlow({ profileData }: { profileData: any }) {
     address: profileData.address || ''
   })
 
+  const needsOtpForCurrentChanges = () => {
+    const original = {
+      phone: profileData.phone || '',
+      business_name: profileData.business_name || '',
+      address: profileData.address || ''
+    }
+
+    return (
+      original.phone.trim() !== form.phone.trim() ||
+      original.business_name.trim() !== form.business_name.trim() ||
+      original.address.trim() !== form.address.trim()
+    )
+  }
+
   const handleRequestOTP = async () => {
+    if (!needsOtpForCurrentChanges()) {
+      setStep('form')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch('/api/manager/profile/request-otp', { method: 'POST' })
-      if (!res.ok) throw new Error('Failed to send OTP')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send OTP')
       toast.success('Verification code sent to your email!')
       setStep('otp')
-    } catch {
-      toast.error('Network error. Check console logs in dev mode.')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send verification code')
     } finally {
       setLoading(false)
     }
@@ -250,11 +271,13 @@ export function EditManagerProfileFlow({ profileData }: { profileData: any }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ otpCode: otp })
       })
-      if (!res.ok) throw new Error('Invalid code')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Invalid code')
+      setOtpProofToken(data.proofToken || '')
       toast.success('Identity verified')
       setStep('form')
-    } catch {
-      toast.error('Invalid or expired verification code')
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid or expired verification code')
     } finally {
       setLoading(false)
     }
@@ -262,19 +285,53 @@ export function EditManagerProfileFlow({ profileData }: { profileData: any }) {
 
   const handleSaveProfile = async () => {
     if (!form.name.trim()) return toast.error('Name cannot be empty')
+
+    const sensitiveChanged = needsOtpForCurrentChanges()
+    if (sensitiveChanged && !otpProofToken) {
+      toast.error('Please verify OTP before saving sensitive changes')
+      setStep('otp')
+      return
+    }
+
     setLoading(true)
     try {
+      const originalName = profileData.name || ''
+      const originalBusinessName = profileData.business_name || ''
+      const originalPhone = profileData.phone || ''
+      const originalAddress = profileData.address || ''
+
+      const payload: Record<string, string> = {}
+      if (form.name.trim() !== originalName.trim()) payload.name = form.name.trim()
+      if (form.business_name.trim() !== originalBusinessName.trim()) payload.business_name = form.business_name.trim()
+      if (form.phone.trim() !== originalPhone.trim()) payload.phone = form.phone.trim()
+      if (form.address.trim() !== originalAddress.trim()) payload.address = form.address.trim()
+
+      if (Object.keys(payload).length === 0) {
+        toast.error('No changes to save')
+        setLoading(false)
+        return
+      }
+
+      if (sensitiveChanged) {
+        payload.otpProofToken = otpProofToken
+      }
+
       const res = await fetch('/api/manager/profile/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       })
-      if (!res.ok) throw new Error('Failed to update')
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update')
+
       toast.success('Profile updated securely')
+      setOtp('')
+      setOtpProofToken('')
       setStep('idle')
-      router.refresh() 
-    } catch {
-      toast.error('Error saving profile')
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'Error saving profile')
     } finally {
       setLoading(false)
     }
@@ -300,7 +357,7 @@ export function EditManagerProfileFlow({ profileData }: { profileData: any }) {
           <div className="relative w-full max-w-sm bg-surface-container-lowest rounded-t-2xl md:rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom duration-300 md:slide-in-from-bottom-0 mx-auto border border-outline-variant/10">
             <h3 className="font-headline italic text-2xl font-bold text-on-surface mb-2">Manager Security</h3>
             <p className="text-[13px] text-on-surface/60 font-body leading-relaxed mb-6">
-              To keep your facility data secure, we've sent a 6-digit verification code to your email.
+              To protect sensitive facility changes, we've sent a 6-digit verification code to your email.
             </p>
             <input
               type="text"
@@ -332,7 +389,7 @@ export function EditManagerProfileFlow({ profileData }: { profileData: any }) {
       {/* EDIT FORM MODAL */}
       {step === 'form' && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center md:items-center animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-on-surface/30 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-on-surface/30 backdrop-blur-sm" onClick={() => setStep('idle')} />
           <div className="relative w-full max-w-md bg-surface-container-lowest rounded-t-2xl md:rounded-2xl p-6 md:p-8 shadow-xl animate-in slide-in-from-bottom duration-300 md:slide-in-from-bottom-0 mx-auto border border-outline-variant/10">
             <h3 className="font-headline italic text-2xl font-bold text-on-surface mb-6">Edit Facility Profile</h3>
             

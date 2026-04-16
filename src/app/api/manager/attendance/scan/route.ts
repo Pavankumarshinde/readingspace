@@ -29,12 +29,28 @@ export async function POST(req: Request) {
     }
 
     // 2. Log attendance
+    const today = new Date().toISOString().split('T')[0]
+
+    // Check if already marked for today
+    const { data: existing } = await supabase
+      .from('attendance_logs')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('room_id', roomId)
+      .eq('date', today)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json({ error: 'Attendance already marked for today' }, { status: 409 })
+    }
+
     const { data: attendance, error: attendanceError } = await supabase
       .from('attendance_logs')
       .insert({
         student_id: studentId,
         room_id: roomId,
-        marked_by: 'manager'
+        marked_by: 'manager',
+        date: today
       })
       .select(`
         id,

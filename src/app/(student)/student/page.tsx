@@ -50,9 +50,38 @@ export default function StudentHome() {
       setStats({ sessions: attendanceCount || 0, notes: notesCount || 0 })
       if (notesData) setRecentNotes(notesData)
       
-      setLoading(false)
-    }
     fetchDashboard()
+
+    // Real-time subscription for attendance
+    let channel: any;
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      channel = supabase
+        .channel('student-attendance-sync')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'attendance_logs',
+            filter: `student_id=eq.${user.id}`,
+          },
+          () => {
+             // Increment sessions count locally
+             setStats(prev => ({ ...prev, sessions: prev.sessions + 1 }))
+             toast.success('Attendance verified!', { icon: '✅' })
+          }
+        )
+        .subscribe()
+    }
+    
+    setupRealtime()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [router, supabase])
 
   if (loading) {

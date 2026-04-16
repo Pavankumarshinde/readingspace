@@ -29,13 +29,19 @@ const getMemberTypeStyle = (type: string) => {
   }
 }
 
-const calculateWarning = (endDate: string) => {
+const getComputedStatus = (dbStatus: string, endDate: string) => {
+  if (dbStatus !== 'active') return dbStatus
+  
   const end = new Date(endDate)
+  end.setHours(23, 59, 59, 999) // Valid until end of the expiry day
   const now = new Date()
+  
+  if (now > end) return 'expired'
+  
   const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 3600 * 24))
-  if (diffDays <= 0) return 'Expired'
-  if (diffDays <= 7) return `${diffDays} days left`
-  return null
+  if (diffDays <= 3) return 'due' // Show due if 3 days or less
+  
+  return 'active'
 }
 
 const colors = [
@@ -105,7 +111,7 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
           name: sub.student.name || 'Unknown',
           email: sub.student.email,
           phone: sub.student.phone || 'No phone',
-          status: sub.status || 'active',
+          status: getComputedStatus(sub.status || 'active', sub.end_date),
           start: sub.start_date,
           expiry: sub.end_date,
           seatNumber: sub.seat_number || 'Unassigned',
