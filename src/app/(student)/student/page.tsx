@@ -14,6 +14,8 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
+import toast from 'react-hot-toast'
+
 
 export default function StudentHome() {
   const router = useRouter()
@@ -49,7 +51,9 @@ export default function StudentHome() {
       if (subData) setActiveSub(subData)
       setStats({ sessions: attendanceCount || 0, notes: notesCount || 0 })
       if (notesData) setRecentNotes(notesData)
-      
+      setLoading(false)
+    }
+    
     fetchDashboard()
 
     // Real-time subscription for attendance
