@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { ArrowLeft } from 'lucide-react'
 
 interface ModalProps {
   open: boolean
@@ -32,11 +33,19 @@ export default function Modal({ open, onClose, children, title }: ModalProps) {
       >
         {/* Drag handle */}
         <div className="w-12 h-1.5 bg-on-surface-variant/10 rounded-full mx-auto mb-8 sm:hidden" />
-        {title && (
-          <h3 className="font-display text-3xl font-bold text-on-surface mb-8 italic tracking-tight">
-            {title}
-          </h3>
-        )}
+        <div className="flex items-center gap-4 mb-8">
+          <button 
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-primary transition-all shrink-0"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          {title && (
+            <h3 className="font-display text-2xl font-bold text-on-surface italic tracking-tight">
+              {title}
+            </h3>
+          )}
+        </div>
         {children}
       </div>
     </div>

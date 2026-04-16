@@ -293,10 +293,6 @@ export default function ManagerRooms() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-container-low rounded-lg border border-outline-variant/20 shrink-0 justify-center md:justify-start">
-            <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Total Rooms:</span>
-            <span className="text-sm font-extrabold text-primary">{rooms.length}</span>
-          </div>
         </div>
 
         {/* Mobile Add Button */}

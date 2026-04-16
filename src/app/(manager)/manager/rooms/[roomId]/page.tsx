@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   Pencil, MapPin, Users, Key, ScanLine, Trash2, RotateCw,
-  QrCode, Info, X, ShieldCheck, Loader2, ChevronRight, Search, Calendar
+  QrCode, Info, X, ShieldCheck, Loader2, ChevronRight, Search, Calendar, MoreVertical
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import QRDisplay from '@/components/manager/QRDisplay'
@@ -236,54 +236,90 @@ export default function ManagerRoomDetail() {
       <main className="pt-4 pb-28 md:pt-8 md:pb-12 px-4 max-w-lg mx-auto md:max-w-none md:px-8 xl:max-w-[1400px]">
 
         {/* ── Page Header ──────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-6 md:mb-8">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="flex flex-col gap-6 mb-8 md:mb-12">
+          {/* Top Row: Back Navigation + Name */}
+          <div className="flex items-start gap-4">
             <button
               onClick={() => showStudents ? setShowStudents(false) : router.push('/manager/rooms')}
-              className="w-10 h-10 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors shrink-0"
+              className="w-10 h-10 md:w-12 md:h-12 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-all shrink-0 mt-1"
             >
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                 arrow_back
               </span>
             </button>
             <div className="flex flex-col min-w-0">
-              <h1 className="font-headline text-2xl md:text-3xl font-bold text-on-surface leading-tight truncate">
+              <h1 className="font-headline text-3xl md:text-5xl font-bold text-on-surface leading-none tracking-tight break-words pr-4 uppercase italic">
                 {room.name}
               </h1>
-              <span className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5 truncate">
-                {room.description || 'Study Zone'}
-              </span>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-[10px] md:text-xs uppercase tracking-[.2em] text-secondary font-black opacity-60">
+                  {room.description || 'Verified Study Zone'}
+                </span>
+                <span className="w-1 h-1 rounded-full bg-outline-variant/30" />
+                <span className="text-[10px] md:text-xs uppercase tracking-[.1em] text-primary font-bold">
+                  {room.tier || 'Standard'}
+                </span>
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2 ml-3 shrink-0">
-            <button
-              onClick={() => setShowEditRoom(true)}
-              className="w-10 h-10 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors text-outline hover:text-primary shrink-0"
-              title="Edit Room"
-            >
-              <Pencil size={18} />
-            </button>
-            <button
-              onClick={handleDeleteRoom}
-              className="w-10 h-10 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 hover:bg-error/10 transition-colors text-outline hover:text-error shrink-0"
-              title="Delete Room"
-            >
-              <Trash2 size={18} />
-            </button>
-            <button
+
+          {/* Bottom Row: Actions */}
+          <div className="flex items-center gap-3">
+             <button
               onClick={() => setShowStudents(!showStudents)}
-              className={`flex items-center gap-2 px-3 md:px-4 py-2.5 rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${
+              className={`flex-1 md:flex-none flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg ${
                 showStudents 
-                  ? 'bg-surface-container-lowest text-outline border border-outline-variant/20 shadow-sm' 
-                  : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  ? 'bg-surface-container-lowest text-outline border border-outline-variant/20 shadow-none' 
+                  : 'bg-primary text-white hover:opacity-90 shadow-primary/20'
               }`}
             >
-              <Users size={16} />
-              <span className="hidden sm:inline">{showStudents ? 'CLOSE STUDENTS' : 'VIEW STUDENTS'}</span>
+              <Users size={18} strokeWidth={2.5} />
+              <span>{showStudents ? 'CLOSE STUDENTS' : 'VIEW STUDENTS'}</span>
             </button>
+
+            {/* Actions Menu / Desktop Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Desktop Only Buttons */}
+              <button
+                onClick={() => setShowEditRoom(true)}
+                className="hidden md:flex w-12 h-12 bg-surface-container-lowest rounded-full items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors text-outline hover:text-primary shrink-0"
+                title="Edit Room"
+              >
+                <Pencil size={20} />
+              </button>
+              <button
+                onClick={handleDeleteRoom}
+                className="hidden md:flex w-12 h-12 bg-surface-container-lowest rounded-full items-center justify-center border border-outline-variant/20 hover:bg-error/10 transition-colors text-outline hover:text-error shrink-0"
+                title="Delete Room"
+              >
+                <Trash2 size={20} />
+              </button>
+
+              {/* Mobile Only Menu */}
+              <div className="relative group md:hidden">
+                <button className="w-12 h-12 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 text-on-surface-variant transition-all hover:bg-surface-container">
+                  <MoreVertical size={20} />
+                </button>
+                <div className="absolute right-0 bottom-full mb-2 w-48 bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto transition-all z-50 p-2">
+                   <button 
+                     onClick={() => setShowEditRoom(true)}
+                     className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-bold text-on-surface hover:bg-surface-container-low rounded-xl transition-colors uppercase tracking-widest"
+                   >
+                     <Pencil size={16} className="text-primary" />
+                     Edit Configuration
+                   </button>
+                   <button 
+                     onClick={handleDeleteRoom}
+                     className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-bold text-error hover:bg-error/5 rounded-xl transition-colors uppercase tracking-widest"
+                   >
+                     <Trash2 size={16} />
+                     Permanently Delete
+                   </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </header>
 
         {/* ══════════════ VIEW MODE DETECTOR ══════════════ */}
         {!showStudents ? (

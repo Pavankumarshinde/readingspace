@@ -127,9 +127,11 @@ export default function AttendanceScanner({ roomId, roomName, onClose }: Attenda
         </div>
         <button 
           onClick={onClose} 
-          className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center text-white transition-all border border-white/10"
+          className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center text-white transition-all border border-white/10 group overflow-hidden"
         >
-           <X size={24} />
+           <span className="material-symbols-outlined translate-x-0.5 group-active:scale-90 transition-transform" style={{ fontSize: '24px' }}>
+             arrow_back_ios
+           </span>
         </button>
       </header>
 
