@@ -57,8 +57,9 @@ export default function AttendanceScanner({ roomId, roomName, onClose }: Attenda
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  studentId: payload.uid,
-                  roomId: roomId
+                  studentId: payload.studentId,
+                  roomId: roomId,
+                  version: payload.version || 0
                 })
               })
 

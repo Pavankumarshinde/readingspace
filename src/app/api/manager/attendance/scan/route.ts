@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { studentId, roomId } = await req.json()
+    const { studentId, roomId, version } = await req.json()
 
     if (!studentId || !roomId) {
       return NextResponse.json({ error: 'Invalid QR data' }, { status: 400 })
@@ -26,6 +26,26 @@ export async function POST(req: Request) {
 
     if (roomError || !roomCheck) {
       return NextResponse.json({ error: 'Unauthorized or room not found' }, { status: 403 })
+    }
+
+    // 2. Verify QR Version
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('qr_version, status')
+      .eq('student_id', studentId)
+      .eq('room_id', roomId)
+      .single()
+
+    if (subError || !subscription) {
+      return NextResponse.json({ error: 'Active subscription not found' }, { status: 404 })
+    }
+
+    if (subscription.status !== 'active') {
+      return NextResponse.json({ error: 'Subscription is not active' }, { status: 403 })
+    }
+
+    if ((subscription.qr_version || 0) !== (version || 0)) {
+      return NextResponse.json({ error: 'This QR code has been regenerated and is no longer valid.' }, { status: 401 })
     }
 
     // 2. Log attendance

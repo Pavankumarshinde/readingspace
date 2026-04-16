@@ -96,7 +96,7 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
       const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select(`
-          id, seat_number, tier, start_date, end_date, status, notes, membership_type,
+          id, seat_number, tier, start_date, end_date, status, notes, membership_type, qr_version,
           student:profiles!inner(id, name, email, phone, gender, membership_type)
         `)
         .eq('room_id', roomId)
@@ -116,6 +116,7 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
           expiry: sub.end_date,
           seatNumber: sub.seat_number || 'Unassigned',
           membershipType: sub.membership_type || sub.student.membership_type || 'digital',
+          qrVersion: sub.qr_version || 0,
           color: colors[index % colors.length]
         }))
         setStudents(formatted)
@@ -140,6 +141,31 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
   useEffect(() => {
     fetchData()
   }, [roomId])
+
+  const handleRegenerateStudentPass = async (subscriptionId: string) => {
+    if (!confirm('Invalidate current access pass and issue a new one?')) return
+    try {
+      const res = await fetch('/api/manager/students/regenerate-pass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId })
+      })
+      if (res.ok) {
+        toast.success('Student pass regenerated')
+        // Update local state to reflect new version without full re-fetch delay
+        setSelectedStudentQR((prev: any) => ({
+          ...prev,
+          qrVersion: (prev.qrVersion || 0) + 1
+        }))
+        fetchData() // Still re-fetch to keep entire list in sync
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to regenerate')
+      }
+    } catch (e) {
+      toast.error('Network failure')
+    }
+  }
 
   const handleDeclineRequest = async (requestId: string) => {
     setActing(true)
@@ -537,15 +563,83 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
          </Modal>
       )}
 
-      {/* QR Modal */}
       {showQRModal && selectedStudentQR && (
          <Modal open={showQRModal} onClose={() => setShowQRModal(false)} title="View QR Pass">
-            <div className="flex flex-col items-center py-6 gap-4">
-              <h3 className="font-bold text-xl">{selectedStudentQR.name}</h3>
-              <div className="p-4 bg-white rounded-2xl shadow-lg border border-slate-100">
-                <QRCodeSVG value={JSON.stringify({ type: 'access_verify', uid: selectedStudentQR.studentUid })} size={200} />
-              </div>
-              <p className="text-xs text-on-surface-variant/50 uppercase tracking-widest font-bold mt-2 text-center">Scan at room entrance</p>
+            <div className="printable-pass flex flex-col items-center py-6 px-4 animate-in zoom-in-95 duration-300 print:p-0">
+               <div className="printable-pass-content flex flex-col items-center w-full">
+                  <div className="text-center space-y-2 mb-6">
+                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] bg-primary/5 px-4 py-1.5 rounded-full">Member Pass</span>
+                     <h3 className="font-headline italic text-2xl font-black text-on-surface pt-2">
+                       {selectedStudentQR.name}
+                     </h3>
+                     <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">
+                       Verification ID: {selectedStudentQR.id}
+                     </p>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl shadow-lg border border-slate-100 mb-6 print:shadow-none print:border-none">
+                     <QRCodeSVG 
+                       value={JSON.stringify({ 
+                         type: 'access_verify', 
+                         studentId: selectedStudentQR.studentUid,
+                         version: selectedStudentQR.qrVersion || 0 
+                       })} 
+                       size={200} 
+                     />
+                  </div>
+
+                  <div className="w-full space-y-3">
+                     <div className="flex flex-col gap-3 p-4 bg-surface-container-low/30 rounded-2xl border border-outline-variant/10">
+                       <div className="flex justify-between items-center text-[11px] font-bold">
+                         <span className="text-secondary/50 uppercase tracking-wider">Reading Space</span>
+                         <span className="text-on-surface text-right truncate pl-4 italic">{roomName}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-[11px] font-bold">
+                         <span className="text-secondary/50 uppercase tracking-wider">Seat Assigned</span>
+                         <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-sm">#{selectedStudentQR.seatNumber}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-[11px] font-bold">
+                         <span className="text-secondary/50 uppercase tracking-wider">Email</span>
+                         <span className="text-on-surface truncate pl-4">{selectedStudentQR.email}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-[11px] font-bold">
+                         <span className="text-secondary/50 uppercase tracking-wider">Phone</span>
+                         <span className="text-on-surface">{selectedStudentQR.phone}</span>
+                       </div>
+                     </div>
+                  </div>
+
+                  <p className="mt-6 text-[9px] font-bold text-on-surface-variant/30 text-center uppercase tracking-[0.2em] leading-relaxed">
+                     Scan at room entrance for validation.<br/>
+                     Member since {format(new Date(selectedStudentQR.start), 'yyyy')}
+                  </p>
+               </div>
+
+               <div className="w-full mt-6 space-y-2 print:hidden">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowQRModal(false)}
+                      className="flex-1 py-3.5 bg-surface-container-low text-on-surface text-[11px] font-black rounded-xl hover:bg-surface-container transition-all uppercase tracking-widest"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="flex-1 py-3.5 bg-primary text-white text-[11px] font-black rounded-xl hover:opacity-90 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined italic" style={{ fontSize: '18px' }}>print</span>
+                      Print Pass
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => handleRegenerateStudentPass(selectedStudentQR.subscriptionId)}
+                    className="w-full py-2.5 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-xl transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                    title="Invalidate old QR and issue new one"
+                  >
+                    <span className="material-symbols-outlined italic" style={{ fontSize: '14px' }}>refresh</span>
+                    Regenerate Access QR
+                  </button>
+               </div>
             </div>
          </Modal>
       )}

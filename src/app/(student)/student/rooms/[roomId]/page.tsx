@@ -53,7 +53,7 @@ export default function RoomDetail({
 
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
-        .select(`*, rooms (*)`)
+        .select(`*, rooms (*), student:profiles(id, name, email, phone)`)
         .eq('room_id', roomId)
         .eq('student_id', user.id)
         .single()
@@ -184,6 +184,17 @@ export default function RoomDetail({
   }
 
   const handleMarkAttendance = async (scannedValue: string) => {
+    // Expected format: roomId|vVersion
+    const parts = scannedValue.split('|')
+    const scannedRoomId = parts[0]
+    const versionStr = parts[1] // e.g. "v0", "v1"
+    const scannedVersion = versionStr && versionStr.startsWith('v') ? parseInt(versionStr.substring(1)) : 0
+
+    if (scannedRoomId !== roomId) {
+      toast.error('Invalid QR: This code does not belong to this room.')
+      return
+    }
+
     setLoading(true)
     try {
       const position = await new Promise<GeolocationPosition | null>(
@@ -207,6 +218,7 @@ export default function RoomDetail({
           roomId,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          version: scannedVersion
         }),
       })
       const data = await res.json()
@@ -350,9 +362,9 @@ export default function RoomDetail({
                   <div className="w-10 h-10 bg-surface-container-low p-1 rounded border border-outline-variant/10 flex items-center justify-center">
                     <QRCodeSVG
                       value={JSON.stringify({
-                        sid: subscription.id,
-                        uid: subscription.student_id,
+                        studentId: subscription.student_id,
                         type: 'access_verify',
+                        version: subscription.qr_version || 0
                       })}
                       size={32}
                       level="L"
@@ -527,46 +539,76 @@ export default function RoomDetail({
         </div>
       </main>
 
-      {/* ── Access QR Modal ─────────────────────────────────────────────── */}
+      {/* Identity Access Pass Modal */}
       {showAccessQR && subscription && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div
-            className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
-            onClick={() => setShowAccessQR(false)}
-          />
-          <div className="relative w-full max-w-xs bg-surface-container-lowest rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-300 p-6 flex flex-col items-center gap-5">
-            <div className="text-center space-y-1">
-              <h3 className="font-headline italic text-xl font-bold text-on-surface">
-                Identity Access Pass
-              </h3>
-              <p className="text-[9px] font-bold text-secondary/60 uppercase tracking-widest">
-                Present to manager for verification
+        <div className="fixed inset-0 z-[100] bg-on-surface/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="printable-pass relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col items-center p-8">
+            <div className="printable-pass-content flex flex-col items-center w-full">
+              <div className="text-center space-y-2 mb-6">
+                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] bg-primary/5 px-4 py-1.5 rounded-full">Official Pass</span>
+                <h3 className="font-headline italic text-2xl font-black text-on-surface pt-2">
+                  Identity Access Pass
+                </h3>
+                <p className="text-[11px] font-bold text-secondary/40 uppercase tracking-widest">
+                  {(subscription.student as any)?.name}
+                </p>
+              </div>
+
+              <div className="p-5 bg-slate-50 rounded-2xl border-2 border-slate-100 mb-6 print:border-none print:bg-white text-on-surface">
+                <QRCodeSVG
+                  value={JSON.stringify({
+                    studentId: subscription.student_id,
+                    type: 'access_verify',
+                    version: subscription.qr_version || 0
+                  })}
+                  size={180}
+                  level="H"
+                  includeMargin
+                />
+              </div>
+
+              <div className="w-full space-y-3">
+                <div className="flex flex-col gap-3 p-4 bg-surface-container-low/30 rounded-2xl border border-outline-variant/10">
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Reading Name</span>
+                    <span className="text-on-surface text-right truncate pl-4 italic">{room.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Seat Number</span>
+                    <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-sm">#{subscription.seat_number}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Email</span>
+                    <span className="text-on-surface truncate pl-4">{(subscription.student as any)?.email || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Phone</span>
+                    <span className="text-on-surface">{(subscription.student as any)?.phone || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-6 text-[9px] font-bold text-on-surface-variant/30 text-center uppercase tracking-[0.2em] leading-relaxed">
+                Scan at room entrance for validation.<br/>
+                Valid membership required.
               </p>
             </div>
-            <div className="p-4 bg-white rounded-xl border border-outline-variant/10">
-              <QRCodeSVG
-                value={JSON.stringify({
-                  sid: subscription.id,
-                  uid: subscription.student_id,
-                  type: 'access_verify',
-                })}
-                size={180}
-                level="H"
-                includeMargin
-              />
+
+            <div className="w-full mt-6 flex gap-2 print:hidden">
+              <button
+                onClick={() => setShowAccessQR(false)}
+                className="flex-1 py-3.5 bg-surface-container-low text-on-surface text-[11px] font-black rounded-xl hover:bg-surface-container transition-all uppercase tracking-widest"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 py-3.5 bg-primary text-white text-[11px] font-black rounded-xl hover:opacity-90 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined italic" style={{ fontSize: '18px' }}>print</span>
+                Print Pass
+              </button>
             </div>
-            <div className="w-full bg-surface-container-low rounded-lg px-3 py-2 flex justify-between items-center text-xs">
-              <span className="font-bold text-secondary/60 uppercase tracking-widest text-[9px]">
-                Room
-              </span>
-              <span className="font-bold text-on-surface">{room.name}</span>
-            </div>
-            <button
-              onClick={() => setShowAccessQR(false)}
-              className="w-full py-2 bg-surface-container-low text-on-surface text-[10px] font-bold rounded-lg hover:bg-surface-container transition-colors uppercase tracking-widest"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}

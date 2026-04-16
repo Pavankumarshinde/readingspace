@@ -11,21 +11,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { roomId, latitude, longitude } = await req.json()
+    const { roomId, latitude, longitude, version } = await req.json()
 
     if (!roomId || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
     }
 
-    // 1. Fetch Room Geofence Data
+    // 1. Fetch Room Geofence Data and QR Version
     const { data: room, error: roomError } = await supabase
       .from('rooms')
-      .select('name, latitude, longitude, radius')
+      .select('name, latitude, longitude, radius, qr_version')
       .eq('id', roomId)
       .single()
 
     if (roomError || !room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
+
+    // 2. Verify QR Version
+    if ((room.qr_version || 0) !== (version || 0)) {
+      return NextResponse.json({ error: 'This station QR code is outdated. Please scan the latest QR code displayed in the room.' }, { status: 401 })
     }
 
     // 2. Verify Geofence (if configured)

@@ -9,6 +9,7 @@ import {
   getDaysInMonth, getDay
 } from 'date-fns'
 import { useRealtimeAttendance } from '@/hooks/useRealtimeAttendance'
+import toast from 'react-hot-toast'
 
 type Timeframe = 'day' | 'week' | 'month'
 
@@ -113,139 +114,277 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
     fetchDashboardData()
   }, [roomId, timeframe, selectedDate, viewDate])
 
+  const handleRegenerateRoomQR = async () => {
+    if (!confirm('This will invalidate the current Room QR code. All physical prints of the old QR will stop working. Proceed?')) return
+    try {
+      const res = await fetch('/api/manager/rooms/regenerate-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId })
+      })
+      if (res.ok) {
+        toast.success('Room QR regenerated successfully')
+        // The page will re-fetch data naturally if we trigger a refresh or it's handled by state
+        window.location.reload() // Simple way to refresh all room data including version
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to regenerate')
+      }
+    } catch (e) {
+      toast.error('Network failure')
+    }
+  }
+
+  const handleRegenerateStudentPass = async (subscriptionId: string) => {
+    if (!confirm('Invalidate this student\'s current access pass and issue a new one?')) return
+    try {
+      const res = await fetch('/api/manager/students/regenerate-pass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId })
+      })
+      if (res.ok) {
+        toast.success('Student pass regenerated')
+        // Refresh the student list or just this specific student if managed in parent
+        // For now, reload or trigger parent fetch
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to regenerate')
+      }
+    } catch (e) {
+      toast.error('Network failure')
+    }
+  }
+
   return (
     <div className="space-y-10 animate-in fade-in duration-300">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-        {/* Left Col: Filters & Calendar */}
-        <div className="space-y-6">
-          <div className="p-1.5 bg-surface-container-low rounded-xl flex h-12 w-full">
-            {(['day', 'week', 'month'] as Timeframe[]).map((tf) => (
-              <button
-                key={tf} onClick={() => setTimeframe(tf)}
-                className={`flex-1 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${
-                  timeframe === tf ? 'bg-surface-container-lowest text-primary shadow-sm font-black' : 'text-on-surface-variant/40 hover:text-on-surface'
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
-
-          <div className="card shadow-sm border border-outline-variant/10 p-6 rounded-2xl bg-white">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-headline text-lg font-bold text-on-surface tracking-tight">{format(viewDate, 'MMMM yyyy')}</h3>
-              <div className="flex gap-2">
-                <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="p-2 rounded-lg hover:bg-surface-container transition-all"><ChevronLeft size={18} /></button>
-                <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="p-2 rounded-lg hover:bg-surface-container transition-all"><ChevronRight size={18} /></button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-7 gap-y-4">
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, i) => <div key={i} className="text-center text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest pb-1">{day}</div>)}
-              {Array.from({ length: getDay(startOfMonth(viewDate)) }).map((_, i) => <div key={`empty-${i}`} />)}
-              {Array.from({ length: getDaysInMonth(viewDate) }).map((_, i) => {
-                const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), i + 1)
-                const isSelected = isSameDay(date, selectedDate)
-                const hasLogs = !!heatmap[i + 1]
-                return (
-                  <div key={i} className="flex justify-center">
-                    <button onClick={() => setSelectedDate(date)} className={`w-9 h-9 relative flex items-center justify-center rounded-xl text-xs font-semibold transition-all ${isSelected ? 'bg-primary text-white shadow-sm font-bold scale-105' : 'text-on-surface hover:bg-surface-container-low'}`}>
-                      {i + 1}
-                      {!isSelected && hasLogs && <div className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <div className="p-5 bg-white rounded-2xl border border-outline-variant/10 flex flex-col gap-1">
-                <p className="text-[9px] font-bold text-secondary uppercase tracking-widest">Active Occupancy</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                   <span className="text-3xl font-headline font-bold text-on-surface">{occupancy.active}</span>
-                   <span className="text-xs font-bold text-on-surface-variant/40">/{occupancy.total}</span>
-                </div>
-             </div>
-             <div className="p-5 bg-white rounded-2xl border border-outline-variant/10 flex flex-col gap-1">
-                <p className="text-[9px] font-bold text-secondary uppercase tracking-widest">Total Check-ins</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                   <span className="text-3xl font-headline font-bold text-on-surface">{filteredCount}</span>
-                </div>
-             </div>
-          </div>
+      {/* Dashboard Top Bar */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Space Analytics</p>
+          <h2 className="text-3xl font-black text-on-surface italic leading-none">{roomName}</h2>
         </div>
 
-        {/* Right Col: Lists */}
-        <div className="space-y-6">
-          <div className="card shadow-sm border border-outline-variant/10 bg-white p-5 rounded-2xl">
-            <h4 className="text-[10px] font-bold text-on-surface uppercase tracking-widest mb-4">Plan Expirations</h4>
-            <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
-               {expiringPlans.length === 0 ? (
-                 <p className="text-[10px] text-on-surface-variant/30 text-center py-6 uppercase font-bold tracking-widest">No expirations</p>
-               ) : expiringPlans.map((plan, i) => (
-                 <div key={i} className={`flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50 transition-all ${plan.isExpired ? 'ring-1 ring-error/20 bg-error/5' : ''}`}>
-                   <div className="flex items-center gap-3 min-w-0">
-                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{plan.initial}</div>
-                     <div className="min-w-0">
-                       <p className="text-xs font-bold text-on-surface truncate uppercase italic tracking-tight">{plan.name}</p>
-                       <p className="text-[9px] font-bold text-on-surface-variant/40 mt-0.5 uppercase tracking-wider">Seat {plan.seat}</p>
-                     </div>
-                   </div>
-                   <div className="text-right shrink-0">
-                     <p className={`text-[10px] font-bold uppercase tracking-widest ${plan.isExpired ? 'text-error' : 'text-primary'}`}>{plan.daysLeft}D {plan.isExpired && ' AGO'}</p>
-                   </div>
-                 </div>
-               ))}
-            </div>
-          </div>
-
-          <div className="card shadow-sm border border-outline-variant/10 bg-white p-5 rounded-2xl">
-            <h4 className="text-[10px] font-bold text-on-surface uppercase tracking-widest mb-4">Top Attendees</h4>
-             <div className="space-y-2">
-               {stars.length === 0 ? (
-                 <p className="text-[10px] text-on-surface-variant/30 text-center py-6 uppercase font-bold tracking-widest">No activity</p>
-               ) : stars.map((star, i) => (
-                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50">
-                   <div className="flex items-center gap-3 min-w-0">
-                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${i === 0 ? 'bg-primary text-white shadow-sm' : 'bg-surface-container text-on-surface-variant'}`}>{star.initials}</div>
-                     <p className="text-xs font-bold text-on-surface truncate uppercase italic tracking-tight">{star.name}</p>
-                   </div>
-                   <div className="flex items-center gap-1 shrink-0">
-                     <span className="text-[11px] font-bold text-primary">{star.days}</span>
-                     <span className="text-[8px] font-bold text-on-surface-variant/40 uppercase">Logs</span>
-                   </div>
-                 </div>
-               ))}
-            </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRegenerateRoomQR}
+            className="flex items-center gap-2 px-4 py-2.5 bg-surface-container-lowest border border-outline-variant/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-container-low transition-all text-error"
+          >
+            <span className="material-symbols-outlined italic" style={{ fontSize: '18px' }}>refresh</span>
+            Regenerate Room QR
+          </button>
+          <div className="p-1 bg-surface-container-low rounded-xl flex gap-1">
+            {(['day', 'week', 'month'] as Timeframe[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTimeframe(t)}
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  timeframe === t 
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                    : 'text-on-surface/40 hover:text-on-surface'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="card shadow-sm border border-outline-variant/10 bg-white rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-outline-variant/5 bg-surface-container-lowest">
-           <h4 className="text-[10px] font-bold text-on-surface uppercase tracking-widest">Activity Feed</h4>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+        {/* LEFT COLUMN: Controls & Heatmap */}
+        <div className="space-y-8">
+           {/* Occupancy Card */}
+           <div className="grid grid-cols-2 gap-4">
+              <div className="card bg-primary text-white p-6 rounded-[2rem] shadow-xl shadow-primary/10 flex flex-col justify-between aspect-square md:aspect-auto md:h-40">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Current Occupancy</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-5xl font-black italic">{occupancy.active}</span>
+                  <span className="text-xl font-bold opacity-40">/ {occupancy.total}</span>
+                </div>
+              </div>
+              <div className="card bg-surface-container-lowest border border-outline-variant/10 p-6 rounded-[2rem] flex flex-col justify-between aspect-square md:aspect-auto md:h-40 text-on-surface">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/40">Total Check-ins</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-5xl font-black italic">{filteredCount}</span>
+                  <span className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">this {timeframe}</span>
+                </div>
+              </div>
+           </div>
+
+           {/* Calendar Explorer */}
+           <div className="card bg-white border border-outline-variant/10 rounded-[2.5rem] p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col">
+                  <h3 className="text-xl font-black italic text-on-surface">Attendance Heatmap</h3>
+                  <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-1">
+                    {format(viewDate, 'MMMM yyyy')}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors text-on-surface">
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors text-on-surface">
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-y-4 text-center">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                  <span key={`${d}-${i}`} className="text-[9px] font-black text-on-surface-variant/20 uppercase tracking-widest mb-2">{d}</span>
+                ))}
+                {Array.from({ length: getDay(startOfMonth(viewDate)) }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                {Array.from({ length: getDaysInMonth(viewDate) }).map((_, i) => {
+                  const day = i + 1
+                  const count = heatmap[day] || 0
+                  const isSelected = isSameDay(selectedDate, new Date(viewDate.getFullYear(), viewDate.getMonth(), day))
+                  
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => setSelectedDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), day))}
+                      className={`relative w-10 h-10 mx-auto rounded-xl flex items-center justify-center text-xs font-black transition-all group ${
+                        isSelected 
+                          ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-110' 
+                          : count > 0 
+                            ? 'bg-primary/5 text-primary border border-primary/10' 
+                            : 'text-on-surface/20'
+                      }`}
+                    >
+                      {day}
+                      {count > 0 && !isSelected && (
+                        <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+           </div>
+        </div>
+
+        {/* RIGHT COLUMN: Expiring & Stars */}
+        <div className="space-y-8">
+           {/* Expiring Plans */}
+           <div className="card bg-white border border-outline-variant/10 rounded-[2.5rem] p-8">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-black italic text-on-surface">Upcoming Expiries</h3>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTermExpiring}
+                    onChange={(e) => setSearchTermExpiring(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-surface-container-low rounded-xl text-[10px] font-bold border-none focus:ring-1 focus:ring-primary w-32"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                 {expiringPlans.filter(p => p.name.toLowerCase().includes(searchTermExpiring.toLowerCase())).slice(0, 5).map((plan, i) => (
+                   <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                     plan.isExpired ? 'bg-error-container/10 border-error/10' : 'bg-surface-container-lowest border-outline-variant/5'
+                   }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black ${
+                          plan.isExpired ? 'bg-error text-white' : 'bg-surface-container-low text-on-surface'
+                        }`}>
+                          {plan.initial}
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-black text-on-surface uppercase tracking-tight italic">{plan.name}</p>
+                          <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-0.5">Seat #{plan.seat}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${plan.isExpired ? 'text-error' : 'text-primary'}`}>
+                          {plan.isExpired ? 'Expired' : `${plan.daysLeft} Days Left`}
+                        </p>
+                      </div>
+                   </div>
+                 ))}
+                 {expiringPlans.length === 0 && (
+                   <div className="py-12 text-center text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
+                      No plans expiring in this range
+                   </div>
+                 )}
+              </div>
+           </div>
+
+           {/* Top Regulars */}
+           <div className="card bg-surface-container-low/30 border border-outline-variant/5 rounded-[2.5rem] p-8">
+              <h3 className="text-sm font-black text-secondary uppercase tracking-[0.2em] mb-6">Top Performers</h3>
+              <div className="flex items-center gap-4">
+                 {stars.map((star, i) => (
+                   <div key={i} className="flex-1 bg-white p-4 rounded-3xl border border-outline-variant/10 text-center space-y-2">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center text-xs font-black mx-auto">
+                        {star.initials}
+                      </div>
+                      <p className="text-[10px] font-black text-on-surface truncate uppercase italic px-2">{star.name}</p>
+                      <p className="text-[9px] font-bold text-primary bg-primary/5 px-2 py-1 rounded-lg inline-block uppercase tracking-widest">{star.days} Visits</p>
+                   </div>
+                 ))}
+                 {stars.length === 0 && (
+                   <p className="text-[9px] font-bold text-on-surface-variant/30 uppercase tracking-widest w-full text-center py-6 italic">Establishing rankings...</p>
+                 )}
+              </div>
+           </div>
+        </div>
+      </div>
+
+      {/* Activity Feed Table */}
+      <div className="card shadow-sm border border-outline-variant/10 bg-white rounded-[2.5rem] overflow-hidden">
+        <div className="px-10 py-8 border-b border-outline-variant/5 bg-surface-container-lowest flex items-center justify-between">
+           <div className="flex flex-col gap-1">
+             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Checkpoint History</h4>
+             <h3 className="text-xl font-black text-on-surface italic">
+               {timeframe === 'day' ? format(selectedDate, 'do MMMM') : 
+                timeframe === 'week' ? `Week of ${format(startOfWeek(selectedDate), 'do MMM')}` : 
+                format(selectedDate, 'MMMM yyyy')} Activity
+             </h3>
+           </div>
+           
+           <p className="text-[9px] font-black text-on-surface-variant/20 uppercase tracking-[0.4em] bg-surface-container-low px-4 py-2 rounded-full hidden md:block">Secure Live Stream</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <tbody className="divide-y divide-surface-container-low">
+            <thead>
+              <tr className="bg-surface-container-low/20 border-b border-outline-variant/5">
+                <th className="px-10 py-5 text-[9px] font-black text-secondary uppercase tracking-[0.3em]">Student Profile</th>
+                <th className="px-10 py-5 text-[9px] font-black text-secondary uppercase tracking-[0.4em]">Seat Allocation</th>
+                <th className="px-10 py-5 text-center text-[9px] font-black text-secondary uppercase tracking-[0.4em]">Checkpoint Time</th>
+                <th className="px-10 py-5 text-right text-[9px] font-black text-secondary uppercase tracking-[0.4em]">Ref Key</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container-low/30">
               {attendanceLoading ? (
-                 <tr><td colSpan={4} className="px-6 py-12 text-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></td></tr>
+                 <tr><td colSpan={4} className="px-10 py-20 text-center"><div className="w-8 h-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></td></tr>
               ) : displayLogs.length === 0 ? (
-                 <tr><td colSpan={4} className="px-6 py-12 text-center text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">No activity</td></tr>
+                 <tr><td colSpan={4} className="px-10 py-20 text-center text-[10px] font-black text-on-surface-variant/30 uppercase tracking-[0.3em] italic">No activity detected for this frequency</td></tr>
               ) : displayLogs.map((log, i) => (
-                 <tr key={i} className="hover:bg-surface-container-low/20 transition-colors">
-                   <td className="px-6 py-4">
+                 <tr key={i} className="group hover:bg-surface-container-low/40 transition-all duration-300">
+                   <td className="px-10 py-6">
                      <div className="flex flex-col">
-                       <p className="text-sm font-bold text-on-surface leading-none uppercase italic tracking-tight">{log.student?.name}</p>
-                       <p className="text-[9px] font-bold text-on-surface-variant/40 mt-1 uppercase tracking-wider">{log.student?.email}</p>
+                       <p className="text-sm font-black text-on-surface leading-none uppercase italic tracking-tight group-hover:text-primary transition-colors">{log.student?.name}</p>
+                       <p className="text-[9px] font-bold text-on-surface-variant/30 mt-1.5 uppercase tracking-[0.1em]">{log.student?.email}</p>
                      </div>
                    </td>
-                   <td className="px-6 py-4 whitespace-nowrap">
-                     <span className="text-[10px] font-bold text-primary tracking-widest">{format(new Date(log.timestamp), 'HH:mm:ss')}</span>
+                   <td className="px-10 py-6">
+                      <span className="inline-flex items-center px-4 py-1.5 rounded-xl bg-surface-container-low group-hover:bg-primary/10 text-on-surface group-hover:text-primary text-[10px] font-black transition-all">
+                        #{log.seat_number || 'N/A'}
+                      </span>
                    </td>
-                   <td className="px-6 py-4 text-right">
-                     <span className="text-[9px] font-bold text-on-surface-variant/20 tracking-widest uppercase">#{log.id.substring(0, 8)}</span>
+                   <td className="px-10 py-6 whitespace-nowrap text-center">
+                     <span className="text-[10px] font-black text-on-surface tracking-[0.2em] bg-surface-container-lowest border border-outline-variant/10 px-4 py-2 rounded-xl">
+                       {format(new Date(log.timestamp), 'HH:mm:ss')}
+                     </span>
+                   </td>
+                   <td className="px-10 py-6 text-right">
+                     <span className="text-[9px] font-black text-on-surface-variant/10 tracking-[0.3em] uppercase group-hover:text-on-surface-variant/40 transition-colors">#{log.id.substring(0, 8)}</span>
                    </td>
                  </tr>
               ))}

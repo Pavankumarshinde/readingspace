@@ -196,6 +196,27 @@ export default function ManagerRoomDetail() {
     }
   }
 
+  // ── Security Actions ──────────────────────────────────────────────────
+  const handleRegenerateRoomQR = async () => {
+    if (!confirm('This will invalidate the current Room QR code. All physical prints of the old QR will stop working. Proceed?')) return
+    try {
+      const res = await fetch('/api/manager/rooms/regenerate-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId })
+      })
+      if (res.ok) {
+        toast.success('Room QR regenerated successfully')
+        fetchRoom() // Refresh room data to get new version
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to regenerate')
+      }
+    } catch (e) {
+      toast.error('Network failure')
+    }
+  }
+
   // ── Loading State ───────────────────────────────────────────────────────
   if (loading && !room) {
     return (
@@ -459,7 +480,15 @@ export default function ManagerRoomDetail() {
 
       {/* QR Display Modal */}
       <Modal open={showQR} onClose={() => setShowQR(false)} title="Security Access QR">
-        <QRDisplay roomId={room.id} roomName={room.name} />
+        <QRDisplay 
+          roomId={room.id} 
+          roomName={room.name} 
+          latitude={room.latitude}
+          longitude={room.longitude}
+          radius={room.radius}
+          qrVersion={room.qr_version}
+          onRegenerate={handleRegenerateRoomQR}
+        />
       </Modal>
 
       {/* Attendance Scanner */}
