@@ -150,7 +150,7 @@ export default function RoomDetail({
             navigator.geolocation.getCurrentPosition(
               (pos) => resolve(pos),
               () => resolve(null),
-              { enableHighAccuracy: true, timeout: 5000 }
+              { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             )
           }
         )
@@ -166,9 +166,10 @@ export default function RoomDetail({
           room.longitude
         )
         if (distance > (room.radius || 200)) {
+          const accuracy = position.coords.accuracy ? ` (accuracy: ±${Math.round(position.coords.accuracy)}m)` : ''
           toast.error(
-            `Out of range (${Math.round(distance)}m). Move closer to ${room.name}.`,
-            { duration: 5000 }
+            `Out of range (${Math.round(distance)}m).${accuracy} Please move closer to ${room.name}.`,
+            { duration: 6000 }
           )
           return
         }
@@ -202,7 +203,7 @@ export default function RoomDetail({
           navigator.geolocation.getCurrentPosition(
             (pos) => resolve(pos),
             () => resolve(null),
-            { enableHighAccuracy: true, timeout: 5000 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
           )
         }
       )

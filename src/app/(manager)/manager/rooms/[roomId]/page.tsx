@@ -123,12 +123,13 @@ export default function ManagerRoomDetail() {
       (pos) => {
         setFormData(prev => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }))
         toast.dismiss('geo')
-        toast.success("Location anchored successfully")
+        toast.success(`Location anchored with ${Math.round(pos.coords.accuracy)}m accuracy`)
       },
       (err) => {
         toast.dismiss('geo')
         toast.error("Location access denied: " + err.message)
-      }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
   }
 
