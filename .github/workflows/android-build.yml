@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # Allows you to manually trigger the build from the GitHub UI
   push:
     branches:
-      - main # Or your default branch
+      - master
 
 jobs:
   build_apk:
