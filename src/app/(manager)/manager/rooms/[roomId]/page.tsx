@@ -378,7 +378,6 @@ export default function ManagerRoomDetail() {
 
             {/* DASHBOARD SECTION */}
             <div className="pt-8 border-t border-outline-variant/10">
-              <h2 className="text-[10px] font-black uppercase text-secondary tracking-widest mb-6">Room Analytics Dashboard</h2>
               <RoomDashboardTab roomId={room.id} roomName={room.name} />
             </div>
           </div>
