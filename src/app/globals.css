@@ -72,6 +72,8 @@
   body {
     @apply bg-background text-on-surface font-body antialiased;
     min-height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
     overflow-x: hidden;
     letter-spacing: -0.01em;
   }
