@@ -90,7 +90,7 @@ function AddStudentForm() {
   return (
     <div className="flex flex-col min-h-screen bg-surface">
       {/* Precision Header */}
-      <header className="bg-surface/80 backdrop-blur-2xl sticky top-0 z-50 border-b border-outline-variant/10">
+      <header className="bg-surface/80 backdrop-blur-2xl sticky top-0 z-50 border-b border-outline-variant/10 pt-[calc(env(safe-area-inset-top,0px))]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between w-full">
           <div className="flex items-center gap-4 md:gap-6">
             <button 
