@@ -6,6 +6,17 @@ import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 
+interface Note {
+  id: string
+  student_id: string
+  title: string
+  content: string
+  tags: string[]
+  is_pinned: boolean
+  created_at: string
+  updated_at?: string
+}
+
 interface NotesTabProps {
   userId: string
 }
@@ -13,11 +24,11 @@ interface NotesTabProps {
 export default function NotesTab({ userId }: NotesTabProps) {
   const supabase = createClient()
 
-  const [notes, setNotes] = useState<any[]>([])
+  const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const [activeNote, setActiveNote] = useState<any>(null)
+  const [activeNote, setActiveNote] = useState<Note | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -49,7 +60,7 @@ export default function NotesTab({ userId }: NotesTabProps) {
     setActiveNote(null)
   }
 
-  const openEditNote = (note: any) => {
+  const openEditNote = (note: Note) => {
     setActiveNote(note)
     setTitle(note.title)
     setContent(note.content)
@@ -91,7 +102,7 @@ export default function NotesTab({ userId }: NotesTabProps) {
     closeEditor()
   }
 
-  const handleDelete = async (noteToDelete?: any) => {
+  const handleDelete = async (noteToDelete?: Note) => {
     const target = noteToDelete || activeNote
     if (!target) return
     const { error } = await supabase.from('notes').delete().eq('id', target.id)
@@ -101,7 +112,7 @@ export default function NotesTab({ userId }: NotesTabProps) {
     if (!noteToDelete) closeEditor()
   }
 
-  const togglePinInline = async (e: React.MouseEvent, note: any) => {
+  const togglePinInline = async (e: React.MouseEvent, note: Note) => {
     e.stopPropagation()
     const { data, error } = await supabase
       .from('notes').update({ is_pinned: !note.is_pinned }).eq('id', note.id).select().single()
