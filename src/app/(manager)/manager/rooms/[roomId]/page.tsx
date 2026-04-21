@@ -9,6 +9,7 @@ import {
 import Modal from '@/components/ui/Modal'
 import QRDisplay from '@/components/manager/QRDisplay'
 import AttendanceScanner from '@/components/manager/AttendanceScanner'
+import RoomChat from '@/components/shared/RoomChat'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import {
@@ -36,7 +37,9 @@ export default function ManagerRoomDetail() {
 
   const [loading, setLoading] = useState(true)
   const [room, setRoom] = useState<any>(null)
-  const [showStudents, setShowStudents] = useState<boolean>(false)
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'chats'>('dashboard')
+  const [managerId, setManagerId] = useState<string>('')
+  const [managerName, setManagerName] = useState<string>('Manager')
   const [occupancy, setOccupancy] = useState({ active: 0, total: 0 })
 
   // Modals
@@ -65,6 +68,10 @@ export default function ManagerRoomDetail() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      setManagerId(user.id)
+
+      const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single()
+      if (profile?.name) setManagerName(profile.name)
 
       const [roomResponse, occupancyResponse] = await Promise.all([
         supabase
@@ -241,7 +248,7 @@ export default function ManagerRoomDetail() {
           {/* Top Row: Back Navigation + Name */}
           <div className="flex items-start gap-4">
             <button
-              onClick={() => showStudents ? setShowStudents(false) : router.push('/manager/rooms')}
+              onClick={() => router.push('/manager/rooms')}
               className="w-10 h-10 md:w-12 md:h-12 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-all shrink-0 mt-1"
             >
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
@@ -265,18 +272,41 @@ export default function ManagerRoomDetail() {
           </div>
 
           {/* Bottom Row: Actions */}
-          <div className="flex items-center gap-3">
-             <button
-              onClick={() => setShowStudents(!showStudents)}
-              className={`flex-1 md:flex-none flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg ${
-                showStudents 
-                  ? 'bg-surface-container-lowest text-outline border border-outline-variant/20 shadow-none' 
-                  : 'bg-primary text-white hover:opacity-90 shadow-primary/20'
-              }`}
-            >
-              <Users size={18} strokeWidth={2.5} />
-              <span>{showStudents ? 'CLOSE STUDENTS' : 'VIEW STUDENTS'}</span>
-            </button>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Segmented Control */}
+            <div className="flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/10 w-full md:w-auto">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === 'dashboard' 
+                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveTab('students')}
+                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === 'students' 
+                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                Students
+              </button>
+              <button
+                onClick={() => setActiveTab('chats')}
+                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all relative ${
+                  activeTab === 'chats' 
+                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                Live Chat
+                <span className="absolute top-2 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+              </button>
+            </div>
 
             {/* Actions Menu / Desktop Buttons */}
             <div className="flex items-center gap-2">
@@ -323,7 +353,7 @@ export default function ManagerRoomDetail() {
         </header>
 
         {/* ══════════════ VIEW MODE DETECTOR ══════════════ */}
-        {!showStudents ? (
+        {activeTab === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in duration-300">
             {/* DETAILS SECTION */}
             <div className="space-y-4 md:space-y-6">
@@ -381,9 +411,22 @@ export default function ManagerRoomDetail() {
               <RoomDashboardTab roomId={room.id} roomName={room.name} />
             </div>
           </div>
-        ) : (
+        )}
+        
+        {activeTab === 'students' && (
           <div className="animate-in slide-in-from-right-4 fade-in duration-300">
             <RoomStudentsTab roomId={room.id} roomName={room.name} />
+          </div>
+        )}
+
+        {activeTab === 'chats' && (
+          <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
+            <RoomChat 
+              roomId={room.id} 
+              currentUserId={managerId} 
+              currentUserName={managerName} 
+              currentUserType="manager" 
+            />
           </div>
         )}
       </main>

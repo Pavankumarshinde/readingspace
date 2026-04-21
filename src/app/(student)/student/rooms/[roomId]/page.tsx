@@ -20,6 +20,7 @@ import {
 import { Loader2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { StudentRoomHeader } from '@/components/student/StudentHeader'
+import RoomChat from '@/components/shared/RoomChat'
 
 export default function RoomDetail({
   params,
@@ -31,6 +32,9 @@ export default function RoomDetail({
   const [showScanner, setShowScanner] = useState(false)
   const [loading, setLoading] = useState(true)
   const [room, setRoom] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'chats'>('overview')
+  const [studentId, setStudentId] = useState<string>('')
+  const [studentName, setStudentName] = useState<string>('Student')
   const [subscription, setSubscription] = useState<any>(null)
   const [logs, setLogs] = useState<any[]>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -50,6 +54,7 @@ export default function RoomDetail({
         router.push('/login')
         return
       }
+      setStudentId(user.id)
 
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
@@ -61,6 +66,7 @@ export default function RoomDetail({
       if (subError) throw subError
       setSubscription(subData)
       setRoom(subData.rooms)
+      if (subData.student?.name) setStudentName(subData.student.name)
 
       const { data: logsData } = await supabase
         .from('attendance_logs')
@@ -307,8 +313,34 @@ export default function RoomDetail({
           </div>
         )}
 
+        {/* ── Segmented Control ────────────────────────────────────── */}
+        <div className="flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/10 w-full mb-6 max-w-sm mx-auto md:mx-0">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex-1 px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+              activeTab === 'overview' 
+                ? 'bg-surface-container-lowest text-primary shadow-sm' 
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('chats')}
+            className={`flex-1 px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all relative ${
+              activeTab === 'chats' 
+                ? 'bg-surface-container-lowest text-primary shadow-sm' 
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            Live Chat
+            <span className="absolute top-2 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+          </button>
+        </div>
+
         {/* Responsive Grid: 1 col mobile, 2 cols tablet/desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12 items-start">
+        {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 lg:gap-12 items-start animate-in fade-in duration-300">
           
           {/* ── LEFT COLUMN (Cards + Gamification) ──────────────────── */}
           <div className="space-y-4 md:space-y-5 flex flex-col">
@@ -538,6 +570,18 @@ export default function RoomDetail({
             </section>
           </div>
         </div>
+        )}
+
+        {activeTab === 'chats' && (
+          <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
+            <RoomChat 
+              roomId={room.id} 
+              currentUserId={studentId} 
+              currentUserName={studentName} 
+              currentUserType="student" 
+            />
+          </div>
+        )}
       </main>
 
       {/* Identity Access Pass Modal */}
