@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { RealtimePresenseState } from '@supabase/supabase-js'
+import { RealtimePresenceState } from '@supabase/supabase-js'
 
 export type PresenceUser = {
   user_id: string
