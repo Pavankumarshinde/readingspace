@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { format, isToday, isFuture } from 'date-fns'
@@ -37,11 +37,7 @@ export default function TasksTab({ userId }: TasksTabProps) {
   const [newDueDate, setNewDueDate] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
 
-  useEffect(() => {
-    fetchTasks()
-  }, [userId])
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     const { data } = await supabase
       .from('tasks')
       .select('*')
@@ -49,7 +45,11 @@ export default function TasksTab({ userId }: TasksTabProps) {
       .order('created_at', { ascending: false })
     if (data) setTasks(data as Task[])
     setLoading(false)
-  }
+  }, [userId, supabase])
+
+  useEffect(() => {
+    fetchTasks()
+  }, [fetchTasks])
 
   const addTask = async () => {
     if (!newTitle.trim()) return
