@@ -30,7 +30,7 @@ export function StudentBrandHeader() {
   }, [])
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-md flex justify-between items-center px-4 py-3 border-b border-outline-variant/10 md:hidden">
+    <header className="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-md flex justify-between items-center px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 border-b border-outline-variant/10 md:hidden">
       <div className="flex items-center gap-3">
         <span
           className="material-symbols-outlined text-primary"
@@ -61,7 +61,7 @@ export function StudentRoomHeader({
   const router = useRouter()
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-xl flex items-center justify-between px-4 py-3 border-b border-outline-variant/10 shadow-sm md:hidden">
+    <header className="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-xl flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 border-b border-outline-variant/10 shadow-sm md:hidden">
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}

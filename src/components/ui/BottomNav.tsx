@@ -24,7 +24,7 @@ export default function BottomNav({ role }: { role: UserRole }) {
   // ── Student — Floating Pill ────────────────────────────────────────────────
   if (role === 'student') {
     return (
-      <nav className="fixed bottom-6 left-0 w-full z-50 flex justify-center pointer-events-none md:hidden">
+      <nav className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] left-0 w-full z-50 flex justify-center pointer-events-none md:hidden">
         <div className="bg-surface/90 backdrop-blur-xl w-[90%] max-w-sm rounded-full px-6 h-14 flex justify-around items-center shadow-lg border border-outline-variant/10 pointer-events-auto">
           {studentNavItems.map((item) => {
             const isActive =
@@ -66,7 +66,7 @@ export default function BottomNav({ role }: { role: UserRole }) {
 
   // ── Manager — Flat Bar ────────────────────────────────────────────────────
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 py-4 bg-surface/80 backdrop-blur-xl md:hidden h-20 border-t border-outline-variant/10">
+    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] bg-surface/80 backdrop-blur-xl md:hidden min-h-[5rem] h-auto border-t border-outline-variant/10">
       {managerNavItems.map((item) => {
         const isActive = pathname === item.href ||
           (item.href === '/manager/rooms' && pathname.startsWith('/manager/rooms'))
