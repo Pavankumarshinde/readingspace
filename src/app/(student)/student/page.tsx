@@ -179,7 +179,7 @@ export default function StudentHome() {
                  </div>
                  <h4 className="font-headline text-lg font-extrabold text-on-surface tracking-tight">Recent Notes</h4>
               </div>
-              <Link href="/student/notes" className="text-[10px] font-bold text-primary uppercase tracking-widest hover:text-indigo-700 transition-colors">See All</Link>
+              <Link href="/student/my-space" className="text-[10px] font-bold text-primary uppercase tracking-widest hover:text-indigo-700 transition-colors">See All</Link>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -188,7 +188,7 @@ export default function StudentHome() {
                     Your knowledge bank is empty.
                  </div>
               ) : recentNotes.map(note => (
-                   <Link key={note.id} href="/student/notes">
+                   <Link key={note.id} href="/student/my-space">
                     <article className="card p-5 bg-white border border-slate-100 group hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 transition-all cursor-pointer h-full flex flex-col">
                        <time className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-2">{format(new Date(note.created_at), 'dd MMM, yyyy')}</time>
                        <h5 className="text-base font-extrabold text-on-surface group-hover:text-primary transition-colors mb-2 line-clamp-1">{note.title}</h5>

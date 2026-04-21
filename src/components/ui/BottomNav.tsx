@@ -8,7 +8,7 @@ import { DoorOpen, Users, LayoutDashboard, User } from 'lucide-react'
 // ── Student Nav Items (Material Symbols string IDs) ─────────────────────────
 const studentNavItems = [
   { label: 'Rooms', href: '/student/rooms', icon: 'meeting_room' },
-  { label: 'Notes', href: '/student/notes', icon: 'description' },
+  { label: 'My Space', href: '/student/my-space', icon: 'space_dashboard' },
   { label: 'Profile', href: '/student/profile', icon: 'person' },
 ]
 

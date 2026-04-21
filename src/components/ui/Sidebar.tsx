@@ -5,12 +5,9 @@ import { usePathname } from 'next/navigation'
 import { UserRole } from '@/types'
 import {
   DoorOpen,
-  Users,
   LayoutDashboard,
   User,
   Grid2X2,
-  StickyNote,
-  Library,
 } from 'lucide-react'
 
 const navItems = [
@@ -20,7 +17,7 @@ const navItems = [
 
   // Student Tabs
   { label: 'Rooms', href: '/student/rooms', icon: Grid2X2, role: 'student' as const },
-  { label: 'Notes', href: '/student/notes', icon: StickyNote, role: 'student' as const },
+  { label: 'My Space', href: '/student/my-space', icon: LayoutDashboard, role: 'student' as const },
   { label: 'Profile', href: '/student/profile', icon: User, role: 'student' as const },
 ]
 
@@ -55,7 +52,9 @@ export default function Sidebar({ role }: { role: UserRole }) {
             (item.href === '/student/rooms' &&
               pathname.startsWith('/student/rooms')) ||
             (item.href === '/manager/rooms' &&
-              pathname.startsWith('/manager/rooms'))
+              pathname.startsWith('/manager/rooms')) ||
+            (item.href === '/student/my-space' &&
+              pathname.startsWith('/student/my-space'))
           return (
             <Link
               key={item.href}

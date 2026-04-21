@@ -7,9 +7,10 @@ import Modal from '@/components/ui/Modal'
 import { format } from 'date-fns'
 import { 
   User, Mail, Phone, CheckCircle2, XCircle, ShieldCheck, 
-  Plus, Search, Users, ChevronRight, UserCircle, Pencil, Trash2, Info, QrCode, RefreshCw
+  Plus, Search, Users, ChevronRight, UserCircle, Pencil, Trash2, Info, QrCode, RefreshCw, Wifi
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { useRoomPresence } from '@/hooks/useRoomPresence'
 
 const getStatusStyle = (status: string) => {
   switch (status) {
@@ -51,7 +52,19 @@ const colors = [
   'bg-emerald-50 text-emerald-600 border-emerald-100'
 ]
 
-export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, roomName: string }) {
+export default function RoomStudentsTab({ 
+  roomId, 
+  roomName, 
+  currentUserId, 
+  currentUserName,
+  isOnline 
+}: { 
+  roomId: string, 
+  roomName: string, 
+  currentUserId: string, 
+  currentUserName: string,
+  isOnline: (userId: string) => boolean
+}) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filter, setFilter] = useState<'active' | 'expired' | 'requests'>('active')
   const [students, setStudents] = useState<any[]>([])
@@ -397,6 +410,11 @@ export default function RoomStudentsTab({ roomId, roomName }: { roomId: string, 
                         <span className="shrink-0 text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest">
                            {student.seatNumber}
                         </span>
+                        {isOnline(student.studentUid) && (
+                          <span className="flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse border border-emerald-100">
+                            <Wifi size={8} /> Online
+                          </span>
+                        )}
                      </div>
                      <div className="flex items-center gap-2 flex-wrap">
                         <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusStyle(student.status)}`}>

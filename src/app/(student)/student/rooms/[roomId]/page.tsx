@@ -17,10 +17,11 @@ import {
   parseISO,
   getDay,
 } from 'date-fns'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Wifi } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { StudentRoomHeader } from '@/components/student/StudentHeader'
 import RoomChat from '@/components/shared/RoomChat'
+import { useRoomPresence } from '@/hooks/useRoomPresence'
 
 export default function RoomDetail({
   params,
@@ -33,6 +34,7 @@ export default function RoomDetail({
   const [loading, setLoading] = useState(true)
   const [room, setRoom] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'chats'>('overview')
+  const [unreadCount, setUnreadCount] = useState(0)
   const [studentId, setStudentId] = useState<string>('')
   const [studentName, setStudentName] = useState<string>('Student')
   const [subscription, setSubscription] = useState<any>(null)
@@ -43,6 +45,34 @@ export default function RoomDetail({
   const [bestStreak, setBestStreak] = useState(0)
 
   const supabase = createClient()
+
+  // ── Sync Unread Count ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'chats') {
+      setUnreadCount(0)
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('chat_notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'room_messages', filter: `room_id=eq.${roomId}` },
+        () => {
+          if (activeTab !== 'chats') {
+            setUnreadCount(prev => prev + 1)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [roomId, activeTab, supabase])
+
+  const { onlineCount, onlineUsers, isOnline } = useRoomPresence(roomId, { id: studentId, name: studentName })
 
   const fetchData = async () => {
     setLoading(true)
@@ -287,12 +317,20 @@ export default function RoomDetail({
             </span>
           </button>
           <div className="flex flex-col">
-            <h1 className="font-headline italic text-3xl font-bold text-on-surface leading-tight">
-              {room.name}
-            </h1>
-            <span className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">
-              {room.description || 'Study Zone'}
-            </span>
+            <div className="flex flex-col">
+              <h1 className="font-headline italic text-3xl font-bold text-on-surface leading-tight">
+                {room.name}
+              </h1>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] uppercase tracking-widest text-secondary font-bold">
+                  {room.description || 'Study Zone'}
+                </span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 animate-in fade-in slide-in-from-left-2 transition-all">
+                  <Wifi size={10} className="animate-pulse" />
+                  <span className="text-[9px] font-black uppercase tracking-widest">{onlineCount} Online</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -334,7 +372,14 @@ export default function RoomDetail({
             }`}
           >
             Live Chat
-            <span className="absolute top-2 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-error text-white text-[9px] font-black flex items-center justify-center rounded-full px-1 shadow-lg shadow-error/20 scale-110 animate-in zoom-in duration-200">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+            {unreadCount === 0 && (
+              <span className="absolute top-2 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
+            )}
           </button>
         </div>
 
@@ -579,6 +624,8 @@ export default function RoomDetail({
               currentUserId={studentId} 
               currentUserName={studentName} 
               currentUserType="student" 
+              onlineUsers={onlineUsers}
+              isOnline={isOnline}
             />
           </div>
         )}

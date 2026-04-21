@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   Pencil, MapPin, Users, Key, ScanLine, Trash2, RotateCw,
-  QrCode, Info, X, ShieldCheck, Loader2, ChevronRight, Search, Calendar, MoreVertical
+  QrCode, Info, X, ShieldCheck, Loader2, ChevronRight, Search, Calendar, MoreVertical, Wifi
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import QRDisplay from '@/components/manager/QRDisplay'
@@ -18,6 +18,7 @@ import {
   addMonths, subMonths
 } from 'date-fns'
 import dynamic from 'next/dynamic'
+import { useRoomPresence } from '@/hooks/useRoomPresence'
 
 const RoomStudentsTab = dynamic(() => import('@/components/manager/RoomStudentsTab'), { 
   ssr: false, 
@@ -38,9 +39,38 @@ export default function ManagerRoomDetail() {
   const [loading, setLoading] = useState(true)
   const [room, setRoom] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'chats'>('dashboard')
+  const [unreadCount, setUnreadCount] = useState(0)
   const [managerId, setManagerId] = useState<string>('')
   const [managerName, setManagerName] = useState<string>('Manager')
   const [occupancy, setOccupancy] = useState({ active: 0, total: 0 })
+
+  // ── Sync Unread Count ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'chats') {
+      setUnreadCount(0)
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('chat_notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'room_messages', filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          if (activeTab !== 'chats') {
+            setUnreadCount(prev => prev + 1)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [roomId, activeTab, supabase])
+
+  const { onlineCount, onlineUsers, isOnline } = useRoomPresence(roomId, { id: managerId, name: managerName })
 
   // Modals
   const [showEditRoom, setShowEditRoom] = useState(false)
@@ -59,8 +89,6 @@ export default function ManagerRoomDetail() {
     longitude: null as number | null,
     radius: 200
   })
-
-  // Dashboard and Student states are now managed by their respective components
 
   // ── Fetch Room ──────────────────────────────────────────────────────────
   const fetchRoom = async () => {
@@ -116,8 +144,6 @@ export default function ManagerRoomDetail() {
   useEffect(() => {
     fetchRoom()
   }, [roomId])
-
-  // Students & Dashboard fetch removed, delegated to components.
 
   // ── Room Actions ────────────────────────────────────────────────────────
   const handleGetCurrentLocation = () => {
@@ -255,18 +281,18 @@ export default function ManagerRoomDetail() {
                 arrow_back
               </span>
             </button>
-            <div className="flex flex-col min-w-0">
-              <h1 className="font-headline text-3xl md:text-5xl font-bold text-on-surface leading-none tracking-tight break-words pr-4 uppercase italic">
+            <div className="flex flex-col">
+              <h1 className="font-headline italic text-3xl font-bold text-on-surface leading-tight">
                 {room.name}
               </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[10px] md:text-xs uppercase tracking-[.2em] text-secondary font-black opacity-60">
-                  {room.description || 'Verified Study Zone'}
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] uppercase tracking-widest text-secondary font-bold">
+                  {room.description || 'Study Area'}
                 </span>
-                <span className="w-1 h-1 rounded-full bg-outline-variant/30" />
-                <span className="text-[10px] md:text-xs uppercase tracking-[.1em] text-primary font-bold">
-                  {room.tier || 'Standard'}
-                </span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 animate-in fade-in slide-in-from-left-2 transition-all">
+                  <Wifi size={10} className="animate-pulse" />
+                  <span className="text-[9px] font-black uppercase tracking-widest">{onlineCount} Online</span>
+                </div>
               </div>
             </div>
           </div>
@@ -304,7 +330,14 @@ export default function ManagerRoomDetail() {
                 }`}
               >
                 Live Chat
-                <span className="absolute top-2 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-error text-white text-[9px] font-black flex items-center justify-center rounded-full px-1 shadow-lg shadow-error/20 scale-110 animate-in zoom-in duration-200">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+                {unreadCount === 0 && (
+                  <span className="absolute top-2 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
+                )}
               </button>
             </div>
 
@@ -414,8 +447,14 @@ export default function ManagerRoomDetail() {
         )}
         
         {activeTab === 'students' && (
-          <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-            <RoomStudentsTab roomId={room.id} roomName={room.name} />
+          <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
+            <RoomStudentsTab 
+              roomId={roomId} 
+              roomName={room.name} 
+              currentUserId={managerId} 
+              currentUserName={managerName} 
+              isOnline={isOnline}
+            />
           </div>
         )}
 
@@ -426,6 +465,8 @@ export default function ManagerRoomDetail() {
               currentUserId={managerId} 
               currentUserName={managerName} 
               currentUserType="manager" 
+              onlineUsers={onlineUsers}
+              isOnline={isOnline}
             />
           </div>
         )}
