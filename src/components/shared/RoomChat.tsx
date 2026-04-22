@@ -198,9 +198,9 @@ export default function RoomChat({ roomId, currentUserId, currentUserName, curre
   }
 
   return (
-    <div className="flex flex-col h-[70vh] md:h-[650px] w-full bg-surface-container-lowest border border-outline-variant/10 shadow-2xl rounded-3xl overflow-hidden relative">
+    <div className="flex flex-col h-[70vh] md:h-[650px] w-full bg-surface-container-lowest border border-outline-variant/20 shadow-sm rounded-3xl overflow-hidden relative">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-outline-variant/10 bg-white flex items-center justify-between shrink-0 sticky top-0 z-10 backdrop-blur-md bg-opacity-95">
+      <div className="px-5 py-4 border-b border-outline-variant/10 bg-white flex items-center justify-between shrink-0 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
           <div className="flex flex-col">
@@ -218,7 +218,7 @@ export default function RoomChat({ roomId, currentUserId, currentUserName, curre
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-[#fafbff] scroll-smooth custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-surface scroll-smooth custom-scrollbar">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-30 mt-[-20px]">
             <div className="w-16 h-16 bg-surface-container-low rounded-full flex items-center justify-center mb-4">
@@ -247,7 +247,7 @@ export default function RoomChat({ roomId, currentUserId, currentUserName, curre
               <div key={msg.id} className={`flex items-start gap-3 ${isMe ? 'flex-row-reverse' : ''} group ${isNewBlock ? 'mt-4' : 'mt-1'}`}>
                 {/* Avatar Column */}
                 <div className={`w-8 h-8 shrink-0 flex items-center justify-center ${!isMe && isNewBlock ? '' : 'invisible'} relative`}>
-                  <div className={`w-8 h-8 rounded-xl ${getUserColor(msg.user_id)} text-white flex items-center justify-center text-[10px] font-black shadow-md border-2 border-white`}>
+                  <div className={`w-8 h-8 rounded-full ${getUserColor(msg.user_id)} text-white flex items-center justify-center text-[10px] font-black`}>
                     {initials}
                   </div>
                   {isOnline(msg.user_id) && (
@@ -317,10 +317,10 @@ export default function RoomChat({ roomId, currentUserId, currentUserName, curre
                         </div>
                       ) : (
                         <div 
-                          className={`group/content px-4 py-3 rounded-2xl text-[13px] md:text-sm font-medium leading-relaxed break-words shadow-sm transition-all duration-300 relative ${
+                          className={`group/content px-4 py-2.5 rounded-2xl text-[13px] md:text-sm font-medium leading-relaxed break-words relative ${
                             isMe 
-                              ? `bg-primary text-white shadow-primary/20 ${isLastInBlock ? 'rounded-tr-none' : ''}` 
-                              : `bg-white border border-outline-variant/5 text-on-surface ${isLastInBlock ? 'rounded-tl-none' : ''}`
+                              ? `bg-primary border border-primary text-white ${isLastInBlock ? 'rounded-tr-none' : ''}` 
+                              : `bg-white border border-outline-variant/10 text-on-surface ${isLastInBlock ? 'rounded-tl-none' : ''}`
                           }`}
                         >
                           {msg.content}
@@ -363,7 +363,7 @@ export default function RoomChat({ roomId, currentUserId, currentUserName, curre
       </div>
 
       {/* Footer / Input */}
-      <div className="p-4 bg-white border-t border-outline-variant/10 shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
+      <div className="p-4 bg-white border-t border-outline-variant/10">
         <form onSubmit={handleSendMessage} className="flex items-center gap-3 relative">
           <div className="flex-1 relative group">
             <input

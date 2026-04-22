@@ -19,14 +19,15 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [viewDate, setViewDate] = useState<Date>(new Date())
 
-  // Navigation metrics
-  const [occupancy, setOccupancy] = useState({ active: 0, total: 0 })
   const [expiringPlans, setExpiringPlans] = useState<any[]>([])
-  const [stars, setStars] = useState<any[]>([])
+  const [expiringViewDate, setExpiringViewDate] = useState<Date>(new Date())
+  const [expiringLoading, setExpiringLoading] = useState(true)
+
   const [heatmap, setHeatmap] = useState<Record<number, number>>({})
   const [filteredCount, setFilteredCount] = useState(0)
   const [attendanceLoading, setAttendanceLoading] = useState(true)
   const [searchTermExpiring, setSearchTermExpiring] = useState('')
+  const [searchTermHistory, setSearchTermHistory] = useState('')
 
   // Real-time logs for the room
   const realtimeLogs = useRealtimeAttendance(roomId)
@@ -35,15 +36,14 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
     : [] // We'll still fetch historical data in useEffect
 
   const [historicalLogs, setHistoricalLogs] = useState<any[]>([])
-  const displayLogs = attendanceLogs.length > 0 ? attendanceLogs : historicalLogs
+  const displayLogs = (attendanceLogs.length > 0 ? attendanceLogs : historicalLogs).filter(log =>
+    (log.student?.name || '').toLowerCase().includes(searchTermHistory.toLowerCase())
+  )
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true)
       const supabase = createClient()
-
-      const { data: roomData } = await supabase.from('rooms').select('total_seats').eq('id', roomId).single()
-      const totalCapacity = roomData?.total_seats || 0
 
       let rangeStart: Date;
       let rangeEnd: Date;
@@ -57,27 +57,6 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
         rangeStart = startOfMonth(selectedDate)
         rangeEnd = endOfMonth(selectedDate)
       }
-
-      const [{ count: activeCount }, { data: expiringSubs }] = await Promise.all([
-        supabase.from('subscriptions').select('*', { count: 'exact', head: true }).eq('room_id', roomId).eq('status', 'active'),
-        supabase.from('subscriptions').select(`id, end_date, seat_number, status, room_id, student_id, student:profiles!inner(name, email)`).eq('room_id', roomId).gte('end_date', rangeStart.toISOString().split('T')[0]).lte('end_date', rangeEnd.toISOString().split('T')[0]).order('end_date', { ascending: true })
-      ])
-
-      setOccupancy({ active: activeCount || 0, total: totalCapacity })
-
-      const today = startOfDay(new Date())
-      const mappedExpiring = (expiringSubs || []).map(sub => {
-        const endDate = startOfDay(new Date(sub.end_date))
-        const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
-        return {
-          name: (sub.student as any).name || 'Unknown',
-          initial: ((sub.student as any).name || 'U').substring(0, 2).toUpperCase(),
-          seat: sub.seat_number,
-          daysLeft: diffDays,
-          isExpired: endDate < today
-        }
-      })
-      setExpiringPlans(mappedExpiring)
 
       setAttendanceLoading(true)
       const { data: logsData } = await supabase.from('attendance_logs').select(`*, student:profiles!inner(name, email)`).eq('room_id', roomId).gte('timestamp', rangeStart.toISOString()).lte('timestamp', rangeEnd.toISOString()).order('timestamp', { ascending: false })
@@ -94,7 +73,6 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
       setHeatmap(heatMapData)
 
       if (logsData) {
-        // Fetch seat mappings for the room members to fill seat_number
         const { data: seats } = await supabase
           .from('subscriptions')
           .select('student_id, seat_number')
@@ -110,17 +88,6 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
 
         setHistoricalLogs(mappedLogs)
         setFilteredCount(mappedLogs.length)
-
-        const freq: Record<string, { count: number, name: string }> = {}
-        mappedLogs.forEach(log => {
-          const name = (log.student as any).name || 'Unknown'
-          if (!freq[log.student_id]) freq[log.student_id] = { count: 0, name }
-          freq[log.student_id].count++
-        })
-        const sorted = Object.values(freq).sort((a, b) => b.count - a.count).slice(0, 3).map((s) => ({
-          name: s.name, initials: s.name.substring(0, 2).toUpperCase(), days: s.count
-        }))
-        setStars(sorted)
       }
 
       setAttendanceLoading(false)
@@ -128,6 +95,39 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
     }
     fetchDashboardData()
   }, [roomId, timeframe, selectedDate, viewDate])
+
+  useEffect(() => {
+    const fetchExpiringPlans = async () => {
+      setExpiringLoading(true)
+      const supabase = createClient()
+      const start = startOfMonth(expiringViewDate)
+      const end = endOfMonth(expiringViewDate)
+
+      const { data: expiringSubs } = await supabase
+        .from('subscriptions')
+        .select(`id, end_date, seat_number, status, room_id, student_id, student:profiles!inner(name, email)`)
+        .eq('room_id', roomId)
+        .gte('end_date', start.toISOString().split('T')[0])
+        .lte('end_date', end.toISOString().split('T')[0])
+        .order('end_date', { ascending: true })
+
+      const today = startOfDay(new Date())
+      const mappedExpiring = (expiringSubs || []).map(sub => {
+        const endDate = startOfDay(new Date(sub.end_date))
+        const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
+        return {
+          name: (sub.student as any).name || 'Unknown',
+          initial: ((sub.student as any).name || 'U').substring(0, 2).toUpperCase(),
+          seat: sub.seat_number,
+          daysLeft: diffDays,
+          isExpired: endDate < today
+        }
+      })
+      setExpiringPlans(mappedExpiring)
+      setExpiringLoading(false)
+    }
+    fetchExpiringPlans()
+  }, [roomId, expiringViewDate])
 
   const handleRegenerateRoomQR = async () => {
     if (!confirm('This will invalidate the current Room QR code. All physical prints of the old QR will stop working. Proceed?')) return
@@ -191,7 +191,7 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* LEFT COLUMN: Controls & Heatmap */}
         <div className="space-y-8">
 
@@ -249,76 +249,87 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
         </div>
 
         {/* RIGHT COLUMN: Expiring & Stars */}
-        <div className="space-y-8">
+        <div className="relative h-[500px] lg:h-auto lg:h-full w-full">
           {/* Expiring Plans */}
-          <div className="card bg-white border border-outline-variant/10 rounded-[2.5rem] p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black italic text-on-surface">Upcoming Expiries</h3>
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchTermExpiring}
-                  onChange={(e) => setSearchTermExpiring(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-surface-container-low rounded-xl text-[10px] font-bold border-none focus:ring-1 focus:ring-primary w-32"
-                />
+          <div className="lg:absolute lg:inset-0 w-full h-full">
+            <div className="card bg-white border border-outline-variant/10 rounded-[2.5rem] p-6 lg:p-8 h-full flex flex-col w-full">
+              <div className="flex flex-col gap-4 mb-6 shrink-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-black italic text-on-surface">Upcoming Expiries</h3>
+                  <div className="flex items-center gap-1.5 bg-surface-container-low rounded-xl p-1">
+                    <button 
+                      onClick={() => setExpiringViewDate(subMonths(expiringViewDate, 1))} 
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:text-on-surface hover:shadow-sm transition-all"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-1 min-w-[70px] text-center text-primary">
+                      {format(expiringViewDate, 'MMM yy')}
+                    </span>
+                    <button 
+                      onClick={() => setExpiringViewDate(addMonths(expiringViewDate, 1))} 
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:text-on-surface hover:shadow-sm transition-all"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="relative w-full">
+                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/40" />
+                  <input
+                    type="text"
+                    placeholder="Search students..."
+                    value={searchTermExpiring}
+                    onChange={(e) => setSearchTermExpiring(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3.5 bg-surface-container-lowest rounded-2xl text-[11px] font-bold border border-outline-variant/10 focus:border-primary/30 focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-on-surface-variant/40 uppercase tracking-wider"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-3">
-              {expiringPlans.filter(p => p.name.toLowerCase().includes(searchTermExpiring.toLowerCase())).slice(0, 5).map((plan, i) => (
-                <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${plan.isExpired ? 'bg-error-container/10 border-error/10' : 'bg-surface-container-lowest border-outline-variant/5'
-                  }`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black ${plan.isExpired ? 'bg-error text-white' : 'bg-surface-container-low text-on-surface'
-                      }`}>
-                      {plan.initial}
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-black text-on-surface uppercase tracking-tight italic">{plan.name}</p>
-                      <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-0.5">Seat #{plan.seat}</p>
-                    </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar min-h-0">
+                {expiringLoading ? (
+                  <div className="py-12 flex justify-center">
+                    <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${plan.isExpired ? 'text-error' : 'text-primary'}`}>
-                      {plan.isExpired ? 'Expired' : `${plan.daysLeft} Days Left`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {expiringPlans.length === 0 && (
-                <div className="py-12 text-center text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
-                  No plans expiring in this range
-                </div>
-              )}
-            </div>
+                ) : (
+                  <>
+                    {expiringPlans.filter(p => p.name.toLowerCase().includes(searchTermExpiring.toLowerCase())).map((plan, i) => (
+                      <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${plan.isExpired ? 'bg-error-container/10 border-error/10' : 'bg-surface-container-lowest border-outline-variant/5'
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black ${plan.isExpired ? 'bg-error text-white' : 'bg-surface-container-low text-on-surface'
+                            }`}>
+                            {plan.initial}
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-black text-on-surface uppercase tracking-tight italic">{plan.name}</p>
+                            <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-0.5">Seat #{plan.seat}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-[10px] font-black uppercase tracking-widest ${plan.isExpired ? 'text-error' : 'text-primary'}`}>
+                            {plan.isExpired ? 'Expired' : `${plan.daysLeft} Days Left`}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {expiringPlans.length === 0 && (
+                      <div className="py-12 text-center text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest leading-relaxed">
+                        No plans expiring in <br/><span className="text-primary">{format(expiringViewDate, 'MMMM yyyy')}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
           </div>
 
-          {/* Top Regulars */}
-          <div className="card bg-surface-container-low/30 border border-outline-variant/5 rounded-[2.5rem] p-8">
-            <h3 className="text-sm font-black text-secondary uppercase tracking-[0.2em] mb-6">Top Performers</h3>
-            <div className="flex items-center gap-4">
-              {stars.map((star, i) => (
-                <div key={i} className="flex-1 bg-white p-4 rounded-3xl border border-outline-variant/10 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center text-xs font-black mx-auto">
-                    {star.initials}
-                  </div>
-                  <p className="text-[10px] font-black text-on-surface truncate uppercase italic px-2">{star.name}</p>
-                  <p className="text-[9px] font-bold text-primary bg-primary/5 px-2 py-1 rounded-lg inline-block uppercase tracking-widest">{star.days} Visits</p>
-                </div>
-              ))}
-              {stars.length === 0 && (
-                <p className="text-[9px] font-bold text-on-surface-variant/30 uppercase tracking-widest w-full text-center py-6 italic">Establishing rankings...</p>
-              )}
-            </div>
           </div>
         </div>
       </div>
 
       {/* Activity Feed Table */}
-      <div className="card shadow-sm border border-outline-variant/10 bg-white rounded-[2.5rem] overflow-hidden">
-        <div className="px-10 py-8 border-b border-outline-variant/5 bg-surface-container-lowest flex items-center justify-between">
+      <div className="card shadow-sm border border-outline-variant/10 bg-white rounded-[2.5rem] overflow-hidden flex flex-col">
+        <div className="px-6 lg:px-10 py-6 lg:py-8 border-b border-outline-variant/5 bg-surface-container-lowest flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex flex-col gap-1">
             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Attendance History</h4>
             <h3 className="text-xl font-black text-on-surface italic">
@@ -327,13 +338,22 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
                   format(selectedDate, 'MMMM yyyy')} Attendance
             </h3>
           </div>
-
-          {/* <p className="text-[9px] font-black text-on-surface-variant/20 uppercase tracking-[0.4em] bg-surface-container-low px-4 py-2 rounded-full hidden md:block">Secure Live Stream</p> */}
+          
+          <div className="relative w-full md:w-64 shrink-0">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/40" />
+            <input
+              type="text"
+              placeholder="Search history..."
+              value={searchTermHistory}
+              onChange={(e) => setSearchTermHistory(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-white rounded-2xl text-[11px] font-bold border border-outline-variant/10 focus:border-primary/30 focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-on-surface-variant/40 uppercase tracking-wider"
+            />
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-surface-container-low/20 border-b border-outline-variant/5">
+        <div className="overflow-x-auto overflow-y-auto max-h-[420px] custom-scrollbar">
+          <table className="w-full text-left relative border-collapse">
+            <thead className="sticky top-0 bg-surface-container-lowest z-10 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+              <tr className="border-b border-outline-variant/5">
                 <th className="px-10 py-5 text-[9px] font-black text-secondary uppercase tracking-[0.3em]">Student Name</th>
                 <th className="px-10 py-5 text-[9px] font-black text-secondary uppercase tracking-[0.4em]">Seat Allotted</th>
                 <th className="px-10 py-5 text-right text-[9px] font-black text-secondary uppercase tracking-[0.4em]">Check-in Time & Date</th>

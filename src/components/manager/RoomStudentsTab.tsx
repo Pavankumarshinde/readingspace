@@ -5,9 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import Modal from '@/components/ui/Modal'
 import { format } from 'date-fns'
-import { 
-  User, Mail, Phone, CheckCircle2, XCircle, ShieldCheck, 
-  Plus, Search, Users, ChevronRight, UserCircle, Pencil, Trash2, Info, QrCode, RefreshCw, Wifi
+import {
+  User, Mail, Phone, CheckCircle2, XCircle, ShieldCheck,
+  Plus, Search, Users, ChevronRight, UserCircle, Pencil, Trash2, Info, QrCode, RefreshCw, Wifi, UserPlus
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useRoomPresence } from '@/hooks/useRoomPresence'
@@ -16,7 +16,7 @@ const getStatusStyle = (status: string) => {
   switch (status) {
     case 'active': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
     case 'due': return 'bg-amber-50 text-amber-600 border-amber-100'
-    case 'expired': 
+    case 'expired':
     case 'overdue': return 'bg-rose-50 text-rose-600 border-rose-100'
     default: return 'bg-slate-50 text-slate-500 border-slate-100'
   }
@@ -32,16 +32,16 @@ const getMemberTypeStyle = (type: string) => {
 
 const getComputedStatus = (dbStatus: string, endDate: string) => {
   if (dbStatus !== 'active') return dbStatus
-  
+
   const end = new Date(endDate)
   end.setHours(23, 59, 59, 999) // Valid until end of the expiry day
   const now = new Date()
-  
+
   if (now > end) return 'expired'
-  
+
   const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 3600 * 24))
   if (diffDays <= 3) return 'due' // Show due if 3 days or less
-  
+
   return 'active'
 }
 
@@ -52,16 +52,16 @@ const colors = [
   'bg-emerald-50 text-emerald-600 border-emerald-100'
 ]
 
-export default function RoomStudentsTab({ 
-  roomId, 
-  roomName, 
-  currentUserId, 
+export default function RoomStudentsTab({
+  roomId,
+  roomName,
+  currentUserId,
   currentUserName,
-  isOnline 
-}: { 
-  roomId: string, 
-  roomName: string, 
-  currentUserId: string, 
+  isOnline
+}: {
+  roomId: string,
+  roomName: string,
+  currentUserId: string,
   currentUserName: string,
   isOnline: (userId: string) => boolean
 }) {
@@ -310,44 +310,47 @@ export default function RoomStudentsTab({
     }
   }
 
-  const filteredItems = filter === 'requests' 
+  const filteredItems = filter === 'requests'
     ? requests.filter(r => (r.student?.name || '').toLowerCase().includes(searchTerm.toLowerCase()))
     : students.filter(s => {
-        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.email.toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesFilter = filter === 'active' ? s.status === 'active' : s.status !== 'active'
-        return matchesSearch && matchesFilter
-      })
+      const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.email.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesFilter = filter === 'active' ? s.status === 'active' : s.status !== 'active'
+      return matchesSearch && matchesFilter
+    })
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Actions */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 w-full max-w-md group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/40 group-focus-within:text-primary" size={18} />
-          <input
-            type="text"
-            placeholder="Search reader..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white rounded-xl shadow-sm border border-outline-variant/10 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-        
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
+      {/* Top Actions */}
+      <div className="flex flex-col gap-4">
+        {/* Desktop Layout & Mobile Row 1 */}
+        <div className="flex flex-row items-center gap-3 w-full">
+          {/* Search Bar - Grows to fill space */}
+          <div className="relative flex-1 min-w-0 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" size={18} />
+            <input
+              type="text"
+              placeholder="Search reader..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3.5 md:py-3.5 bg-white rounded-2xl border border-outline-variant/10 text-[11px] md:text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary/30 transition-all font-bold placeholder:text-on-surface-variant/30 placeholder:font-medium text-on-surface"
+            />
+          </div>
+
+          {/* Filter Tabs (Desktop Only) */}
+          <div className="hidden lg:flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/10 ml-auto shrink-0">
             {(['active', 'expired', 'requests'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setFilter(mode)}
-                className={`px-4 py-2 text-[10px] font-bold rounded-lg transition-all relative uppercase tracking-widest whitespace-nowrap ${
-                  filter === mode 
-                    ? 'bg-surface-container-lowest text-primary shadow-sm font-black border border-outline-variant/10' 
-                    : 'text-on-surface-variant/50 hover:text-on-surface hover:bg-surface-container-low'
-                }`}
+                className={`px-6 py-2.5 text-[11px] font-black rounded-xl transition-all relative uppercase tracking-widest whitespace-nowrap ${filter === mode
+                    ? 'bg-surface-container-lowest text-primary shadow-sm'
+                    : 'text-on-surface-variant/60 hover:text-on-surface'
+                  }`}
               >
                 <span>{mode}</span>
                 {mode === 'requests' && requests.length > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-primary text-white rounded font-extrabold text-[8px]">
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center px-1.5 min-w-[18px] h-[18px] bg-error text-white rounded-full font-black text-[9px] shadow-lg shadow-error/20">
                     {requests.length}
                   </span>
                 )}
@@ -355,10 +358,32 @@ export default function RoomStudentsTab({
             ))}
           </div>
 
-          <a href={`/manager/students/add?room=${roomId}`} className="shrink-0 flex items-center justify-center w-10 h-10 md:w-auto md:px-4 md:py-2 bg-primary text-white rounded-xl md:rounded-lg shadow-sm hover:opacity-90 transition-all font-bold text-[10px] uppercase tracking-widest gap-2">
-            <Plus size={16} />
-            <span className="hidden md:inline">Enroll Reader</span>
+          {/* Enroll Button / Add Icon */}
+          <a href={`/manager/students/add?room=${roomId}`} className="shrink-0 flex items-center justify-center w-12 h-12 lg:w-auto lg:px-6 lg:py-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all font-black text-[11px] uppercase tracking-widest gap-2">
+            <UserPlus size={20} className="lg:w-4 lg:h-4" />
+            <span className="hidden lg:inline"></span>
           </a>
+        </div>
+
+        {/* Filter Tabs (Mobile & Tablet) */}
+        <div className="flex lg:hidden p-1 bg-surface-container-low rounded-2xl border border-outline-variant/10 w-full shrink-0">
+          {(['active', 'expired', 'requests'] as const).map((mode) => (
+            <button
+              key={`mobile-${mode}`}
+              onClick={() => setFilter(mode)}
+              className={`flex-1 px-2 py-3 text-[10px] sm:text-[11px] font-black rounded-xl transition-all relative uppercase tracking-widest whitespace-nowrap ${filter === mode
+                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  : 'text-on-surface-variant/60 hover:text-on-surface'
+                }`}
+            >
+              <span>{mode}</span>
+              {mode === 'requests' && requests.length > 0 && (
+                <span className="absolute -top-1 right-0 sm:right-2 flex items-center justify-center px-1.5 min-w-[18px] h-[18px] bg-error text-white rounded-full font-black text-[9px] shadow-lg shadow-error/20">
+                  {requests.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -373,115 +398,115 @@ export default function RoomStudentsTab({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           {filter === 'requests' ? (
             filteredItems.map((req) => (
-               <div key={req.id} className="p-5 bg-white border border-outline-variant/10 rounded-2xl shadow-sm flex flex-col gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center font-black text-xl text-primary">
-                       {req.student?.name?.[0]?.toUpperCase() || 'S'}
-                    </div>
-                    <div>
-                       <h3 className="font-bold text-base text-on-surface">{req.student?.name}</h3>
-                       <p className="text-[10px] text-on-surface-variant/60">{req.student?.email}</p>
-                    </div>
+              <div key={req.id} className="p-5 bg-white border border-outline-variant/10 rounded-2xl shadow-sm flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center font-black text-xl text-primary">
+                    {req.student?.name?.[0]?.toUpperCase() || 'S'}
                   </div>
-                  <div className="flex gap-2 mt-auto pt-2 border-t border-outline-variant/5">
-                     <button 
-                        disabled={acting}
-                        onClick={() => { setSelectedRequest(req); setShowApproveModal(true); }}
-                        className="flex-1 bg-primary text-white py-2 rounded-lg text-xs font-bold"
-                     >
-                        Review
-                     </button>
-                     <button 
-                        disabled={acting}
-                        onClick={() => handleDeclineRequest(req.id)}
-                        className="w-10 flex items-center justify-center bg-error/10 text-error rounded-lg"
-                     >
-                        <XCircle size={18} />
-                     </button>
+                  <div>
+                    <h3 className="font-bold text-base text-on-surface">{req.student?.name}</h3>
+                    <p className="text-[10px] text-on-surface-variant/60">{req.student?.email}</p>
                   </div>
-               </div>
+                </div>
+                <div className="flex gap-2 mt-auto pt-2 border-t border-outline-variant/5">
+                  <button
+                    disabled={acting}
+                    onClick={() => { setSelectedRequest(req); setShowApproveModal(true); }}
+                    className="flex-1 bg-primary text-white py-2 rounded-lg text-xs font-bold"
+                  >
+                    Review
+                  </button>
+                  <button
+                    disabled={acting}
+                    onClick={() => handleDeclineRequest(req.id)}
+                    className="w-10 flex items-center justify-center bg-error/10 text-error rounded-lg"
+                  >
+                    <XCircle size={18} />
+                  </button>
+                </div>
+              </div>
             ))
           ) : (
             filteredItems.map((student) => (
-               <div key={student.subscriptionId} className="group p-4 bg-surface-container-lowest hover:bg-surface-container-low transition-colors rounded-2xl border border-outline-variant/10 flex items-center justify-between">
-                  <div className="flex flex-col min-w-0 pr-4">
-                     <div className="flex items-center gap-2 mb-1.5">
-                        <h3 className="text-sm font-bold text-on-surface uppercase italic tracking-tight truncate">{student.name}</h3>
-                        <span className="shrink-0 text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest">
-                           {student.seatNumber}
-                        </span>
-                        {isOnline(student.studentUid) && (
-                          <span className="flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse border border-emerald-100">
-                            <Wifi size={8} /> Online
-                          </span>
-                        )}
-                     </div>
-                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusStyle(student.status)}`}>
-                           {student.status}
-                        </span>
-                        <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${getMemberTypeStyle(student.membershipType)}`}>
-                           {student.membershipType}
-                        </span>
-                        <span className="text-[9px] text-secondary/60 font-bold uppercase tracking-widest flex items-center gap-1">
-                           <ChevronRight size={10} className="text-outline-variant/50" />
-                           EXP {format(new Date(student.expiry), 'dd MMM')}
-                        </span>
-                     </div>
+              <div key={student.subscriptionId} className="group p-4 bg-surface-container-lowest hover:bg-surface-container-low transition-colors rounded-2xl border border-outline-variant/10 flex items-center justify-between">
+                <div className="flex flex-col min-w-0 pr-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <h3 className="text-sm font-bold text-on-surface uppercase italic tracking-tight truncate">{student.name}</h3>
+                    <span className="shrink-0 text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest">
+                      {student.seatNumber}
+                    </span>
+                    {isOnline(student.studentUid) && (
+                      <span className="flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse border border-emerald-100">
+                        <Wifi size={8} /> Online
+                      </span>
+                    )}
                   </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusStyle(student.status)}`}>
+                      {student.status}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${getMemberTypeStyle(student.membershipType)}`}>
+                      {student.membershipType}
+                    </span>
+                    <span className="text-[9px] text-secondary/60 font-bold uppercase tracking-widest flex items-center gap-1">
+                      <ChevronRight size={10} className="text-outline-variant/50" />
+                      EXP {format(new Date(student.expiry), 'dd MMM')}
+                    </span>
+                  </div>
+                </div>
 
-                  <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-                      <button 
-                         onClick={() => { setSelectedStudentQR(student); setShowQRModal(true); }} 
-                         className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-primary hover:bg-primary hover:text-white transition-colors"
-                         title="View QR"
-                      >
-                         <QrCode size={14} />
-                      </button>
-                      {student.status !== 'active' && (
-                        <button 
-                           onClick={() => {
-                             setSelectedStudentForRenew(student);
-                             setRenewFormData({
-                               startDate: new Date().toISOString().split('T')[0],
-                               endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                             });
-                             setShowRenewModal(true);
-                           }}
-                           className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
-                           title="Renew"
-                        >
-                           <RefreshCw size={14} />
-                        </button>
-                      )}
-                      <button 
-                         onClick={() => { 
-                           setSelectedStudentForEdit(student); 
-                           setEditFormData({ 
-                             name: student.name, 
-                             phone: student.phone === 'No phone' ? '' : student.phone, 
-                             seat: student.seatNumber, 
-                             startDate: student.start, 
-                             endDate: student.expiry, 
-                             membershipType: student.membershipType, 
-                             status: student.status 
-                           }); 
-                           setShowEditModal(true); 
-                         }} 
-                         className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-primary transition-colors"
-                         title="Edit"
-                      >
-                         <Pencil size={14} />
-                      </button>
-                      <button 
-                         onClick={() => handleDeleteStudent(student.subscriptionId)} 
-                         className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-error transition-colors"
-                         title="Delete"
-                      >
-                         <Trash2 size={14} />
-                      </button>
-                  </div>
-               </div>
+                <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    onClick={() => { setSelectedStudentQR(student); setShowQRModal(true); }}
+                    className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-primary hover:bg-primary hover:text-white transition-colors"
+                    title="View QR"
+                  >
+                    <QrCode size={14} />
+                  </button>
+                  {student.status !== 'active' && (
+                    <button
+                      onClick={() => {
+                        setSelectedStudentForRenew(student);
+                        setRenewFormData({
+                          startDate: new Date().toISOString().split('T')[0],
+                          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                        });
+                        setShowRenewModal(true);
+                      }}
+                      className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                      title="Renew"
+                    >
+                      <RefreshCw size={14} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setSelectedStudentForEdit(student);
+                      setEditFormData({
+                        name: student.name,
+                        phone: student.phone === 'No phone' ? '' : student.phone,
+                        seat: student.seatNumber,
+                        startDate: student.start,
+                        endDate: student.expiry,
+                        membershipType: student.membershipType,
+                        status: student.status
+                      });
+                      setShowEditModal(true);
+                    }}
+                    className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-primary transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteStudent(student.subscriptionId)}
+                    className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-error transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
             ))
           )}
         </div>
@@ -494,22 +519,22 @@ export default function RoomStudentsTab({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-on-surface-variant">Seat</label>
-                <input required type="text" className="input mt-1" value={approvalData.seatNumber} onChange={e => setApprovalData({...approvalData, seatNumber: e.target.value})} />
+                <input required type="text" className="input mt-1" value={approvalData.seatNumber} onChange={e => setApprovalData({ ...approvalData, seatNumber: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs font-bold text-on-surface-variant">Tier</label>
-                <select className="input mt-1" value={approvalData.tier} onChange={e => setApprovalData({...approvalData, tier: e.target.value})}>
+                <select className="input mt-1" value={approvalData.tier} onChange={e => setApprovalData({ ...approvalData, tier: e.target.value })}>
                   <option value="standard">Standard</option>
                   <option value="premium">Premium</option>
                 </select>
               </div>
               <div>
-                 <label className="text-xs font-bold text-on-surface-variant">Start</label>
-                 <input type="date" required className="input mt-1" value={approvalData.startDate} onChange={e => setApprovalData({...approvalData, startDate: e.target.value})} />
+                <label className="text-xs font-bold text-on-surface-variant">Start</label>
+                <input type="date" required className="input mt-1" value={approvalData.startDate} onChange={e => setApprovalData({ ...approvalData, startDate: e.target.value })} />
               </div>
-               <div>
-                 <label className="text-xs font-bold text-on-surface-variant">End</label>
-                 <input type="date" required className="input mt-1" value={approvalData.endDate} onChange={e => setApprovalData({...approvalData, endDate: e.target.value})} />
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant">End</label>
+                <input type="date" required className="input mt-1" value={approvalData.endDate} onChange={e => setApprovalData({ ...approvalData, endDate: e.target.value })} />
               </div>
             </div>
             <button disabled={acting} type="submit" className="w-full btn-primary mt-2">Approve</button>
@@ -519,147 +544,147 @@ export default function RoomStudentsTab({
 
       {/* Edit Student Modal */}
       {showEditModal && selectedStudentForEdit && (
-         <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Student">
-            <form onSubmit={handleUpdateSubmit} className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                   <label className="text-xs font-bold text-on-surface-variant">Name</label>
-                   <input required type="text" className="input mt-1" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
-                </div>
-                <div className="col-span-2">
-                   <label className="text-xs font-bold text-on-surface-variant">Seat</label>
-                   <input required type="text" className="input mt-1" value={editFormData.seat} onChange={e => setEditFormData({...editFormData, seat: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-on-surface-variant">Membership Type</label>
-                  <select className="input mt-1" value={editFormData.membershipType} onChange={e => setEditFormData({...editFormData, membershipType: e.target.value})}>
-                    <option value="digital">Digital</option>
-                    <option value="managed">Managed</option>
-                  </select>
-                </div>
-                 <div>
-                  <label className="text-xs font-bold text-on-surface-variant">Status</label>
-                  <select className="input mt-1" value={editFormData.status} onChange={e => setEditFormData({...editFormData, status: e.target.value})}>
-                    <option value="active">Active</option>
-                    <option value="expired">Expired</option>
-                    <option value="due">Due</option>
-                  </select>
-                </div>
-                <div>
-                   <label className="text-xs font-bold text-on-surface-variant">Start Date</label>
-                   <input type="date" required className="input mt-1" value={editFormData.startDate} onChange={e => setEditFormData({...editFormData, startDate: e.target.value})} />
-                </div>
-                <div>
-                   <label className="text-xs font-bold text-on-surface-variant">End Date</label>
-                   <input type="date" required className="input mt-1" value={editFormData.endDate} onChange={e => setEditFormData({...editFormData, endDate: e.target.value})} />
-                </div>
+        <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Student">
+          <form onSubmit={handleUpdateSubmit} className="space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-on-surface-variant">Name</label>
+                <input required type="text" className="input mt-1" value={editFormData.name} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} />
               </div>
-              <button disabled={acting} type="submit" className="w-full btn-primary mt-2">Update</button>
-            </form>
-         </Modal>
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-on-surface-variant">Seat</label>
+                <input required type="text" className="input mt-1" value={editFormData.seat} onChange={e => setEditFormData({ ...editFormData, seat: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant">Membership Type</label>
+                <select className="input mt-1" value={editFormData.membershipType} onChange={e => setEditFormData({ ...editFormData, membershipType: e.target.value })}>
+                  <option value="digital">Digital</option>
+                  <option value="managed">Managed</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant">Status</label>
+                <select className="input mt-1" value={editFormData.status} onChange={e => setEditFormData({ ...editFormData, status: e.target.value })}>
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="due">Due</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant">Start Date</label>
+                <input type="date" required className="input mt-1" value={editFormData.startDate} onChange={e => setEditFormData({ ...editFormData, startDate: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant">End Date</label>
+                <input type="date" required className="input mt-1" value={editFormData.endDate} onChange={e => setEditFormData({ ...editFormData, endDate: e.target.value })} />
+              </div>
+            </div>
+            <button disabled={acting} type="submit" className="w-full btn-primary mt-2">Update</button>
+          </form>
+        </Modal>
       )}
 
       {/* Renew Student Modal */}
       {showRenewModal && selectedStudentForRenew && (
-         <Modal open={showRenewModal} onClose={() => setShowRenewModal(false)} title="Renew Subscription">
-            <form onSubmit={handleRenewSubmit} className="space-y-4 pt-4">
-              <p className="text-sm text-on-surface-variant mb-2">
-                Renew subscription for <span className="font-bold text-on-surface">{selectedStudentForRenew.name}</span>. This will set their status back to <strong>Active</strong>.
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                   <label className="text-xs font-bold text-on-surface-variant">New Start Date</label>
-                   <input type="date" required className="input mt-1" value={renewFormData.startDate} onChange={e => setRenewFormData({...renewFormData, startDate: e.target.value})} />
-                </div>
-                <div>
-                   <label className="text-xs font-bold text-on-surface-variant">New End Date</label>
-                   <input type="date" required className="input mt-1" value={renewFormData.endDate} onChange={e => setRenewFormData({...renewFormData, endDate: e.target.value})} />
-                </div>
+        <Modal open={showRenewModal} onClose={() => setShowRenewModal(false)} title="Renew Subscription">
+          <form onSubmit={handleRenewSubmit} className="space-y-4 pt-4">
+            <p className="text-sm text-on-surface-variant mb-2">
+              Renew subscription for <span className="font-bold text-on-surface">{selectedStudentForRenew.name}</span>. This will set their status back to <strong>Active</strong>.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant">New Start Date</label>
+                <input type="date" required className="input mt-1" value={renewFormData.startDate} onChange={e => setRenewFormData({ ...renewFormData, startDate: e.target.value })} />
               </div>
-              <button disabled={acting} type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold mt-4 transition-colors">Confirm Renewal</button>
-            </form>
-         </Modal>
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant">New End Date</label>
+                <input type="date" required className="input mt-1" value={renewFormData.endDate} onChange={e => setRenewFormData({ ...renewFormData, endDate: e.target.value })} />
+              </div>
+            </div>
+            <button disabled={acting} type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold mt-4 transition-colors">Confirm Renewal</button>
+          </form>
+        </Modal>
       )}
 
       {showQRModal && selectedStudentQR && (
-         <Modal open={showQRModal} onClose={() => setShowQRModal(false)} title="View QR Pass">
-            <div className="printable-pass flex flex-col items-center py-6 px-4 animate-in zoom-in-95 duration-300 print:p-0">
-               <div className="printable-pass-content flex flex-col items-center w-full">
-                  <div className="text-center space-y-2 mb-6">
-                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] bg-primary/5 px-4 py-1.5 rounded-full">Member Pass</span>
-                     <h3 className="font-headline italic text-2xl font-black text-on-surface pt-2">
-                       {selectedStudentQR.name}
-                     </h3>
-                     <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">
-                       Verification ID: {selectedStudentQR.id}
-                     </p>
-                  </div>
+        <Modal open={showQRModal} onClose={() => setShowQRModal(false)} title="View QR Pass">
+          <div className="printable-pass flex flex-col items-center py-6 px-4 animate-in zoom-in-95 duration-300 print:p-0">
+            <div className="printable-pass-content flex flex-col items-center w-full">
+              <div className="text-center space-y-2 mb-6">
+                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] bg-primary/5 px-4 py-1.5 rounded-full">Member Pass</span>
+                <h3 className="font-headline italic text-2xl font-black text-on-surface pt-2">
+                  {selectedStudentQR.name}
+                </h3>
+                <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">
+                  Verification ID: {selectedStudentQR.id}
+                </p>
+              </div>
 
-                  <div className="p-4 bg-white rounded-2xl shadow-lg border border-slate-100 mb-6 print:shadow-none print:border-none">
-                     <QRCodeSVG 
-                       value={JSON.stringify({ 
-                         type: 'access_verify', 
-                         studentId: selectedStudentQR.studentUid,
-                         version: selectedStudentQR.qrVersion || 0 
-                       })} 
-                       size={200} 
-                     />
-                  </div>
+              <div className="p-4 bg-white rounded-2xl shadow-lg border border-slate-100 mb-6 print:shadow-none print:border-none">
+                <QRCodeSVG
+                  value={JSON.stringify({
+                    type: 'access_verify',
+                    studentId: selectedStudentQR.studentUid,
+                    version: selectedStudentQR.qrVersion || 0
+                  })}
+                  size={200}
+                />
+              </div>
 
-                  <div className="w-full space-y-3">
-                     <div className="flex flex-col gap-3 p-4 bg-surface-container-low/30 rounded-2xl border border-outline-variant/10">
-                       <div className="flex justify-between items-center text-[11px] font-bold">
-                         <span className="text-secondary/50 uppercase tracking-wider">Reading Space</span>
-                         <span className="text-on-surface text-right truncate pl-4 italic">{roomName}</span>
-                       </div>
-                       <div className="flex justify-between items-center text-[11px] font-bold">
-                         <span className="text-secondary/50 uppercase tracking-wider">Seat Assigned</span>
-                         <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-sm">#{selectedStudentQR.seatNumber}</span>
-                       </div>
-                       <div className="flex justify-between items-center text-[11px] font-bold">
-                         <span className="text-secondary/50 uppercase tracking-wider">Email</span>
-                         <span className="text-on-surface truncate pl-4">{selectedStudentQR.email}</span>
-                       </div>
-                       <div className="flex justify-between items-center text-[11px] font-bold">
-                         <span className="text-secondary/50 uppercase tracking-wider">Phone</span>
-                         <span className="text-on-surface">{selectedStudentQR.phone}</span>
-                       </div>
-                     </div>
+              <div className="w-full space-y-3">
+                <div className="flex flex-col gap-3 p-4 bg-surface-container-low/30 rounded-2xl border border-outline-variant/10">
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Reading Space</span>
+                    <span className="text-on-surface text-right truncate pl-4 italic">{roomName}</span>
                   </div>
-
-                  <p className="mt-6 text-[9px] font-bold text-on-surface-variant/30 text-center uppercase tracking-[0.2em] leading-relaxed">
-                     Scan at room entrance for validation.<br/>
-                     Member since {format(new Date(selectedStudentQR.start), 'yyyy')}
-                  </p>
-               </div>
-
-               <div className="w-full mt-6 space-y-2 print:hidden">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowQRModal(false)}
-                      className="flex-1 py-3.5 bg-surface-container-low text-on-surface text-[11px] font-black rounded-xl hover:bg-surface-container transition-all uppercase tracking-widest"
-                    >
-                      Close
-                    </button>
-                    <button
-                      onClick={() => window.print()}
-                      className="flex-1 py-3.5 bg-primary text-white text-[11px] font-black rounded-xl hover:opacity-90 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined italic" style={{ fontSize: '18px' }}>print</span>
-                      Print Pass
-                    </button>
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Seat Assigned</span>
+                    <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-sm">#{selectedStudentQR.seatNumber}</span>
                   </div>
-                  <button 
-                    onClick={() => handleRegenerateStudentPass(selectedStudentQR.subscriptionId)}
-                    className="w-full py-2.5 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-xl transition-all uppercase tracking-widest flex items-center justify-center gap-2"
-                    title="Invalidate old QR and issue new one"
-                  >
-                    <span className="material-symbols-outlined italic" style={{ fontSize: '14px' }}>refresh</span>
-                    Regenerate Access QR
-                  </button>
-               </div>
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Email</span>
+                    <span className="text-on-surface truncate pl-4">{selectedStudentQR.email}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-secondary/50 uppercase tracking-wider">Phone</span>
+                    <span className="text-on-surface">{selectedStudentQR.phone}</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-6 text-[9px] font-bold text-on-surface-variant/30 text-center uppercase tracking-[0.2em] leading-relaxed">
+                Scan at room entrance for validation.<br />
+                Member since {format(new Date(selectedStudentQR.start), 'yyyy')}
+              </p>
             </div>
-         </Modal>
+
+            <div className="w-full mt-6 space-y-2 print:hidden">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowQRModal(false)}
+                  className="flex-1 py-3.5 bg-surface-container-low text-on-surface text-[11px] font-black rounded-xl hover:bg-surface-container transition-all uppercase tracking-widest"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="flex-1 py-3.5 bg-primary text-white text-[11px] font-black rounded-xl hover:opacity-90 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined italic" style={{ fontSize: '18px' }}>print</span>
+                  Print Pass
+                </button>
+              </div>
+              <button
+                onClick={() => handleRegenerateStudentPass(selectedStudentQR.subscriptionId)}
+                className="w-full py-2.5 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-xl transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                title="Invalidate old QR and issue new one"
+              >
+                <span className="material-symbols-outlined italic" style={{ fontSize: '14px' }}>refresh</span>
+                Regenerate Access QR
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )
