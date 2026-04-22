@@ -149,8 +149,8 @@ export default function NotesTab({ userId }: NotesTabProps) {
         <>
           {/* Hero */}
           <div className="mb-6">
-            <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Study Notes</h2>
-            <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">your personal library</p>
+            <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Notes</h2>
+            <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">your saved thoughts</p>
           </div>
 
           {/* Search + Add */}
@@ -249,7 +249,7 @@ export default function NotesTab({ userId }: NotesTabProps) {
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="Note Heading"
+                placeholder="Title"
                 className="w-full bg-transparent border-none p-0 text-3xl font-headline italic font-semibold text-on-surface placeholder:text-on-surface-variant/30 focus:ring-0 focus:outline-none"
                 autoFocus
               />
@@ -257,7 +257,7 @@ export default function NotesTab({ userId }: NotesTabProps) {
               <textarea
                 value={content}
                 onChange={e => setContent(e.target.value)}
-                placeholder="Begin your note..."
+                placeholder="Start writing..."
                 className="w-full h-48 bg-transparent border-none p-0 text-base leading-relaxed font-body text-on-surface placeholder:text-on-surface-variant/25 focus:ring-0 focus:outline-none resize-none overflow-y-auto"
               />
               <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-surface-container-low mt-4">
@@ -297,7 +297,7 @@ export default function NotesTab({ userId }: NotesTabProps) {
                 onClick={handleSave}
                 className="bg-gradient-to-r from-primary to-primary-container text-white px-8 py-3 rounded-full text-xs font-bold tracking-widest hover:scale-105 transition-transform active:scale-95 shadow-md"
               >
-                SAVE
+                Save
               </button>
             </div>
           </article>

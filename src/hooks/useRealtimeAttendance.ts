@@ -12,12 +12,15 @@ export function useRealtimeAttendance(roomId?: string) {
     // Initial fetch
     const fetchLogs = async () => {
       // Fetch logs with student profiles and seat numbers
+      const today = new Date().toISOString().split('T')[0]
+      
       let query = supabase
         .from('attendance_logs')
         .select(`
           *,
           student:profiles(name, email)
         `)
+        .eq('date', today)
       
       if (roomId) query = query.eq('room_id', roomId)
       

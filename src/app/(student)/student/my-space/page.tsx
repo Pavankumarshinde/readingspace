@@ -10,16 +10,17 @@ import CalendarTab from '@/components/student/myspace/CalendarTab'
 import FocusTab from '@/components/student/myspace/FocusTab'
 import DiaryTab from '@/components/student/myspace/DiaryTab'
 import HabitsTab from '@/components/student/myspace/HabitsTab'
+import { FileText, CheckCircle2, Calendar, Zap, Book, Flame, LucideIcon } from 'lucide-react'
 
 type Tab = 'notes' | 'tasks' | 'calendar' | 'focus' | 'diary' | 'habits'
 
-const TABS: { key: Tab; label: string; emoji: string }[] = [
-  { key: 'notes',    label: 'Notes',    emoji: '📝' },
-  { key: 'tasks',    label: 'Tasks',    emoji: '✅' },
-  { key: 'calendar', label: 'Calendar', emoji: '📅' },
-  { key: 'focus',    label: 'Focus',    emoji: '🎯' },
-  { key: 'diary',    label: 'Diary',    emoji: '📔' },
-  { key: 'habits',   label: 'Habits',   emoji: '🔥' },
+const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
+  { key: 'notes',    label: 'Notes',    icon: FileText },
+  { key: 'tasks',    label: 'Tasks',    icon: CheckCircle2 },
+  { key: 'calendar', label: 'Calendar', icon: Calendar },
+  { key: 'focus',    label: 'Focus',    icon: Zap },
+  { key: 'diary',    label: 'Diary',    icon: Book },
+  { key: 'habits',   label: 'Habits',   icon: Flame },
 ]
 
 export default function MySpacePage() {
@@ -71,7 +72,7 @@ export default function MySpacePage() {
                   : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
               }`}
             >
-              <span>{tab.emoji}</span>
+              <tab.icon size={14} />
               {tab.label}
             </button>
           ))}

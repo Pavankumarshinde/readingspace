@@ -94,15 +94,30 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
       setHeatmap(heatMapData)
 
       if (logsData) {
-        setHistoricalLogs(logsData)
-        setFilteredCount(logsData.length)
+        // Fetch seat mappings for the room members to fill seat_number
+        const { data: seats } = await supabase
+          .from('subscriptions')
+          .select('student_id, seat_number')
+          .eq('room_id', roomId)
+          .eq('status', 'active')
+
+        const seatMap = new Map((seats || []).map(s => [s.student_id, s.seat_number]))
+
+        const mappedLogs = logsData.map(log => ({
+          ...log,
+          seat_number: seatMap.get(log.student_id) || 'N/A'
+        }))
+
+        setHistoricalLogs(mappedLogs)
+        setFilteredCount(mappedLogs.length)
 
         const freq: Record<string, { count: number, name: string }> = {}
-        logsData.forEach(log => {
-          if (!freq[log.student_id]) freq[log.student_id] = { count: 0, name: (log.student as any).name || 'Unknown' }
+        mappedLogs.forEach(log => {
+          const name = (log.student as any).name || 'Unknown'
+          if (!freq[log.student_id]) freq[log.student_id] = { count: 0, name }
           freq[log.student_id].count++
         })
-        const sorted = Object.values(freq).sort((a, b) => b.count - a.count).slice(0, 3).map((s, i) => ({
+        const sorted = Object.values(freq).sort((a, b) => b.count - a.count).slice(0, 3).map((s) => ({
           name: s.name, initials: s.name.substring(0, 2).toUpperCase(), days: s.count
         }))
         setStars(sorted)
