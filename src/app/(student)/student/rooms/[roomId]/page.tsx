@@ -54,7 +54,7 @@ export default function RoomDetail({
   }, [activeTab])
 
   useEffect(() => {
-    const channel = supabase
+    const chatChannel = supabase
       .channel('chat_notifications')
       .on(
         'postgres_changes',
@@ -67,10 +67,35 @@ export default function RoomDetail({
       )
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(channel)
+    let attendanceChannel: any
+    if (studentId) {
+      attendanceChannel = supabase
+        .channel(`attendance_sync_${studentId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'attendance_logs', filter: `student_id=eq.${studentId}` },
+          async () => {
+            // Silently sync logs without triggering loading state flicker
+            const { data } = await supabase
+              .from('attendance_logs')
+              .select('*')
+              .eq('room_id', roomId)
+              .eq('student_id', studentId)
+              .order('date', { ascending: false })
+            if (data) {
+              setLogs(data)
+              calculateStreaks(data)
+            }
+          }
+        )
+        .subscribe()
     }
-  }, [roomId, activeTab, supabase])
+
+    return () => {
+      supabase.removeChannel(chatChannel)
+      if (attendanceChannel) supabase.removeChannel(attendanceChannel)
+    }
+  }, [roomId, activeTab, studentId, supabase])
 
   const { onlineCount, onlineUsers, isOnline } = useRoomPresence(roomId, { id: studentId, name: studentName })
 
@@ -313,6 +338,7 @@ export default function RoomDetail({
       <StudentRoomHeader
         roomName={room.name}
         subtitle={room.description || 'Study Zone'}
+        expiresIn={expiresIn}
       />
 
       <main className="pt-14 pb-28 md:pt-8 md:pb-10 px-4 max-w-lg mx-auto md:max-w-none md:px-8 lg:max-w-5xl xl:max-w-6xl">
@@ -329,38 +355,28 @@ export default function RoomDetail({
           </button>
           <div className="flex flex-col">
             <div className="flex flex-col">
-              <h1 className="font-headline italic text-3xl font-bold text-on-surface leading-tight">
-                {room.name}
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="font-headline italic text-3xl font-bold text-on-surface leading-tight">
+                  {room.name}
+                </h1>
+              </div>
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-[10px] uppercase tracking-widest text-secondary font-bold">
                   {room.description || 'Study Zone'}
                 </span>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 animate-in fade-in slide-in-from-left-2 transition-all">
-                  <Wifi size={10} className="animate-pulse" />
-                  <span className="text-[9px] font-black uppercase tracking-widest">{onlineCount} Online</span>
-                </div>
+                {expiresIn <= 7 && expiresIn >= 0 && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-error/10 text-error rounded-full border border-error/20 animate-in fade-in slide-in-from-left-2 transition-all">
+                    <span className="material-symbols-outlined shrink-0" style={{ fontSize: '10px' }}>warning</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">
+                      {expiresIn === 0 ? 'Expires Today' : `Expires in ${expiresIn}d`}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Expiry Warning ─────────────────────────────────────────── */}
-        {expiresIn <= 7 && expiresIn >= 0 && (
-          <div className="bg-error-container/60 border border-error/20 rounded-lg px-3 py-2.5 flex items-center gap-3 mt-2 md:mt-0 mb-4 md:mb-6">
-            <span
-              className="material-symbols-outlined text-error"
-              style={{ fontSize: '18px' }}
-            >
-              warning
-            </span>
-            <p className="text-[10px] font-bold text-error uppercase tracking-wider">
-              {expiresIn === 0
-                ? 'Membership expires today'
-                : `Membership expires in ${expiresIn} day${expiresIn > 1 ? 's' : ''}`}
-            </p>
-          </div>
-        )}
 
         {/* ── Segmented Control ────────────────────────────────────── */}
         <div className="flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/10 w-full mb-6 max-w-sm mx-auto md:mx-0">

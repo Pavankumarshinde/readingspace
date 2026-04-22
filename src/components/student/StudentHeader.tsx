@@ -54,9 +54,11 @@ export function StudentBrandHeader() {
 export function StudentRoomHeader({
   roomName,
   subtitle,
+  expiresIn,
 }: {
   roomName: string
   subtitle?: string
+  expiresIn?: number
 }) {
   const router = useRouter()
 
@@ -75,9 +77,17 @@ export function StudentRoomHeader({
           </span>
         </button>
         <div className="flex flex-col">
-          <h1 className="font-headline italic text-base font-bold text-on-surface leading-tight">
-            {roomName}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-headline italic text-base font-bold text-on-surface leading-tight">
+              {roomName}
+            </h1>
+            {expiresIn !== undefined && expiresIn <= 7 && expiresIn >= 0 && (
+              <span className="bg-error/10 border border-error/20 rounded-md px-1.5 py-0.5 text-[8px] font-black text-error uppercase tracking-widest flex items-center gap-0.5 whitespace-nowrap">
+                <span className="material-symbols-outlined shrink-0" style={{ fontSize: '10px' }}>warning</span>
+                {expiresIn === 0 ? 'Expires Today' : `Expires in ${expiresIn}d`}
+              </span>
+            )}
+          </div>
           {subtitle && (
             <span className="text-[8px] uppercase tracking-widest text-secondary font-semibold opacity-80">
               {subtitle}
