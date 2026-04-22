@@ -175,34 +175,41 @@ export default function RoomDetail({
 
   const startCheckIn = async () => {
     if (room.latitude && room.longitude) {
-      if (!navigator.geolocation) {
-        toast.error('Geolocation required for check-in')
-        return
-      }
       setLoading(true)
       try {
-        const position = await new Promise<GeolocationPosition | null>(
-          (resolve) => {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => resolve(pos),
-              () => resolve(null),
-              { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            )
+        try {
+          const { Geolocation } = await import('@capacitor/geolocation');
+          const p = await Geolocation.checkPermissions();
+          if (p.location !== 'granted') {
+            await Geolocation.requestPermissions();
           }
-        )
+        } catch (e) {
+          console.log('Capacitor Geolocation plugin not active/supported on this platform, falling back to web');
+        }
+
+        if (!navigator.geolocation) {
+          toast.error('Geolocation required for check-in')
+          setLoading(false)
+          return
+        }
+
+        const { getPreciseLocation } = await import('@/lib/utils/geolocation')
+        const position = await getPreciseLocation()
+
         if (!position) {
-          toast.error('Location verification timed out')
+          toast.error('Location verification timed out or denied')
+          setLoading(false)
           return
         }
         const { calculateDistance } = await import('@/lib/utils/distance')
         const distance = calculateDistance(
-          position.coords.latitude,
-          position.coords.longitude,
+          position.latitude,
+          position.longitude,
           room.latitude,
           room.longitude
         )
         if (distance > (room.radius || 200)) {
-          const accuracy = position.coords.accuracy ? ` (accuracy: ±${Math.round(position.coords.accuracy)}m)` : ''
+          const accuracy = position.accuracy ? ` (accuracy: ±${Math.round(position.accuracy)}m)` : ''
           toast.error(
             `Out of range (${Math.round(distance)}m).${accuracy} Please move closer to ${room.name}.`,
             { duration: 6000 }
@@ -234,15 +241,19 @@ export default function RoomDetail({
 
     setLoading(true)
     try {
-      const position = await new Promise<GeolocationPosition | null>(
-        (resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => resolve(pos),
-            () => resolve(null),
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-          )
+      try {
+        const { Geolocation } = await import('@capacitor/geolocation');
+        const p = await Geolocation.checkPermissions();
+        if (p.location !== 'granted') {
+          await Geolocation.requestPermissions();
         }
-      )
+      } catch (e) {
+        console.log('Capacitor Geolocation plugin not active/supported on this platform, falling back to web');
+      }
+
+      const { getPreciseLocation } = await import('@/lib/utils/geolocation')
+      const position = await getPreciseLocation()
+
       if (!position) {
         toast.error('Location verification required for check-in')
         setLoading(false)
@@ -253,8 +264,8 @@ export default function RoomDetail({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           roomId,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: position.latitude,
+          longitude: position.longitude,
           version: scannedVersion
         }),
       })

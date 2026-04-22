@@ -65,6 +65,26 @@ export default function RoomChat({ roomId, currentUserId, currentUserName, curre
   useEffect(() => {
     let mounted = true;
 
+    const checkNotificationPermissions = async () => {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const p = await LocalNotifications.checkPermissions();
+        if (p.display !== 'granted') {
+          await LocalNotifications.requestPermissions();
+        }
+      } catch (e) {
+        console.log('Capacitor LocalNotifications not available');
+        // Fallback to web standard Notification API
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+          }
+        }
+      }
+    };
+
+    checkNotificationPermissions();
+
     const fetchMessages = async () => {
       try {
         const { data, error } = await supabase
@@ -198,7 +218,7 @@ export default function RoomChat({ roomId, currentUserId, currentUserName, curre
   }
 
   return (
-    <div className="flex flex-col h-[70vh] md:h-[650px] w-full bg-surface-container-lowest border border-outline-variant/20 shadow-sm rounded-3xl overflow-hidden relative">
+    <div className="flex flex-col h-[calc(100dvh-300px)] md:h-[calc(100vh-280px)] w-full bg-surface-container-lowest border border-outline-variant/20 shadow-sm rounded-3xl overflow-hidden relative">
       {/* Header */}
       <div className="px-5 py-4 border-b border-outline-variant/10 bg-white flex items-center justify-between shrink-0 sticky top-0 z-10">
         <div className="flex items-center gap-3">

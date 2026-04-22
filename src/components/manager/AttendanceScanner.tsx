@@ -107,6 +107,16 @@ export default function AttendanceScanner({ roomId, roomName, onClose }: Attenda
 
     async function startScanner() {
       try {
+        try {
+          const { Camera } = await import('@capacitor/camera');
+          const p = await Camera.checkPermissions();
+          if (p.camera !== 'granted') {
+            await Camera.requestPermissions();
+          }
+        } catch (e) {
+          console.log('Capacitor Camera plugin not active/supported on this platform, falling back to web');
+        }
+
         codeReader = new BrowserQRCodeReader()
         const devices = await navigator.mediaDevices.enumerateDevices()
         const videoInputDevices = devices.filter(device => device.kind === 'videoinput')

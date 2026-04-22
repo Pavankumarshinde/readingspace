@@ -344,8 +344,8 @@ export default function RoomStudentsTab({
                 key={mode}
                 onClick={() => setFilter(mode)}
                 className={`px-6 py-2.5 text-[11px] font-black rounded-xl transition-all relative uppercase tracking-widest whitespace-nowrap ${filter === mode
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-on-surface-variant/60 hover:text-on-surface'
+                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  : 'text-on-surface-variant/60 hover:text-on-surface'
                   }`}
               >
                 <span>{mode}</span>
@@ -372,8 +372,8 @@ export default function RoomStudentsTab({
               key={`mobile-${mode}`}
               onClick={() => setFilter(mode)}
               className={`flex-1 px-2 py-3 text-[10px] sm:text-[11px] font-black rounded-xl transition-all relative uppercase tracking-widest whitespace-nowrap ${filter === mode
-                  ? 'bg-surface-container-lowest text-primary shadow-sm'
-                  : 'text-on-surface-variant/60 hover:text-on-surface'
+                ? 'bg-surface-container-lowest text-primary shadow-sm'
+                : 'text-on-surface-variant/60 hover:text-on-surface'
                 }`}
             >
               <span>{mode}</span>

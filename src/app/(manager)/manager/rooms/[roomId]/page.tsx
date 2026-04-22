@@ -146,24 +146,33 @@ export default function ManagerRoomDetail() {
   }, [roomId])
 
   // ── Room Actions ────────────────────────────────────────────────────────
-  const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser")
-      return
+  const handleGetCurrentLocation = async () => {
+    try {
+      const { Geolocation } = await import('@capacitor/geolocation');
+      const p = await Geolocation.checkPermissions();
+      if (p.location !== 'granted') {
+        const req = await Geolocation.requestPermissions();
+        if (req.location !== 'granted') {
+          toast.error("Location access denied");
+          return;
+        }
+      }
+    } catch (e) {
+      console.log('Capacitor Geolocation not available');
     }
+
     toast.loading("Capturing precise coordinates...", { id: 'geo' })
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setFormData(prev => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }))
-        toast.dismiss('geo')
-        toast.success(`Location anchored with ${Math.round(pos.coords.accuracy)}m accuracy`)
-      },
-      (err) => {
-        toast.dismiss('geo')
-        toast.error("Location access denied: " + err.message)
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    )
+    const { getPreciseLocation } = await import('@/lib/utils/geolocation')
+    const position = await getPreciseLocation()
+    
+    if (position) {
+      setFormData(prev => ({ ...prev, latitude: position.latitude, longitude: position.longitude }))
+      toast.dismiss('geo')
+      toast.success(`Location anchored with ${Math.round(position.accuracy)}m accuracy`)
+    } else {
+      toast.dismiss('geo')
+      toast.error("Location verification timed out or denied")
+    }
   }
 
   const handleSaveRoom = async (e: React.FormEvent) => {
