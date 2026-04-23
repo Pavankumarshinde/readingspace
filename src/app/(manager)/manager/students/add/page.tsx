@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Save, UserPlus, Mail, Phone, Calendar, Armchair, Building, Clock, Send, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
+import { format } from 'date-fns'
 
 function AddStudentForm() {
   const router = useRouter()
@@ -27,8 +28,8 @@ function AddStudentForm() {
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      startDate: format(new Date(), 'yyyy-MM-dd'),
+      endDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
     }))
   }, [])
 

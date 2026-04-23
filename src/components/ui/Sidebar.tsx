@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   User,
   Grid2X2,
+  BookOpen
 } from 'lucide-react'
 
 const navItems = [
@@ -33,12 +34,9 @@ export default function Sidebar({ role }: { role: UserRole }) {
     <aside className="hidden md:flex flex-col h-screen sticky top-0 bg-surface-container-low transition-all duration-300 w-[200px] shrink-0 overflow-y-auto border-r border-outline-variant/10">
       {/* Brand Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-3">
-        <span
-          className="material-symbols-outlined text-primary font-bold"
-          style={{ fontSize: '20px', fontVariationSettings: "'wght' 600" }}
-        >
-          menu
-        </span>
+        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+          <BookOpen size={18} strokeWidth={2.5} />
+        </div>
         <h1 className="font-headline italic text-xl font-semibold text-primary tracking-tight">
           ReadingSpace
         </h1>

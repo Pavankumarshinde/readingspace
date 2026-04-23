@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { BookOpen } from 'lucide-react'
 
 // ── Brand Header ─────────────────────────────────────────────────────────────
 // Used on: Rooms list, Notes list, Profile
@@ -32,19 +34,16 @@ export function StudentBrandHeader() {
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-md flex justify-between items-center px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 border-b border-outline-variant/10 md:hidden">
       <div className="flex items-center gap-3">
-        <span
-          className="material-symbols-outlined text-primary"
-          style={{ fontSize: '20px' }}
-        >
-          menu
-        </span>
+        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+          <BookOpen size={16} strokeWidth={2.5} />
+        </div>
         <h1 className="font-headline italic text-lg font-semibold text-primary tracking-tight leading-none">
           ReadingSpace
         </h1>
       </div>
-      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-outline-variant/30 shrink-0">
+      <Link href="/student/profile" className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-outline-variant/30 shrink-0 hover:bg-primary/20 transition-colors">
         <span className="text-[10px] font-bold text-primary">{initials}</span>
-      </div>
+      </Link>
     </header>
   )
 }

@@ -85,8 +85,8 @@ export default function RoomStudentsTab({
   const [approvalData, setApprovalData] = useState({
     seatNumber: '',
     tier: 'standard',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    startDate: format(new Date(), 'yyyy-MM-dd'),
+    endDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
   })
 
   // Edit Modal
@@ -468,8 +468,8 @@ export default function RoomStudentsTab({
                       onClick={() => {
                         setSelectedStudentForRenew(student);
                         setRenewFormData({
-                          startDate: new Date().toISOString().split('T')[0],
-                          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                          startDate: format(new Date(), 'yyyy-MM-dd'),
+                          endDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
                         });
                         setShowRenewModal(true);
                       }}

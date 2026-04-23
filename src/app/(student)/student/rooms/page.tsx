@@ -173,15 +173,21 @@ export default function StudentRooms() {
 
         {/* Search + New Room */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-6 md:mb-8 w-full">
-          <div className="relative flex-grow">
+          <div className="relative flex-grow group">
+            <span
+              className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-focus-within:text-primary transition-colors pointer-events-none"
+              style={{ fontSize: '20px' }}
+            >
+              search
+            </span>
             <input
               type="text"
               placeholder="Search rooms..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 md:h-12 bg-surface-container-low border-none rounded-lg px-4 pr-12 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/50 transition-all font-body"
+              className="w-full h-11 md:h-12 bg-surface-container-low border-none rounded-lg pl-11 pr-12 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/30 transition-all font-body font-medium"
             />
-            {searchQuery ? (
+            {searchQuery && (
               <button
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors text-outline hover:text-on-surface"
                 onClick={() => setSearchQuery('')}
@@ -190,13 +196,6 @@ export default function StudentRooms() {
                   close
                 </span>
               </button>
-            ) : (
-              <span
-                className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
-                style={{ fontSize: '20px' }}
-              >
-                tune
-              </span>
             )}
           </div>
           <button

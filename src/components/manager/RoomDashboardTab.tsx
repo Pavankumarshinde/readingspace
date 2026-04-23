@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   startOfWeek, endOfWeek, isSameDay, startOfDay, endOfDay,
-  getDaysInMonth, getDay
+  getDaysInMonth, getDay, isSameWeek, isSameMonth
 } from 'date-fns'
 import { useRealtimeAttendance } from '@/hooks/useRealtimeAttendance'
 import toast from 'react-hot-toast'
@@ -107,8 +107,8 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
         .from('subscriptions')
         .select(`id, end_date, seat_number, status, room_id, student_id, student:profiles!inner(name, email)`)
         .eq('room_id', roomId)
-        .gte('end_date', start.toISOString().split('T')[0])
-        .lte('end_date', end.toISOString().split('T')[0])
+        .gte('end_date', format(start, 'yyyy-MM-dd'))
+        .lte('end_date', format(end, 'yyyy-MM-dd'))
         .order('end_date', { ascending: true })
 
       const today = startOfDay(new Date())
@@ -120,7 +120,8 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
           initial: ((sub.student as any).name || 'U').substring(0, 2).toUpperCase(),
           seat: sub.seat_number,
           daysLeft: diffDays,
-          isExpired: endDate < today
+          isExpired: endDate < today,
+          endDate: endDate
         }
       })
       setExpiringPlans(mappedExpiring)
@@ -173,23 +174,6 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
 
   return (
     <div className="space-y-10 animate-in fade-in duration-300">
-      {/* Dashboard Top Bar (Simplified to Full-Width Filter) */}
-      <div className="w-full">
-        <div className="p-1.5 bg-surface-container-low rounded-2xl flex gap-1.5 w-full shadow-inner">
-          {(['day', 'week', 'month'] as Timeframe[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTimeframe(t)}
-              className={`flex-1 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${timeframe === t
-                ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-[1.02]'
-                : 'text-on-surface/40 hover:text-on-surface/60 hover:bg-surface-container/50'
-                }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* LEFT COLUMN: Controls & Heatmap */}
@@ -197,20 +181,36 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
 
           {/* Calendar Explorer */}
           <div className="card bg-white border border-outline-variant/10 rounded-[2.5rem] p-8">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex flex-col">
-                <h3 className="text-xl font-black italic text-on-surface">Attendance Heatmap</h3>
-                <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-1">
-                  {format(viewDate, 'MMMM yyyy')}
-                </p>
+            <div className="flex flex-col gap-6 mb-8">
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col">
+                  <h3 className="text-xl font-black italic text-on-surface">Attendance Heatmap</h3>
+                  <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-1">
+                    {format(viewDate, 'MMMM yyyy')}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors text-on-surface">
+                    <ChevronLeft size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                  <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors text-on-surface">
+                    <ChevronRight size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors text-on-surface">
-                  <ChevronLeft size={20} />
-                </button>
-                <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors text-on-surface">
-                  <ChevronRight size={20} />
-                </button>
+
+              {/* Compact Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-on-surface-variant/50 uppercase tracking-widest shrink-0">Range :</span>
+                <select
+                  value={timeframe}
+                  onChange={(e) => setTimeframe(e.target.value as Timeframe)}
+                  className="bg-surface-container-low border-none rounded-lg text-[10px] font-black text-primary uppercase tracking-widest px-3 py-1.5 outline-none cursor-pointer hover:bg-surface-container transition-colors"
+                >
+                  <option value="day">Day</option>
+                  <option value="week">Week</option>
+                  <option value="month">Month</option>
+                </select>
               </div>
             </div>
 
@@ -224,21 +224,30 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
               {Array.from({ length: getDaysInMonth(viewDate) }).map((_, i) => {
                 const day = i + 1
                 const count = heatmap[day] || 0
-                const isSelected = isSameDay(selectedDate, new Date(viewDate.getFullYear(), viewDate.getMonth(), day))
+                const currentDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
+                
+                const isExactSelected = isSameDay(selectedDate, currentDate)
+                const isRangeHighlighted = 
+                  (timeframe === 'day' && isSameDay(selectedDate, currentDate)) ||
+                  (timeframe === 'week' && isSameWeek(selectedDate, currentDate)) ||
+                  (timeframe === 'month' && isSameMonth(selectedDate, currentDate))
 
                 return (
                   <button
                     key={day}
-                    onClick={() => setSelectedDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), day))}
-                    className={`relative w-10 h-10 mx-auto rounded-xl flex items-center justify-center text-xs font-black transition-all group ${isSelected
-                      ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-110'
+                    onClick={() => setSelectedDate(currentDate)}
+                    className={`relative w-10 h-10 mx-auto rounded-xl flex items-center justify-center text-xs font-black transition-all group ${isRangeHighlighted
+                      ? 'border border-primary bg-primary/5 text-primary scale-105 shadow-sm'
                       : count > 0
-                        ? 'bg-primary/5 text-primary border border-primary/10'
-                        : 'text-on-surface/20'
+                        ? 'border border-primary/10 text-primary'
+                        : 'text-on-surface/30 hover:text-on-surface/60 hover:bg-surface-container-low'
                       }`}
                   >
                     {day}
-                    {count > 0 && !isSelected && (
+                    {count > 0 && !isRangeHighlighted && (
+                      <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-primary/60" />
+                    )}
+                    {isExactSelected && timeframe !== 'day' && (
                       <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-primary" />
                     )}
                   </button>
@@ -307,9 +316,16 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string,
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`text-[10px] font-black uppercase tracking-widest ${plan.isExpired ? 'text-error' : 'text-primary'}`}>
-                            {plan.isExpired ? 'Expired' : `${plan.daysLeft} Days Left`}
-                          </p>
+                          <div className={`uppercase tracking-widest ${plan.isExpired ? 'text-error' : 'text-primary'}`}>
+                            {plan.isExpired ? (
+                              <span className="text-[10px] font-black">Expired</span>
+                            ) : (
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span className="text-[8px] font-semibold text-on-surface-variant/60">Expires on</span>
+                                <span className="text-[11px] font-black">{format(plan.endDate, 'dd MMM')}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
