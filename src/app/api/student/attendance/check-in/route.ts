@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Log Attendance
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
     
     // Check if already marked for today (to avoid duplicates from accidental scan)
     const { data: existing } = await supabase

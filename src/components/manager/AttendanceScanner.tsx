@@ -32,7 +32,7 @@ export default function AttendanceScanner({ roomId, roomName, onClose }: Attenda
     async function fetchStudents() {
       setLoadingStudents(true)
       try {
-        const today = new Date().toISOString().split('T')[0]
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
         const [{ data: students }, { data: logs }] = await Promise.all([
           supabase
             .from('subscriptions')
@@ -74,7 +74,7 @@ export default function AttendanceScanner({ roomId, roomName, onClose }: Attenda
         async (payload: any) => {
           const newLog = payload.new
           // Only care if it's today
-          const today = new Date().toISOString().split('T')[0]
+          const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
           if (newLog.date !== today) return
 
           // Fetch student details for the feed

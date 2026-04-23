@@ -12,7 +12,7 @@ export function useRealtimeAttendance(roomId?: string) {
     // Initial fetch
     const fetchLogs = async () => {
       // Fetch logs with student profiles and seat numbers
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
       
       let query = supabase
         .from('attendance_logs')
