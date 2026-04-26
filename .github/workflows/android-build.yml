@@ -21,14 +21,21 @@ jobs:
           node-version: 22
           cache: 'npm'
 
-      - name: Install NPM Dependencies
-        run: npm install --no-audit --no-fund --legacy-peer-deps
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
+
+      - name: Install NPM Dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+
+      - name: Build Next.js Web App
+        run: npm run build
+        env:
+          # Supabase env vars required for the build
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Setup Gradle Permission
         run: chmod +x ./android/gradlew
