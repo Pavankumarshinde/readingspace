@@ -116,19 +116,19 @@ export default function SignupPage() {
               {/* Full Name */}
               <div>
                 <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Full Name</label>
-                {inputRow(<User size={16} />, <input type="text" name="name" required className={inputClass} placeholder="e.g. Rahul Sharma" value={formData.name} onChange={handleChange} />)}
+                {inputRow(<User size={16} />, <input suppressHydrationWarning type="text" name="name" required className={inputClass} placeholder="e.g. Rahul Sharma" value={formData.name} onChange={handleChange} />)}
               </div>
 
               {/* Email */}
               <div>
                 <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Email ID</label>
-                {inputRow(<Mail size={16} />, <input type="email" name="email" required className={inputClass} placeholder="your@email.com" value={formData.email} onChange={handleChange} />)}
+                {inputRow(<Mail size={16} />, <input suppressHydrationWarning type="email" name="email" required className={inputClass} placeholder="your@email.com" value={formData.email} onChange={handleChange} />)}
               </div>
 
               {/* Phone */}
               <div>
                 <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Phone Number</label>
-                {inputRow(<Phone size={16} />, <input type="tel" name="phone" className={inputClass} placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} />)}
+                {inputRow(<Phone size={16} />, <input suppressHydrationWarning type="tel" name="phone" className={inputClass} placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} />)}
               </div>
 
               {/* Manager extras */}
@@ -136,11 +136,11 @@ export default function SignupPage() {
                 <>
                   <div>
                     <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Reading Space Name</label>
-                    {inputRow(<Building size={16} />, <input type="text" name="businessName" required className={inputClass} placeholder="Sunrise Study Hall" value={formData.businessName} onChange={handleChange} />)}
+                    {inputRow(<Building size={16} />, <input suppressHydrationWarning type="text" name="businessName" required className={inputClass} placeholder="Sunrise Study Hall" value={formData.businessName} onChange={handleChange} />)}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Address</label>
-                    {inputRow(<MapPin size={16} />, <input type="text" name="address" required className={inputClass} placeholder="Floor 3, MG Road, Pune" value={formData.address} onChange={handleChange} />)}
+                    {inputRow(<MapPin size={16} />, <input suppressHydrationWarning type="text" name="address" required className={inputClass} placeholder="Floor 3, MG Road, Pune" value={formData.address} onChange={handleChange} />)}
                   </div>
                 </>
               )}
@@ -148,13 +148,13 @@ export default function SignupPage() {
               {/* Password */}
               <div>
                 <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Password</label>
-                {inputRow(<Lock size={16} />, <input type="password" name="password" required minLength={6} className={inputClass} placeholder="Min. 6 characters" value={formData.password} onChange={handleChange} />)}
+                {inputRow(<Lock size={16} />, <input suppressHydrationWarning type="password" name="password" required minLength={6} className={inputClass} placeholder="Min. 6 characters" value={formData.password} onChange={handleChange} />)}
               </div>
 
               {/* Confirm Password */}
               <div>
                 <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Confirm Password</label>
-                {inputRow(<Lock size={16} />, <input type="password" name="confirmPassword" required minLength={6} className={inputClass} placeholder="••••••••" value={formData.confirmPassword} onChange={handleChange} />)}
+                {inputRow(<Lock size={16} />, <input suppressHydrationWarning type="password" name="confirmPassword" required minLength={6} className={inputClass} placeholder="••••••••" value={formData.confirmPassword} onChange={handleChange} />)}
               </div>
             </div>
 

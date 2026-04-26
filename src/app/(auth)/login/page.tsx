@@ -139,6 +139,7 @@ export default function LoginPage() {
                   <div className="flex items-center gap-3 bg-surface-container-low/60 px-3 py-2.5 rounded-2xl border border-transparent focus-within:border-outline-variant/20 focus-within:bg-surface-container-lowest transition-all group">
                     <Mail size={16} className="text-primary/60 shrink-0 group-focus-within:text-primary transition-colors" />
                     <input
+                      suppressHydrationWarning
                       type="email" required
                       className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 outline-none"
                       placeholder="your@email.com"
@@ -157,6 +158,7 @@ export default function LoginPage() {
                   <div className="flex items-center gap-3 bg-surface-container-low/60 px-3 py-2.5 rounded-2xl border border-transparent focus-within:border-outline-variant/20 focus-within:bg-surface-container-lowest transition-all group">
                     <Lock size={16} className="text-primary/60 shrink-0 group-focus-within:text-primary transition-colors" />
                     <input
+                      suppressHydrationWarning
                       type="password" required
                       className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 outline-none"
                       placeholder="••••••••"
@@ -187,7 +189,7 @@ export default function LoginPage() {
                 <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">Email</label>
                 <div className="flex items-center gap-3 bg-surface-container-low/60 px-3 py-2.5 rounded-2xl border border-transparent focus-within:border-outline-variant/20 transition-all">
                   <Mail size={16} className="text-primary/60 shrink-0" />
-                  <input type="email" required className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 outline-none" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+                  <input suppressHydrationWarning type="email" required className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 outline-none" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2 pt-1">
@@ -214,6 +216,7 @@ export default function LoginPage() {
                 </p>
               </div>
               <input
+                suppressHydrationWarning
                 type="text" required maxLength={6}
                 className="w-full bg-surface-container-low/50 border border-outline-variant/10 focus:border-primary/30 focus:bg-surface-container-lowest rounded-2xl p-4 text-center text-2xl font-bold tracking-[0.4em] text-on-surface placeholder:text-on-surface-variant/20 transition-all outline-none"
                 placeholder="000000"
@@ -237,7 +240,7 @@ export default function LoginPage() {
                 <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-1.5 block pl-1">New Password</label>
                 <div className="flex items-center gap-3 bg-surface-container-low/60 px-3 py-2.5 rounded-2xl border border-transparent focus-within:border-outline-variant/20 transition-all">
                   <Lock size={16} className="text-primary/60 shrink-0" />
-                  <input type="password" required className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 outline-none" placeholder="At least 8 characters" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                  <input suppressHydrationWarning type="password" required className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 outline-none" placeholder="At least 8 characters" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                 </div>
               </div>
               <button type="submit" disabled={loading} className="w-full bg-on-surface text-surface py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70">

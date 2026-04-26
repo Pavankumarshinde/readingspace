@@ -28,16 +28,17 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPrefetch = request.headers.get('next-router-prefetch') === '1' || request.headers.get('purpose') === 'prefetch'
 
-  // Public routes — never require auth
+  // Public routes
   const publicRoutes = ['/login', '/signup', '/auth/callback', '/manifest.json', '/favicon.ico']
   const isPublic = publicRoutes.some(r => pathname.startsWith(r)) || pathname === '/'
 
-  // Skip auth check entirely for prefetch requests
+  // Aggressive Bypass: If it's a prefetch, skip EVERYTHING and just return NextResponse.next()
+  // We handle the real security check on the actual page load.
   if (isPrefetch) {
     return supabaseResponse
   }
 
-  // Fast path: no auth cookie → redirect protected routes to login
+  // Quick check: If no auth cookies exist, we can skip getUser() for public routes
   const authCookie = request.cookies.getAll().find(c => c.name.includes('auth-token'))
   if (!authCookie) {
     if (!isPublic) {
@@ -46,34 +47,10 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Get user — wrap in try/catch to handle stale/invalid refresh tokens gracefully
-  let user = null
-  try {
-    const { data, error } = await supabase.auth.getUser()
-    if (error) {
-      // refresh_token_not_found or similar — session is dead
-      // For protected routes: clear cookies + redirect to login
-      if (!isPublic) {
-        const loginUrl = new URL('/login', request.url)
-        const response = NextResponse.redirect(loginUrl)
-        // Clear all Supabase auth cookies so the client starts fresh
-        request.cookies.getAll()
-          .filter(c => c.name.includes('auth-token') || c.name.includes('sb-'))
-          .forEach(c => response.cookies.delete(c.name))
-        return response
-      }
-      return supabaseResponse
-    }
-    user = data.user
-  } catch {
-    // Network or unexpected error — fail open for public routes, redirect otherwise
-    if (!isPublic) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    return supabaseResponse
-  }
+  // Only call getUser if we have a cookie and it's NOT a prefetch
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Not logged in → redirect protected routes to login
+  // 1. Not logged in -> Redirect to login (if not public)
   if (!user) {
     if (!isPublic) {
       return NextResponse.redirect(new URL('/login', request.url))
@@ -81,7 +58,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Logged in user → get role if needed
+  // 2. Logged in -> Get role if needed
   const isManagerRoute = pathname.startsWith('/manager')
   const isStudentRoute = pathname.startsWith('/student')
   const isAuthRoute = pathname === '/login' || pathname === '/signup'
@@ -89,7 +66,10 @@ export async function middleware(request: NextRequest) {
 
   let role = null
   if (needsRole) {
+    // Check if we can get role from metadata first to skip DB call
     role = user.user_metadata?.role
+    
+    // If not in metadata, fetch from DB
     if (!role) {
       const { data: profile } = await supabase
         .from('profiles')
@@ -100,13 +80,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Logged-in user on auth route → redirect to their dashboard
+  // 3. User is on public route (like /login) -> Redirect to their dashboard
   if (isAuthRoute) {
     const target = role === 'manager' ? '/manager/rooms' : '/student/rooms'
     return NextResponse.redirect(new URL(target, request.url))
   }
 
-  // Role-based route protection
+  // 4. Role-based route protection
   if (isManagerRoute && role !== 'manager') {
     return NextResponse.redirect(new URL('/student/rooms', request.url))
   }
@@ -119,6 +99,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, sitemap.xml, robots.txt, manifest.json (metadata files)
+     * - public files with extensions
+     */
     '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2)$).*)',
   ],
 }
