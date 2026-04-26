@@ -102,7 +102,7 @@ export default function DiaryTab({ userId }: DiaryTabProps) {
   return (
     <div className="w-full">
       {/* Sticky inner header: Diary title + New Entry btn + Search */}
-      <div className="sticky top-0 z-10 bg-surface pb-3">
+      <div className="sticky top-0 z-10 bg-surface pb-1">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Diary</h2>

@@ -108,7 +108,7 @@ export default function FocusTab({ userId }: FocusTabProps) {
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* Sticky inner header: Title + Mode pills */}
-      <div className="sticky top-0 z-10 bg-surface pb-3">
+      <div className="sticky top-0 z-10 bg-surface pb-1">
         <div className="mb-3">
           <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Focus</h2>
           <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black mt-0.5">Focus timer</p>

@@ -319,10 +319,10 @@ export default function RoomStudentsTab({
     })
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Top Actions */}
-      {/* Top Actions */}
-      <div className="flex flex-col gap-4">
+    <div className="space-y-4 animate-in fade-in duration-300">
+      {/* Sticky: Search + Filter */}
+      <div className="sticky top-0 z-10 bg-surface pb-2 flex flex-col gap-3">
+
         {/* Desktop Layout & Mobile Row 1 */}
         <div className="flex flex-row items-center gap-3 w-full">
           {/* Search Bar - Grows to fill space */}

@@ -57,13 +57,13 @@ export default function MySpacePage() {
       {/* ── Fixed Page Header: Title + Tab Bar ──────────────────────────── */}
       <div className="sticky-page-header pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0 shrink-0">
         {/* Page Title */}
-        <div className="px-4 md:px-8 pt-4 pb-2 max-w-[1400px] mx-auto">
+        <div className="px-4 md:px-8 pt-4 pb-1 max-w-[1400px] mx-auto">
           <h1 className="font-headline text-2xl md:text-3xl font-bold tracking-tight text-on-surface">My Space</h1>
           <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">Your study corner</p>
         </div>
 
         {/* Tab Pill Bar — scrollable horizontally but fixed vertically */}
-        <div className="flex gap-1.5 overflow-x-auto pb-3 pt-1 px-4 md:px-8 max-w-[1400px] mx-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-1.5 overflow-x-auto pb-2 pt-0 px-4 md:px-8 max-w-[1400px] mx-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(tab => (
             <button
               key={tab.key}
@@ -82,7 +82,7 @@ export default function MySpacePage() {
       </div>
 
       {/* ── Scrollable Tab Content ───────────────────────────────────────── */}
-      <div className="scroll-area px-4 md:px-8 py-4 pb-32 md:pb-8 max-w-[1400px] mx-auto w-full">
+      <div className="scroll-area px-4 md:px-8 pt-2 pb-32 md:pb-8 max-w-[1400px] mx-auto w-full">
         <div className="animate-in fade-in duration-200" key={activeTab}>
           {activeTab === 'notes'    && <NotesTab    userId={userId} />}
           {activeTab === 'tasks'    && <TasksTab    userId={userId} />}

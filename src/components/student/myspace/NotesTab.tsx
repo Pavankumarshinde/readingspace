@@ -148,7 +148,7 @@ export default function NotesTab({ userId }: NotesTabProps) {
       {!isEditorOpen ? (
         <>
           {/* Sticky inner header: Title + Search — stays fixed in scroll area */}
-          <div className="sticky top-0 z-10 bg-surface pb-3">
+          <div className="sticky top-0 z-10 bg-surface pb-1">
             {/* Title */}
             <div className="mb-4">
               <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Notes</h2>

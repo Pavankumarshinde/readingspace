@@ -151,7 +151,7 @@ export default function CalendarTab({ userId }: CalendarTabProps) {
   return (
     <div className="w-full">
       {/* Sticky inner header */}
-      <div className="sticky top-0 z-10 bg-surface pb-3">
+      <div className="sticky top-0 z-10 bg-surface pb-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Calendar</h2>

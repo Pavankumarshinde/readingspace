@@ -108,7 +108,7 @@ export default function TasksTab({ userId }: TasksTabProps) {
   return (
     <div className="w-full max-w-4xl mx-auto pb-20">
       {/* Sticky inner header: Title + Filter — stays fixed in scroll area */}
-      <div className="sticky top-0 z-10 bg-surface pb-3">
+      <div className="sticky top-0 z-10 bg-surface pb-1">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Tasks</h2>

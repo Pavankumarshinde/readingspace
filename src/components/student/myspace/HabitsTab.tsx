@@ -195,7 +195,7 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
   return (
     <div className="w-full pb-20">
       {/* Sticky inner header */}
-      <div className="sticky top-0 z-10 bg-surface pb-3">
+      <div className="sticky top-0 z-10 bg-surface pb-1">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Habits</h2>
