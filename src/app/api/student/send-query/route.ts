@@ -2,9 +2,9 @@ import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
+  const resend = new Resend(process.env.RESEND_API_KEY!)
   try {
     const supabase = await createClient();
     

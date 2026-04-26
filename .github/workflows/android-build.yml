@@ -1,7 +1,7 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch: # Allows you to manually trigger the build from the GitHub UI
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -33,9 +33,13 @@ jobs:
       - name: Build Next.js Web App
         run: npm run build
         env:
-          # Supabase env vars required for the build
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_QR_SECRET: ${{ secrets.NEXT_PUBLIC_QR_SECRET }}
+          OTP_PEPPER: ${{ secrets.OTP_PEPPER }}
 
       - name: Setup Gradle Permission
         run: chmod +x ./android/gradlew

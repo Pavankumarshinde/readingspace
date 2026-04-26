@@ -10,9 +10,9 @@ import {
   normalizeEmail,
 } from '@/lib/security/otp'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST() {
+  const resend = new Resend(process.env.RESEND_API_KEY!)
   try {
     const supabase = await createClient()
 
