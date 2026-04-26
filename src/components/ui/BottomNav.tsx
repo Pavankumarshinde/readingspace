@@ -12,9 +12,9 @@ const studentNavItems = [
   { label: 'Profile', href: '/student/profile', icon: 'person' },
 ]
 
-// ── Manager Nav Items (Lucide components)────────────────────────────────────
+// ── Manager Nav Items (Lucide components) ────────────────────────────────────
 const managerNavItems = [
-  { label: 'Rooms', href: '/manager/rooms', Icon: DoorOpen },
+  { label: 'My Rooms', href: '/manager/rooms', Icon: DoorOpen },
   { label: 'Profile', href: '/manager/profile', Icon: User },
 ]
 
@@ -50,7 +50,7 @@ export default function BottomNav({ role }: { role: UserRole }) {
                 >
                   {item.icon}
                 </span>
-                <span className="text-[8px] font-bold uppercase tracking-wider">
+                <span className="text-[9px] font-bold tracking-wide">
                   {item.label}
                 </span>
                 {isActive && (
@@ -88,7 +88,7 @@ export default function BottomNav({ role }: { role: UserRole }) {
               size={22}
               strokeWidth={isActive ? 2.5 : 2}
             />
-            <span className="text-[10px] font-bold mt-1.5 tracking-[0.05em] uppercase">
+            <span className="text-[10px] font-bold mt-1.5 tracking-[0.05em]">
               {item.label}
             </span>
           </Link>

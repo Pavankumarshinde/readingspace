@@ -150,30 +150,29 @@ export default function CalendarTab({ userId }: CalendarTabProps) {
 
   return (
     <div className="w-full">
-      {/* Header */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface">Calendar</h2>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="w-8 h-1 bg-primary rounded-full" />
-            <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black">YOUR SCHEDULE</p>
+      {/* Sticky inner header */}
+      <div className="sticky top-0 z-10 bg-surface pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Calendar</h2>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black mt-0.5">Your schedule</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-           <button
-             onClick={() => { setNewDate(format(selectedDay, 'yyyy-MM-dd')); setShowEventModal(true) }}
-             className="flex items-center gap-3 px-6 py-3 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:shadow-2xl hover:shadow-primary/20 active:scale-95 transition-all shadow-sm"
-           >
-             <Plus size={16} />
-             Add Event
-           </button>
-           <button
-             onClick={() => setShowReminderModal(true)}
-             className="flex items-center gap-3 px-5 py-3 bg-surface-container-high text-on-surface rounded-2xl text-[11px] font-black uppercase tracking-widest border border-outline-variant/10 hover:bg-tertiary hover:text-white active:scale-95 transition-all"
-           >
-             <Bell size={16} />
-             Add Reminder
-           </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setNewDate(format(selectedDay, 'yyyy-MM-dd')); setShowEventModal(true) }}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-sm"
+            >
+              <Plus size={14} />
+              Add Event
+            </button>
+            <button
+              onClick={() => setShowReminderModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-on-surface rounded-xl text-[11px] font-black uppercase tracking-widest border border-outline-variant/10 hover:bg-surface-container-highest active:scale-95 transition-all"
+            >
+              <Bell size={14} />
+              Reminder
+            </button>
+          </div>
         </div>
       </div>
 

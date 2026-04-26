@@ -18,18 +18,18 @@ export default async function StudentLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex h-dvh overflow-hidden bg-surface">
       {/* Responsive Sidebar — Tablet/Laptop (md+) */}
       <Sidebar role="student" />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/*
           No layout-level mobile header here.
           Each student page provides its own <StudentBrandHeader> or
           <StudentRoomHeader> to ensure per-page control of the top bar.
         */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-hidden">
           {children}
         </main>
 

@@ -42,26 +42,28 @@ export default function MySpacePage() {
 
   if (loading || !userId) {
     return (
-      <div className="flex flex-col min-h-screen items-center justify-center bg-surface text-secondary/40">
+      <div className="flex flex-col h-full items-center justify-center bg-surface text-secondary/40">
         <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin mb-3" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">Loading My Space…</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">Loading...</span>
       </div>
     )
   }
 
   return (
-    <>
+    <div className="page-shell">
+      {/* Mobile brand header — fixed at very top */}
       <StudentBrandHeader />
 
-      <main className="pt-16 pb-28 md:pt-6 md:pb-12 px-4 md:px-8 max-w-[1400px] mx-auto">
-        {/* Page Header */}
-        <div className="mb-5">
+      {/* ── Fixed Page Header: Title + Tab Bar ──────────────────────────── */}
+      <div className="sticky-page-header pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0 shrink-0">
+        {/* Page Title */}
+        <div className="px-4 md:px-8 pt-4 pb-2 max-w-[1400px] mx-auto">
           <h1 className="font-headline text-2xl md:text-3xl font-bold tracking-tight text-on-surface">My Space</h1>
-          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">your personal productivity hub</p>
+          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">Your study corner</p>
         </div>
 
-        {/* Tab Bar */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-6 scrollbar-none">
+        {/* Tab Pill Bar — scrollable horizontally but fixed vertically */}
+        <div className="flex gap-1.5 overflow-x-auto pb-3 pt-1 px-4 md:px-8 max-w-[1400px] mx-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(tab => (
             <button
               key={tab.key}
@@ -72,13 +74,15 @@ export default function MySpacePage() {
                   : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
               }`}
             >
-              <tab.icon size={14} />
+              <tab.icon size={13} />
               {tab.label}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Tab Content */}
+      {/* ── Scrollable Tab Content ───────────────────────────────────────── */}
+      <div className="scroll-area px-4 md:px-8 py-4 pb-32 md:pb-8 max-w-[1400px] mx-auto w-full">
         <div className="animate-in fade-in duration-200" key={activeTab}>
           {activeTab === 'notes'    && <NotesTab    userId={userId} />}
           {activeTab === 'tasks'    && <TasksTab    userId={userId} />}
@@ -87,7 +91,7 @@ export default function MySpacePage() {
           {activeTab === 'diary'    && <DiaryTab    userId={userId} />}
           {activeTab === 'habits'   && <HabitsTab   userId={userId} />}
         </div>
-      </main>
-    </>
+      </div>
+    </div>
   )
 }

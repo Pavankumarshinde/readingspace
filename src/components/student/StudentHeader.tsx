@@ -13,7 +13,8 @@ export function StudentBrandHeader() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user
       if (!user) return
       const name =
         user.user_metadata?.full_name ||

@@ -1,5 +1,6 @@
 import Sidebar from '@/components/ui/Sidebar'
 import BottomNav from '@/components/ui/BottomNav'
+import { ManagerBrandHeader } from '@/components/manager/ManagerHeader'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -16,16 +17,17 @@ export default async function ManagerLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex h-dvh overflow-hidden bg-surface">
       {/* Responsive Sidebar for Tablet/Laptop */}
       <Sidebar role="manager" />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
-           <div className="responsive-container py-1 md:py-1.5">
-              {children}
-           </div>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile-only brand header */}
+        <ManagerBrandHeader />
+
+        <main className="flex-1 overflow-hidden">
+          {children}
         </main>
         
         {/* Bottom Nav for Mobile */}

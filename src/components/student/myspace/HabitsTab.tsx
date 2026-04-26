@@ -194,22 +194,21 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
 
   return (
     <div className="w-full pb-20">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface">Habits</h2>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="w-8 h-1 bg-tertiary rounded-full" />
-            <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black">YOUR PROGRESS</p>
+      {/* Sticky inner header */}
+      <div className="sticky top-0 z-10 bg-surface pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Habits</h2>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black mt-0.5">Your progress</p>
           </div>
+          <button
+            onClick={() => { setEditingHabit(null); setForm({ name: '', icon: '⭐', type: 'checklist', target: 1, unit: 'times', freqType: 'daily', freqDays: [0,1,2,3,4,5,6], color: '#9B4000' }); setShowModal(true) }}
+            className="flex items-center gap-2 px-4 py-2 bg-tertiary text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-sm"
+          >
+            <TrendingUp size={14} />
+            Add Habit
+          </button>
         </div>
-        <button
-          onClick={() => { setEditingHabit(null); setForm({ name: '', icon: '⭐', type: 'checklist', target: 1, unit: 'times', freqType: 'daily', freqDays: [0,1,2,3,4,5,6], color: '#9B4000' }); setShowModal(true) }}
-          className="flex items-center gap-3 px-6 py-3 bg-tertiary text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:shadow-2xl hover:shadow-tertiary/20 active:scale-95 transition-all"
-        >
-          <TrendingUp size={16} />
-          Add Habit
-        </button>
       </div>
 
       {/* Enhanced Performance Graph */}

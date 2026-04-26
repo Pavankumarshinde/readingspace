@@ -144,40 +144,42 @@ export default function NotesTab({ userId }: NotesTabProps) {
   const isEditorOpen = isAdding || !!activeNote
 
   return (
-    <div className="w-full">
+    <div className="w-full flex flex-col">
       {!isEditorOpen ? (
         <>
-          {/* Hero */}
-          <div className="mb-6">
-            <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Notes</h2>
-            <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">your saved thoughts</p>
-          </div>
-
-          {/* Search + Add */}
-          <div className="flex items-center gap-3 mb-6 w-full">
-            <div className="relative flex-grow">
-              <input
-                type="text"
-                placeholder="Search entries..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full h-11 bg-surface-container-low border-none rounded-lg px-4 pr-10 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/50 transition-all font-body"
-              />
-              {searchQuery && (
-                <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors"
-                  onClick={() => setSearchQuery('')}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
-                </button>
-              )}
+          {/* Sticky inner header: Title + Search — stays fixed in scroll area */}
+          <div className="sticky top-0 z-10 bg-surface pb-3">
+            {/* Title */}
+            <div className="mb-4">
+              <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Notes</h2>
+              <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">Your saved thoughts</p>
             </div>
-            <button
-              onClick={openAddNote}
-              className="h-11 w-11 flex items-center justify-center bg-primary text-white rounded-lg hover:opacity-90 transition-all active:scale-95 shadow-sm shrink-0"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>add</span>
-            </button>
+            {/* Search + Add */}
+            <div className="flex items-center gap-3 w-full">
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  placeholder="Search entries..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full h-10 bg-surface-container-low border-none rounded-lg px-4 pr-10 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/50 transition-all font-body"
+                />
+                {searchQuery && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={openAddNote}
+                className="h-10 w-10 flex items-center justify-center bg-primary text-white rounded-lg hover:opacity-90 transition-all active:scale-95 shadow-sm shrink-0"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span>
+              </button>
+            </div>
           </div>
 
           {/* Note Grid */}

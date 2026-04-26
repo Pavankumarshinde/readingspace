@@ -26,8 +26,9 @@ export default function StudentRooms() {
     setLoading(true)
     try {
       const {
-        data: { user },
-      } = await supabase.auth.getUser()
+        data: { session },
+      } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) {
         router.push('/login')
         return
@@ -40,7 +41,7 @@ export default function StudentRooms() {
       if (error) throw error
       setRooms(subs || [])
     } catch (err: any) {
-      toast.error('Failed to synchronize rooms')
+      toast.error('Could not load your rooms')
       console.error(err)
     } finally {
       setLoading(false)
@@ -53,10 +54,10 @@ export default function StudentRooms() {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen items-center justify-center bg-surface">
+      <div className="flex flex-col h-full items-center justify-center bg-surface">
         <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-secondary/60">
-          Syncing rooms...
+          Loading rooms...
         </span>
       </div>
     )
@@ -67,14 +68,14 @@ export default function StudentRooms() {
     const room = sub.rooms
     if (!room) return null
     return (
-      <div className="border border-outline-variant/30 rounded-lg p-3 bg-surface-container-low transition-all group hover:border-outline-variant/50">
+      <div className="border border-outline-variant/30 rounded-xl p-3.5 bg-surface-container-low transition-all group hover:border-outline-variant/50 hover:shadow-sm">
         {/* Card Header */}
         <div className="flex justify-between items-start mb-2">
           <div className="min-w-0 flex-1 mr-2">
-            <h3 className="font-headline text-lg font-bold text-on-surface leading-tight truncate">
+            <h3 className="font-headline text-base font-bold text-on-surface leading-tight truncate">
               {room.name}
             </h3>
-            <p className="text-outline text-[10px] uppercase tracking-wider flex items-center gap-1 mt-0.5 font-body">
+            <p className="text-outline text-[10px] uppercase tracking-wider flex items-center gap-1 mt-0.5">
               <span
                 className="material-symbols-outlined shrink-0"
                 style={{ fontSize: '12px' }}
@@ -94,24 +95,24 @@ export default function StudentRooms() {
         <div className="grid grid-cols-3 gap-2 items-center border-t border-outline-variant/20 pt-2.5">
           <div>
             <p className="text-[8px] uppercase tracking-widest text-outline font-bold">
-              Expiration
+              Valid Till
             </p>
-            <p className="text-[11px] font-semibold text-on-surface font-body">
+            <p className="text-[11px] font-semibold text-on-surface">
               {format(new Date(sub.end_date), 'dd MMM yyyy').toUpperCase()}
             </p>
           </div>
           <div>
             <p className="text-[8px] uppercase tracking-widest text-outline font-bold">
-              Seat
+              Your Seat
             </p>
-            <p className="text-[11px] font-semibold text-on-surface font-body">
+            <p className="text-[11px] font-semibold text-on-surface">
               {sub.seat_number || '—'}
             </p>
           </div>
           <div className="text-right">
             <Link href={`/student/rooms/${room.id}`}>
               <button className="inline-flex items-center gap-1 text-primary font-bold text-[9px] uppercase tracking-widest hover:translate-x-1 transition-transform">
-                Enter
+                Open
                 <span
                   className="material-symbols-outlined"
                   style={{ fontSize: '14px' }}
@@ -136,12 +137,12 @@ export default function StudentRooms() {
         meeting_room
       </span>
       <h3 className="font-headline text-base font-bold text-on-surface mb-1">
-        {searchQuery ? 'No rooms found' : 'No active rooms'}
+        {searchQuery ? 'No rooms found' : 'No rooms joined yet'}
       </h3>
       <p className="text-[11px] text-secondary/60 max-w-[200px] mb-5 leading-relaxed">
         {searchQuery
           ? 'Try a different room name.'
-          : 'Enter a room code from your manager to get started.'}
+          : 'Get the room code from your owner to join.'}
       </p>
       {!searchQuery && (
         <button
@@ -156,75 +157,75 @@ export default function StudentRooms() {
 
   return (
     <>
+      {/* Mobile brand header — fixed at top */}
       <div className="md:hidden">
         <StudentBrandHeader />
       </div>
 
-      <main className="pt-16 pb-28 md:pt-8 md:pb-12 px-4 max-w-lg mx-auto md:max-w-none md:px-8 xl:max-w-[1400px]">
-        {/* Hero */}
-        <section className="mt-4 md:mt-0 mb-6 md:mb-8 text-left">
-          <h2 className="font-headline text-3xl md:text-4xl font-bold text-on-surface tracking-tight leading-none">
-            Study rooms
-          </h2>
-          <p className="text-secondary text-[10px] uppercase tracking-widest mt-1.5 md:mt-2 font-bold">
-            manage study halls
-          </p>
-        </section>
-
-        {/* Search + New Room */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-6 md:mb-8 w-full">
-          <div className="relative flex-grow group">
-            <span
-              className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-focus-within:text-primary transition-colors pointer-events-none"
-              style={{ fontSize: '20px' }}
-            >
-              search
-            </span>
-            <input
-              type="text"
-              placeholder="Search rooms..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 md:h-12 bg-surface-container-low border-none rounded-lg pl-11 pr-12 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/30 transition-all font-body font-medium"
-            />
-            {searchQuery && (
+      {/* Page Shell — full height, flex column */}
+      <div className="page-shell">
+        {/* ── Fixed Page Header ───────────────────────────────────────── */}
+        <div className="sticky-page-header pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-4 pb-3">
+          <div className="px-4 md:px-8 max-w-[1400px] mx-auto">
+            {/* Title row */}
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="font-headline text-2xl md:text-3xl font-bold text-on-surface tracking-tight leading-none">
+                  My Rooms
+                </h2>
+                <p className="text-secondary text-[10px] uppercase tracking-widest mt-1 font-bold">
+                  All your study places
+                </p>
+              </div>
               <button
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors text-outline hover:text-on-surface"
-                onClick={() => setSearchQuery('')}
+                onClick={() => setShowJoinModal(true)}
+                className="h-9 bg-primary text-white px-4 rounded-lg flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-sm shrink-0 text-[11px] font-bold"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-                  close
-                </span>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
+                Join Room
               </button>
-            )}
+            </div>
+
+            {/* Search bar */}
+            <div className="relative group">
+              <span
+                className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline/40 group-focus-within:text-primary transition-colors pointer-events-none"
+                style={{ fontSize: '18px' }}
+              >
+                search
+              </span>
+              <input
+                type="text"
+                placeholder="Search rooms..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 bg-surface-container-low border-none rounded-lg pl-10 pr-10 text-sm focus:ring-1 focus:ring-primary/40 outline-none placeholder:text-outline/30 transition-all font-medium"
+              />
+              {searchQuery && (
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors text-outline hover:text-on-surface"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                </button>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => setShowJoinModal(true)}
-            className="h-11 md:h-12 bg-primary text-white px-5 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-sm shrink-0"
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: '20px' }}
-            >
-              add
-            </span>
-            <span className="uppercase tracking-widest text-[11px] font-bold md:hidden">
-              New room
-            </span>
-          </button>
         </div>
 
-        {/* Cards — Responsive Grid */}
-        {filteredRooms.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full">
-            {filteredRooms.map((sub) => (
-              <RoomCard key={sub.id} sub={sub} />
-            ))}
-          </div>
-        )}
-      </main>
+        {/* ── Scrollable Content ───────────────────────────────────────── */}
+        <div className="scroll-area px-4 md:px-8 py-4 pb-32 md:pb-8 max-w-[1400px] mx-auto w-full">
+          {filteredRooms.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full">
+              {filteredRooms.map((sub) => (
+                <RoomCard key={sub.id} sub={sub} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {showJoinModal && (
         <JoinRoomModal

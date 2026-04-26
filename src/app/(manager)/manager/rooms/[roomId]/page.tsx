@@ -276,142 +276,81 @@ export default function ManagerRoomDetail() {
   // Render ──────────────────────────────────────────────────────────────
   if (showScanner) {
     return (
-      <main className="w-full min-h-screen pt-4 pb-28 md:pt-8 md:pb-12 px-4 max-w-lg mx-auto md:max-w-none md:px-8 xl:max-w-[1400px]">
-        <AttendanceScanner
-          roomId={room.id}
-          roomName={room.name}
-          onClose={() => setShowScanner(false)}
-        />
-      </main>
+      <div className="page-shell">
+        <div className="sticky-page-header px-4 md:px-8 py-3">
+          <button onClick={() => setShowScanner(false)} className="flex items-center gap-2 text-primary font-bold text-sm">
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>arrow_back</span>
+            Back to Room
+          </button>
+        </div>
+        <div className="scroll-area px-4 md:px-8 py-4 pb-32 md:pb-8 max-w-[1400px] mx-auto w-full">
+          <AttendanceScanner roomId={room.id} roomName={room.name} onClose={() => setShowScanner(false)} />
+        </div>
+      </div>
     )
   }
 
   return (
     <>
-      <main className="pt-4 pb-28 md:pt-8 md:pb-12 px-4 max-w-lg mx-auto md:max-w-none md:px-8 xl:max-w-[1400px]">
-
-        {/* ── Page Header ──────────────────────────────────────────────── */}
-        <header className="flex flex-col gap-6 mb-8 md:mb-12">
-          {/* Top Row: Back Navigation + Name + Actions */}
-          <div className="flex items-start justify-between gap-4 w-full">
-            <div className="flex items-start gap-4">
-              <button
-                onClick={() => router.push('/manager/rooms')}
-                className="w-10 h-10 md:w-12 md:h-12 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-all shrink-0 mt-1"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-                  arrow_back
-                </span>
-              </button>
-              <div className="flex flex-col">
-                <h1 className="font-headline italic text-3xl font-bold text-on-surface leading-tight">
-                  {room.name}
-                </h1>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[10px] uppercase tracking-widest text-secondary font-bold">
-                    {room.description || 'Study Area'}
-                  </span>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 animate-in fade-in slide-in-from-left-2 transition-all">
-                    <Wifi size={10} className="animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">{onlineCount} Online</span>
+      <div className="page-shell">
+        {/* ── Fixed Page Header: Room name + Actions + Tabs ────────────── */}
+        <div className="sticky-page-header px-4 md:px-8 pt-4 pb-0">
+          <div className="max-w-[1400px] mx-auto">
+            {/* Top Row */}
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div className="flex items-center gap-3">
+                <button onClick={() => router.push('/manager/rooms')} className="w-9 h-9 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-all shrink-0">
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
+                </button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-headline text-xl md:text-2xl font-bold text-on-surface leading-tight">{room.name}</h1>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
+                      <Wifi size={9} className="animate-pulse" />
+                      <span className="text-[9px] font-black uppercase tracking-widest">{onlineCount} Online</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-widest text-secondary font-bold">{room.description || 'Study Area'}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => setShowEditRoom(true)} className="hidden md:flex w-10 h-10 bg-surface-container-lowest rounded-full items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors text-outline hover:text-primary" title="Edit Room">
+                  <Pencil size={18} />
+                </button>
+                <button onClick={handleDeleteRoom} className="hidden md:flex w-10 h-10 bg-surface-container-lowest rounded-full items-center justify-center border border-outline-variant/20 hover:bg-error/10 transition-colors text-outline hover:text-error" title="Delete Room">
+                  <Trash2 size={18} />
+                </button>
+                <div className="relative group md:hidden">
+                  <button className="w-10 h-10 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 text-on-surface-variant">
+                    <MoreVertical size={18} />
+                  </button>
+                  <div className="absolute right-0 top-full mt-2 w-44 bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-2xl opacity-0 -translate-y-2 pointer-events-none group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto transition-all z-50 p-2">
+                    <button onClick={() => setShowEditRoom(true)} className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-on-surface hover:bg-surface-container-low rounded-xl transition-colors uppercase tracking-widest"><Pencil size={14} className="text-primary" />Edit Room</button>
+                    <button onClick={handleDeleteRoom} className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-error hover:bg-error/5 rounded-xl transition-colors uppercase tracking-widest"><Trash2 size={14} />Delete Room</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Actions Menu / Desktop Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Desktop Only Buttons */}
-              <button
-                onClick={() => setShowEditRoom(true)}
-                className="hidden md:flex w-12 h-12 bg-surface-container-lowest rounded-full items-center justify-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors text-outline hover:text-primary shrink-0"
-                title="Edit Room"
-              >
-                <Pencil size={20} />
-              </button>
-              <button
-                onClick={handleDeleteRoom}
-                className="hidden md:flex w-12 h-12 bg-surface-container-lowest rounded-full items-center justify-center border border-outline-variant/20 hover:bg-error/10 transition-colors text-outline hover:text-error shrink-0"
-                title="Delete Room"
-              >
-                <Trash2 size={20} />
-              </button>
-
-              {/* Mobile Only Menu */}
-              <div className="relative group md:hidden">
-                <button className="w-12 h-12 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant/20 text-on-surface-variant transition-all hover:bg-surface-container">
-                  <MoreVertical size={20} />
-                </button>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-2xl opacity-0 -translate-y-2 pointer-events-none group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto transition-all z-50 p-2">
-                   <button 
-                     onClick={() => setShowEditRoom(true)}
-                     className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-bold text-on-surface hover:bg-surface-container-low rounded-xl transition-colors uppercase tracking-widest"
-                   >
-                     <Pencil size={16} className="text-primary" />
-                     Edit Configuration
-                   </button>
-                   <button 
-                     onClick={handleDeleteRoom}
-                     className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-bold text-error hover:bg-error/5 rounded-xl transition-colors uppercase tracking-widest"
-                   >
-                     <Trash2 size={16} />
-                     Permanently Delete
-                   </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Row: Tabs */}
-          <div className="flex w-full mt-2">
-            {/* Segmented Control */}
+            {/* Segmented Tabs */}
             <div className="flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/10 w-full">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`flex-1 px-2 md:px-6 py-2.5 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'dashboard' 
-                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => setActiveTab('students')}
-                className={`flex-1 px-2 md:px-6 py-2.5 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === 'students' 
-                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Students
-              </button>
-              <button
-                onClick={() => setActiveTab('chats')}
-                className={`flex-1 px-2 md:px-6 py-2.5 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all relative ${
-                  activeTab === 'chats' 
-                    ? 'bg-surface-container-lowest text-primary shadow-sm' 
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
+              <button onClick={() => setActiveTab('dashboard')} className={`flex-1 px-2 md:px-6 py-2 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>Dashboard</button>
+              <button onClick={() => setActiveTab('students')} className={`flex-1 px-2 md:px-6 py-2 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'students' ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>Students</button>
+              <button onClick={() => setActiveTab('chats')} className={`flex-1 px-2 md:px-6 py-2 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'chats' ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
                 Live Chat
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-error text-white text-[9px] font-black flex items-center justify-center rounded-full px-1 shadow-lg shadow-error/20 scale-110 animate-in zoom-in duration-200">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-                {unreadCount === 0 && (
-                  <span className="absolute top-2 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
-                )}
+                {unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-error text-white text-[9px] font-black flex items-center justify-center rounded-full px-1">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                {unreadCount === 0 && <span className="absolute top-2 right-3 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>}
               </button>
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* ══════════════ VIEW MODE DETECTOR ══════════════ */}
+        {/* ── Scrollable Tab Content ──────────────────────────────────────── */}
+        <div className="scroll-area px-4 md:px-8 pt-4 pb-32 md:pb-8 max-w-[1400px] mx-auto w-full">
+
         {activeTab === 'dashboard' && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            {/* DETAILS SECTION */}
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Room stats grid */}
             <div className="grid grid-cols-6 lg:grid-cols-5 gap-2 md:gap-3">
               {/* Capacity */}
               <div className="col-span-2 lg:col-span-1 flex flex-col items-center justify-center p-3 md:p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 shadow-sm hover:shadow-md transition-all group">
@@ -463,38 +402,27 @@ export default function ManagerRoomDetail() {
               </button>
             </div>
 
-            {/* DASHBOARD SECTION */}
-            <div className="pt-8 border-t border-outline-variant/10">
+            {/* Dashboard charts */}
+            <div className="pt-6 border-t border-outline-variant/10">
               <RoomDashboardTab roomId={room.id} roomName={room.name} />
             </div>
           </div>
         )}
-        
+
         {activeTab === 'students' && (
           <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
-            <RoomStudentsTab 
-              roomId={roomId} 
-              roomName={room.name} 
-              currentUserId={managerId} 
-              currentUserName={managerName} 
-              isOnline={isOnline}
-            />
+            <RoomStudentsTab roomId={roomId} roomName={room.name} currentUserId={managerId} currentUserName={managerName} isOnline={isOnline} />
           </div>
         )}
 
         {activeTab === 'chats' && (
           <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
-            <RoomChat 
-              roomId={room.id} 
-              currentUserId={managerId} 
-              currentUserName={managerName} 
-              currentUserType="manager" 
-              onlineUsers={onlineUsers}
-              isOnline={isOnline}
-            />
+            <RoomChat roomId={room.id} currentUserId={managerId} currentUserName={managerName} currentUserType="manager" onlineUsers={onlineUsers} isOnline={isOnline} />
           </div>
         )}
-      </main>
+
+        </div>{/* end scroll-area */}
+      </div>{/* end page-shell */}
 
       {/* ═══════════ MODALS ═══════════ */}
 
@@ -623,18 +551,20 @@ export default function ManagerRoomDetail() {
       )}
 
       {/* QR Display Modal */}
-      <Modal open={showQR} onClose={() => setShowQR(false)} title="Security Access QR">
-        <QRDisplay 
-          roomId={room.id} 
-          roomName={room.name} 
-          latitude={room.latitude}
-          longitude={room.longitude}
-          radius={room.radius}
-          qrVersion={room.qr_version}
-          onRegenerate={handleRegenerateRoomQR}
-        />
-      </Modal>
+      {showQR && (
+        <Modal open={showQR} onClose={() => setShowQR(false)} title="Room QR Code">
+          <QRDisplay 
+            roomId={room.id} 
+            roomName={room.name} 
+            latitude={room.latitude}
+            longitude={room.longitude}
+            radius={room.radius}
+            qrVersion={room.qr_version}
+            onRegenerate={handleRegenerateRoomQR}
+          />
+        </Modal>
+      )}
 
-    </>
+    </> 
   )
 }

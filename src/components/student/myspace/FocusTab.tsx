@@ -107,30 +107,29 @@ export default function FocusTab({ userId }: FocusTabProps) {
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      <div className="mb-10">
-        <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface">Focus</h2>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="w-8 h-1 bg-primary rounded-full" />
-          <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black">FOCUS TIMER</p>
+      {/* Sticky inner header: Title + Mode pills */}
+      <div className="sticky top-0 z-10 bg-surface pb-3">
+        <div className="mb-3">
+          <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Focus</h2>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black mt-0.5">Focus timer</p>
+        </div>
+        {/* Mode Pills */}
+        <div className="flex gap-2 flex-wrap">
+          {MODES.map(m => (
+            <button
+              key={m.key}
+              onClick={() => setModeAndReset(m.key)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${mode === m.key ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-surface-container-high text-on-surface-variant hover:bg-white hover:text-primary active:scale-95 border border-outline-variant/10'}`}
+            >
+              <span className="text-sm">{m.emoji}</span>{m.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 items-start">
         {/* Left Side: Timer and Controls */}
         <div className="space-y-6">
-          {/* Mode Pills */}
-          <div className="flex gap-2 flex-wrap">
-            {MODES.map(m => (
-              <button
-                key={m.key}
-                onClick={() => setModeAndReset(m.key)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${mode === m.key ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-surface-container-high text-on-surface-variant hover:bg-white hover:text-primary active:scale-95 border border-outline-variant/10'}`}
-              >
-                <span className="text-sm">{m.emoji}</span>{m.label}
-              </button>
-            ))}
-          </div>
-
           {/* Timer Card */}
           <div className="bg-surface-container-lowest rounded-[2.5rem] border border-outline-variant/15 p-12 shadow-sm flex flex-col items-center">
             {/* SVG Ring */}

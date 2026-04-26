@@ -107,34 +107,32 @@ export default function TasksTab({ userId }: TasksTabProps) {
 
   return (
     <div className="w-full max-w-4xl mx-auto pb-20">
-      {/* Header */}
-      <div className="mb-10 flex items-center justify-between">
-         <div>
-            <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface">Tasks</h2>
-            <div className="flex items-center gap-2 mt-2">
-               <span className="w-8 h-1 bg-primary rounded-full" />
-               <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black">STAY ON TOP OF WORK</p>
-            </div>
-         </div>
-         <button 
-           onClick={() => setShowAddForm(!showAddForm)}
-           className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${showAddForm ? 'bg-surface-container-high text-on-surface rotate-45' : 'bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 active:scale-95'}`}
-         >
-           <Plus size={24} />
-         </button>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-1.5 p-1 bg-surface-container-low border border-outline-variant/10 rounded-2xl mb-8 w-fit">
-         {FILTERS.map(f => (
+      {/* Sticky inner header: Title + Filter — stays fixed in scroll area */}
+      <div className="sticky top-0 z-10 bg-surface pb-3">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Tasks</h2>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 font-black mt-0.5">Stay on top of work</p>
+          </div>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${showAddForm ? 'bg-surface-container-high text-on-surface rotate-45' : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95'}`}
+          >
+            <Plus size={20} />
+          </button>
+        </div>
+        {/* Filter pills */}
+        <div className="flex gap-1 p-1 bg-surface-container-low border border-outline-variant/10 rounded-xl w-full">
+          {FILTERS.map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white shadow-sm text-primary' : 'text-on-surface/40 hover:text-on-surface'}`}
+              className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white shadow-sm text-primary' : 'text-on-surface/40 hover:text-on-surface'}`}
             >
-               {f}
+              {f}
             </button>
-         ))}
+          ))}
+        </div>
       </div>
 
       {/* Add Task Form */}

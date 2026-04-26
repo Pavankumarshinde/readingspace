@@ -13,7 +13,7 @@ import {
 
 const navItems = [
   // Manager Tabs
-  { label: 'Rooms', href: '/manager/rooms', icon: DoorOpen, role: 'manager' as const },
+  { label: 'My Rooms', href: '/manager/rooms', icon: DoorOpen, role: 'manager' as const },
   { label: 'Profile', href: '/manager/profile', icon: User, role: 'manager' as const },
 
   // Student Tabs
@@ -31,19 +31,19 @@ export default function Sidebar({ role }: { role: UserRole }) {
   )
 
   return (
-    <aside className="hidden md:flex flex-col h-screen sticky top-0 bg-surface-container-low transition-all duration-300 w-[200px] shrink-0 overflow-y-auto border-r border-outline-variant/10">
+    <aside className="hidden md:flex flex-col h-dvh sticky top-0 bg-surface-container-low transition-all duration-300 w-[200px] shrink-0 overflow-y-auto border-r border-outline-variant/10">
       {/* Brand Header */}
-      <div className="px-6 pt-6 pb-4 flex items-center gap-3">
+      <div className="px-6 pt-6 pb-4 flex items-center gap-3 shrink-0">
         <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
           <BookOpen size={18} strokeWidth={2.5} />
         </div>
-        <h1 className="font-headline italic text-xl font-semibold text-primary tracking-tight">
+        <h1 className="font-headline text-xl font-semibold text-primary tracking-tight">
           ReadingSpace
         </h1>
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 mt-4 space-y-0.5">
+      <nav className="flex-1 mt-4 space-y-0.5 overflow-y-auto">
         {filteredItems.map((item) => {
           const isActive =
             pathname === item.href ||
@@ -70,7 +70,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
                 className={isActive ? '' : 'opacity-50 group-hover:opacity-100'}
                 size={16}
               />
-              <span className="text-[12px] font-semibold tracking-tight">
+              <span className="text-[13px] font-semibold tracking-tight">
                 {item.label}
               </span>
             </Link>
@@ -79,7 +79,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3">
+      <div className="px-4 py-3 shrink-0">
         <div className="text-[9px] uppercase font-bold tracking-widest text-on-surface-variant/30">
           v0.1.0
         </div>

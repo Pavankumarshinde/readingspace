@@ -101,29 +101,43 @@ export default function DiaryTab({ userId }: DiaryTabProps) {
 
   return (
     <div className="w-full">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Diary</h2>
-          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">YOUR PRIVATE JOURNAL</p>
+      {/* Sticky inner header: Diary title + New Entry btn + Search */}
+      <div className="sticky top-0 z-10 bg-surface pb-3">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Diary</h2>
+            <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">Your private journal</p>
+          </div>
+          <button
+            onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/10"
+          >
+            <Plus size={14} />
+            New Entry
+          </button>
         </div>
-        <button
-          onClick={openNew}
-          className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/10"
-        >
-          <Plus size={16} />
-          New Entry
-        </button>
+        {/* Search — only meaningful on mobile list view */}
+        <div className="relative lg:hidden">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface/20" size={14} />
+          <input
+            type="text"
+            placeholder="Search diary…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full bg-surface-container-lowest border border-outline-variant/15 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-on-surface outline-none focus:ring-1 focus:ring-primary/20"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         {/* Entry List Column */}
         <div className="flex flex-col gap-4">
-          {/* Search Bar */}
-          <div className="relative">
+          {/* Desktop search (inside the column) */}
+          <div className="relative hidden lg:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface/20" size={14} />
-            <input 
-              type="text" 
-              placeholder="Search diary…" 
+            <input
+              type="text"
+              placeholder="Search diary…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-surface-container-lowest border border-outline-variant/15 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-on-surface outline-none focus:ring-1 focus:ring-primary/20"

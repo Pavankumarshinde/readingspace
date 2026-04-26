@@ -31,7 +31,8 @@ export default function JoinRoomModal({ open, onClose, onSuccess }: JoinRoomModa
         throw new Error('Invalid join key. Please check and try again.')
       }
 
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) throw new Error('You must be logged in')
 
       const { error: requestError } = await supabase
