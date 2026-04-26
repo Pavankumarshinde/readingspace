@@ -24,6 +24,24 @@ allprojects {
     }
 }
 
+// Fix: Override Java toolchain for all subprojects (e.g. capacitor-camera requires Java 21
+// but we pin to 17 which ships with Android Studio).
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        tasks.withType(JavaCompile).configureEach {
+            options.release = 17
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
