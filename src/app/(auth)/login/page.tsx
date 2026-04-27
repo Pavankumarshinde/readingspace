@@ -151,7 +151,7 @@ export default function LoginPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5 px-1">
                     <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest">Password</label>
-                    <button type="button" onClick={() => setMode('forgot_password')} className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity">
+                    <button suppressHydrationWarning type="button" onClick={() => setMode('forgot_password')} className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity">
                       Forgot?
                     </button>
                   </div>
@@ -168,7 +168,7 @@ export default function LoginPage() {
                   </div>
                 </div>
               </div>
-              <button
+              <button suppressHydrationWarning
                 type="submit" disabled={loading}
                 className="w-full bg-on-surface text-surface py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70 mt-2"
               >
@@ -193,10 +193,10 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="space-y-2 pt-1">
-                <button type="submit" disabled={loading} className="w-full bg-on-surface text-surface py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70">
+                <button suppressHydrationWarning type="submit" disabled={loading} className="w-full bg-on-surface text-surface py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70">
                   {loading ? 'Sending…' : 'Send Code'}
                 </button>
-                <button type="button" onClick={() => setMode('login')} className="w-full py-3 bg-surface-container-lowest text-on-surface-variant rounded-2xl border border-outline-variant/20 text-[11px] font-bold uppercase tracking-widest hover:bg-surface-container-low transition-all flex items-center justify-center gap-1.5">
+                <button suppressHydrationWarning type="button" onClick={() => setMode('login')} className="w-full py-3 bg-surface-container-lowest text-on-surface-variant rounded-2xl border border-outline-variant/20 text-[11px] font-bold uppercase tracking-widest hover:bg-surface-container-low transition-all flex items-center justify-center gap-1.5">
                   <ChevronLeft size={14} strokeWidth={2.5} /> Back
                 </button>
               </div>
@@ -223,7 +223,7 @@ export default function LoginPage() {
                 value={otp}
                 onChange={e => setOtp(e.target.value.trim())}
               />
-              <button type="submit" disabled={loading || otp.length < 6} className="w-full bg-primary text-white py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70">
+              <button suppressHydrationWarning type="submit" disabled={loading || otp.length < 6} className="w-full bg-primary text-white py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70">
                 {loading ? 'Verifying…' : 'Verify Code'}
               </button>
             </form>
@@ -243,7 +243,7 @@ export default function LoginPage() {
                   <input suppressHydrationWarning type="password" required className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 outline-none" placeholder="At least 8 characters" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="w-full bg-on-surface text-surface py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70">
+              <button suppressHydrationWarning type="submit" disabled={loading} className="w-full bg-on-surface text-surface py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70">
                 {loading ? 'Updating…' : 'Update Password'}
               </button>
             </form>

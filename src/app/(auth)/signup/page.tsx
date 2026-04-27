@@ -96,14 +96,14 @@ export default function SignupPage() {
           <form onSubmit={handleSignup} className="space-y-4">
             {/* Role toggle */}
             <div className="flex gap-1 p-1 bg-surface-container-low rounded-2xl mb-2">
-              <button
+              <button suppressHydrationWarning
                 type="button"
                 onClick={() => setRole('student')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${role === 'student' ? 'bg-white shadow-sm text-primary' : 'text-on-surface/40'}`}
               >
                 <User size={13} /> Student
               </button>
-              <button
+              <button suppressHydrationWarning
                 type="button"
                 onClick={() => setRole('manager')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${role === 'manager' ? 'bg-white shadow-sm text-primary' : 'text-on-surface/40'}`}
@@ -158,7 +158,7 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <button
+            <button suppressHydrationWarning
               type="submit"
               disabled={loading}
               className="w-full bg-on-surface text-surface py-3.5 rounded-2xl text-[12px] font-bold uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-70 mt-2"
