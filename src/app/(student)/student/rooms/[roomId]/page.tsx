@@ -322,7 +322,7 @@ export default function RoomDetail({
 
       <div className="page-shell">
         {/* ── Fixed: Desktop Header + Segmented Tabs ─────────────────────── */}
-        <div className="sticky-page-header pt-14 md:pt-0 shrink-0">
+        <div className="sticky-page-header pt-[calc(env(safe-area-inset-top,0px)+4.5rem)] md:pt-0 shrink-0">
           <div className="px-4 md:px-8 max-w-5xl mx-auto pt-3 md:pt-5 pb-4">
             {/* Desktop header (hidden on mobile) */}
             <div className="hidden md:flex items-center gap-4 mb-4">

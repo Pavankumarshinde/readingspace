@@ -261,24 +261,17 @@ export default function RoomChat({
 
   return (
     <div className="flex flex-col h-[calc(100dvh-185px)] md:h-[calc(100vh-200px)] w-full bg-surface-container-lowest border-none md:border md:border-outline-variant/20 shadow-none md:shadow-sm rounded-none md:rounded-3xl overflow-hidden relative">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-outline-variant/10 bg-white flex items-center justify-between shrink-0 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-          <div className="flex flex-col">
-            <h3 className="text-on-surface text-base font-medium">
-              Live Room Stream
-            </h3>
-            <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-0.5">
-              {onlineUsers.length} active users
-            </span>
-          </div>
-        </div>
+      {/* Mini Header */}
+      <div className="px-3 py-2 border-b border-outline-variant/10 bg-surface/80 backdrop-blur-md flex items-center justify-between shrink-0 sticky top-0 z-10">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest bg-secondary/5 px-2 py-1 rounded-md">
-            {messages.length} Messages
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+          <span className="text-[9px] font-black text-on-surface-variant/60 uppercase tracking-widest">
+            {onlineUsers.length} Online
           </span>
         </div>
+        <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest">
+          {messages.length} Msgs
+        </span>
       </div>
 
       {/* Chat Area */}

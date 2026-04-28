@@ -19,9 +19,9 @@ interface FocusTabProps {
 
 type Mode = "pomodoro" | "short" | "long";
 const MODES: { key: Mode; label: string; emoji: string; secs: number }[] = [
-  { key: "short", label: "Short Break", emoji: "☕", secs: 10 * 60 },
-  { key: "pomodoro", label: "Medium", emoji: "🍅", secs: 30 * 60 },
-  { key: "long", label: "Long Break", emoji: "🧘", secs: 60 * 60 },
+  { key: "short", label: "Short Break", emoji: "⚡", secs: 10 * 60 },
+  { key: "pomodoro", label: "Medium", emoji: "🎯", secs: 30 * 60 },
+  { key: "long", label: "Long Break", emoji: "🔋", secs: 60 * 60 },
 ];
 
 const RING_R = 36;

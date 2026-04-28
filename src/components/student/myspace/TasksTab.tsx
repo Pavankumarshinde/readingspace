@@ -15,6 +15,7 @@ import {
   ChevronsUp,
   Equal,
   ChevronsDown,
+  Star,
 } from "lucide-react";
 
 interface Task {
@@ -37,11 +38,11 @@ const PRIORITIES: {
   label: string;
   value: Task["priority"];
   color: string;
-  icon: any;
+  stars: number;
 }[] = [
-  { label: "High", value: "high", color: "text-red-600", icon: ChevronsUp },
-  { label: "Medium", value: "medium", color: "text-orange-500", icon: Equal },
-  { label: "Low", value: "low", color: "text-emerald-500", icon: ChevronsDown },
+  { label: "High", value: "high", color: "text-error", stars: 3 },
+  { label: "Medium", value: "medium", color: "text-orange-500", stars: 2 },
+  { label: "Low", value: "low", color: "text-emerald-500", stars: 1 },
 ];
 
 const FILTERS = ["All", "Active", "Done"] as const;
@@ -135,9 +136,14 @@ export default function TasksTab({ userId }: TasksTabProps) {
   const formatFullDate = (ds: string) => format(parseISO(ds), "MMM d, h:mm a");
   const PriorityIcon = (p: Task["priority"]) => {
     const priority = PRIORITIES.find((x) => x.value === p);
-    if (!priority) return <Equal size={12} />;
-    const Icon = priority.icon;
-    return <Icon size={12} className={priority.color} />;
+    if (!priority) return null;
+    return (
+      <div className={`flex gap-[1px] ${priority.color}`}>
+        {Array.from({ length: priority.stars }).map((_, i) => (
+          <Star key={i} size={10} className="fill-current" />
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -194,18 +200,19 @@ export default function TasksTab({ userId }: TasksTabProps) {
                   Priority
                 </label>
                 <div className="flex gap-1.5">
-                  {PRIORITIES.map((p) => {
-                    const Icon = p.icon;
-                    return (
-                      <button
-                        key={p.value}
-                        onClick={() => setNewPriority(p.value)}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${newPriority === p.value ? `ring-1 ring-offset-1 bg-surface-container/50 ${p.color.replace("text-", "ring-")}` : "bg-surface-container/30 grayscale hover:grayscale-0 opacity-60 hover:opacity-100"}`}
-                      >
-                        <Icon size={12} className={newPriority === p.value ? p.color : "text-secondary"} />
-                      </button>
-                    );
-                  })}
+                  {PRIORITIES.map((p) => (
+                    <button
+                      key={p.value}
+                      onClick={() => setNewPriority(p.value)}
+                      className={`px-2 py-1 rounded-md flex items-center justify-center transition-all ${newPriority === p.value ? `ring-1 ring-offset-1 bg-surface-container/50 ${p.color.replace("text-", "ring-")}` : "bg-surface-container/30 grayscale hover:grayscale-0 opacity-60 hover:opacity-100"}`}
+                    >
+                      <div className={`flex gap-[1px] ${newPriority === p.value ? p.color : "text-secondary"}`}>
+                        {Array.from({ length: p.stars }).map((_, i) => (
+                          <Star key={i} size={10} className="fill-current" />
+                        ))}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center gap-2">
