@@ -1,4 +1,8 @@
-export async function getPreciseLocation(): Promise<{ latitude: number, longitude: number, accuracy: number } | null> {
+export async function getPreciseLocation(): Promise<{
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+} | null> {
   const options = {
     enableHighAccuracy: true,
     timeout: 30000, // Increased timeout to 30s so the GPS module has enough time to acquire lock
@@ -6,7 +10,7 @@ export async function getPreciseLocation(): Promise<{ latitude: number, longitud
   };
 
   try {
-    const { Geolocation } = await import('@capacitor/geolocation');
+    const { Geolocation } = await import("@capacitor/geolocation");
     const position = await Geolocation.getCurrentPosition(options);
     return {
       latitude: position.coords.latitude,
@@ -14,11 +18,18 @@ export async function getPreciseLocation(): Promise<{ latitude: number, longitud
       accuracy: position.coords.accuracy,
     };
   } catch (e) {
-    console.log('Capacitor Geolocation failed or not available, falling back to web api', e);
+    console.log(
+      "Capacitor Geolocation failed or not available, falling back to web api",
+      e,
+    );
   }
 
   // Fallback to web API
-  if (typeof window !== 'undefined' && 'navigator' in window && navigator.geolocation) {
+  if (
+    typeof window !== "undefined" &&
+    "navigator" in window &&
+    navigator.geolocation
+  ) {
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -29,10 +40,10 @@ export async function getPreciseLocation(): Promise<{ latitude: number, longitud
           });
         },
         (err) => {
-          console.error('Web Geolocation error:', err);
+          console.error("Web Geolocation error:", err);
           resolve(null);
         },
-        options
+        options,
       );
     });
   }

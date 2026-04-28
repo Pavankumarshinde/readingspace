@@ -33,7 +33,8 @@ export const InviteEmail = ({
         <Section style={box}>
           <Heading style={h1}>Welcome to {roomName}</Heading>
           <Text style={paragraph}>
-            Hi {studentName}, your membership has been confirmed for <b>{roomName}</b>.
+            Hi {studentName}, your membership has been confirmed for{" "}
+            <b>{roomName}</b>.
           </Text>
           <Text style={paragraph}>
             Your assigned seat is <b>{seatNumber}</b>.
@@ -44,7 +45,8 @@ export const InviteEmail = ({
             </Link>
           </Section>
           <Text style={paragraph}>
-            Download the ReadingSpace app and log in to track your attendance and view your subscription details.
+            Download the ReadingSpace app and log in to track your attendance
+            and view your subscription details.
           </Text>
           <Hr style={hr} />
           <Text style={footer}>

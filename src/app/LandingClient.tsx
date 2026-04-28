@@ -1,62 +1,64 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { BookOpen } from "lucide-react";
 
-const STUDENT_TEXT = "Students book seats, track attendance, manage notes, habits and stay focused — all in one place."
-const MANAGER_TEXT = "Managers handle rooms, members, payments and attendance — from a single dashboard."
+const STUDENT_TEXT =
+  "Students book seats, track attendance, manage notes, habits and stay focused — all in one place.";
+const MANAGER_TEXT =
+  "Managers handle rooms, members, payments and attendance — from a single dashboard.";
 
-const SPEED = 30 // ms per char
+const SPEED = 30; // ms per char
 
 export default function LandingClient() {
-  const [phase, setPhase] = useState<'splash' | 'home'>('splash')
+  const [phase, setPhase] = useState<"splash" | "home">("splash");
 
   // Two independent typewriters
-  const [sText, setSText] = useState('')
-  const [mText, setMText] = useState('')
-  const [sIdx, setSIdx] = useState(0)
-  const [mIdx, setMIdx] = useState(0)
+  const [sText, setSText] = useState("");
+  const [mText, setMText] = useState("");
+  const [sIdx, setSIdx] = useState(0);
+  const [mIdx, setMIdx] = useState(0);
 
-  const sProgress = STUDENT_TEXT.length > 0 ? sIdx / STUDENT_TEXT.length : 0
-  const mProgress = MANAGER_TEXT.length > 0 ? mIdx / MANAGER_TEXT.length : 0
-  const progress = Math.round(((sProgress + mProgress) / 2) * 100)
+  const sProgress = STUDENT_TEXT.length > 0 ? sIdx / STUDENT_TEXT.length : 0;
+  const mProgress = MANAGER_TEXT.length > 0 ? mIdx / MANAGER_TEXT.length : 0;
+  const progress = Math.round(((sProgress + mProgress) / 2) * 100);
 
   // Student typewriter
   useEffect(() => {
-    if (phase !== 'splash' || sIdx >= STUDENT_TEXT.length) return
+    if (phase !== "splash" || sIdx >= STUDENT_TEXT.length) return;
     const t = setTimeout(() => {
-      setSText(STUDENT_TEXT.slice(0, sIdx + 1))
-      setSIdx(i => i + 1)
-    }, SPEED)
-    return () => clearTimeout(t)
-  }, [phase, sIdx])
+      setSText(STUDENT_TEXT.slice(0, sIdx + 1));
+      setSIdx((i) => i + 1);
+    }, SPEED);
+    return () => clearTimeout(t);
+  }, [phase, sIdx]);
 
   // Manager typewriter — starts ~0.3s after student
   useEffect(() => {
-    if (phase !== 'splash' || mIdx >= MANAGER_TEXT.length) return
-    const delay = mIdx === 0 ? 300 : SPEED + 4 // slightly slower than student
+    if (phase !== "splash" || mIdx >= MANAGER_TEXT.length) return;
+    const delay = mIdx === 0 ? 300 : SPEED + 4; // slightly slower than student
     const t = setTimeout(() => {
-      setMText(MANAGER_TEXT.slice(0, mIdx + 1))
-      setMIdx(i => i + 1)
-    }, delay)
-    return () => clearTimeout(t)
-  }, [phase, mIdx])
+      setMText(MANAGER_TEXT.slice(0, mIdx + 1));
+      setMIdx((i) => i + 1);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [phase, mIdx]);
 
   // Transition when both done
   useEffect(() => {
     if (sIdx >= STUDENT_TEXT.length && mIdx >= MANAGER_TEXT.length) {
-      const t = setTimeout(() => setPhase('home'), 1400)
-      return () => clearTimeout(t)
+      const t = setTimeout(() => setPhase("home"), 1400);
+      return () => clearTimeout(t);
     }
-  }, [sIdx, mIdx])
+  }, [sIdx, mIdx]);
 
   /* ── Splash ─────────────────────────────────────────── */
-  if (phase === 'splash') {
+  if (phase === "splash") {
     return (
-      <div className="min-h-screen flex flex-col items-start justify-center px-8 bg-surface font-body">
+      <div className="page-shell items-start justify-center px-8 bg-surface font-body">
         {/* Big brand name */}
-        <h1 className="font-headline text-5xl font-extrabold text-primary italic tracking-tight mb-8 leading-tight">
+        <h1 className="font-headline text-5xl font-extrabold text-primary tracking-tight mb-8 leading-tight">
           ReadingSpace
         </h1>
 
@@ -100,15 +102,23 @@ export default function LandingClient() {
         </div>
 
         <style jsx>{`
-          @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+          @keyframes blink {
+            0%,
+            100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0;
+            }
+          }
         `}</style>
       </div>
-    )
+    );
   }
 
   /* ── Auth Home ───────────────────────────────────────── */
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-surface font-body animate-in fade-in duration-500">
+    <div className="page-shell items-center justify-center px-6 bg-surface font-body animate-in fade-in duration-500">
       {/* Subtle blob */}
       <div className="fixed -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-primary/[0.07] blur-[120px] pointer-events-none" />
 
@@ -149,5 +159,5 @@ export default function LandingClient() {
         </p>
       </div>
     </div>
-  )
+  );
 }

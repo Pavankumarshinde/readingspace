@@ -1,39 +1,45 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { ProfileActions, ClearCacheButton, SendQueryButton, HowToUseButton, EditProfileFlow } from './StudentProfileClient'
-import { StudentBrandHeader } from '@/components/student/StudentHeader'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import {
+  ProfileActions,
+  ClearCacheButton,
+  SendQueryButton,
+  HowToUseButton,
+  EditProfileFlow,
+} from "./StudentProfileClient";
+import { StudentBrandHeader } from "@/components/student/StudentHeader";
 
 export default async function StudentProfile() {
-  const supabase = await createClient()
+  const supabase = await createClient();
 
   const {
     data: { user: authUser },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
   if (!authUser) {
-    redirect('/login')
+    redirect("/login");
   }
 
   const { data: profileData } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', authUser.id)
-    .single()
+    .from("profiles")
+    .select("*")
+    .eq("id", authUser.id)
+    .single();
 
   const profile = {
-    name: profileData?.name || authUser.email?.split('@')[0] || 'Member',
-    email: profileData?.email || authUser.email || '',
-    phone: profileData?.phone || '',
-  }
+    name: profileData?.name || authUser.email?.split("@")[0] || "Member",
+    email: profileData?.email || authUser.email || "",
+    phone: profileData?.phone || "",
+  };
 
   // Derive initials
-  const parts = profile.name.trim().split(' ')
+  const parts = profile.name.trim().split(" ");
   const initials = parts
     .map((p: string) => p[0])
-    .join('')
+    .join("")
     .slice(0, 2)
-    .toUpperCase()
+    .toUpperCase();
 
-  if (!profileData) return null
+  if (!profileData) return null;
 
   return (
     <div className="page-shell">
@@ -43,25 +49,34 @@ export default async function StudentProfile() {
       {/* Fixed page title */}
       <div className="sticky-page-header pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0 px-4 md:px-8 py-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="font-headline text-2xl font-bold text-on-surface">My Profile</h1>
-          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">Your account details</p>
+          <h1 className="font-headline text-on-surface tracking-tight leading-none text-base font-bold">
+            My Profile
+          </h1>
+          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">
+            Your account details
+          </p>
         </div>
       </div>
 
       {/* Scrollable content */}
       <div className="scroll-area px-4 md:px-8 pb-32 md:pb-8">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-stretch gap-8 md:gap-12 py-4">
-          
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-stretch gap-8 md:gap-12 pb-4">
           {/* Avatar + Name */}
           <div className="md:w-1/3 flex flex-col items-center md:bg-surface-container-low rounded-2xl md:p-8 md:border md:border-outline-variant/10">
             <section className="flex flex-col items-center mt-2 mb-6 md:mb-2 w-full">
               <div className="w-20 h-20 md:w-32 md:h-32 bg-tertiary-container rounded-2xl md:rounded-3xl flex items-center justify-center mb-4 md:mb-6 shadow-sm relative">
-                <span className="font-headline text-2xl md:text-5xl text-white tracking-widest">{initials}</span>
+                <span className="font-headline text-2xl md:text-5xl text-white tracking-widest">
+                  {initials}
+                </span>
                 <EditProfileFlow profileData={profile} />
               </div>
               <div className="text-center w-full">
-                <h3 className="text-2xl md:text-3xl font-headline font-bold text-on-surface truncate px-2">{profile.name}</h3>
-                <p className="text-[10px] md:text-[11px] font-medium tracking-widest text-secondary uppercase opacity-80 mt-1 md:mt-2">Keep it up!</p>
+                <h3 className="font-headline text-on-surface truncate px-2 text-base font-medium">
+                  {profile.name}
+                </h3>
+                <p className="text-[10px] md:text-[11px] font-medium tracking-widest text-secondary uppercase opacity-80 mt-1 md:mt-2">
+                  Keep it up!
+                </p>
               </div>
             </section>
           </div>
@@ -70,13 +85,21 @@ export default async function StudentProfile() {
           <div className="flex-1 space-y-4 flex flex-col justify-center">
             <div className="bg-surface-container-lowest p-4 md:p-6 rounded-2xl border border-outline-variant/10 space-y-4 shadow-sm">
               <div>
-                <p className="text-[9px] md:text-[10px] font-bold tracking-widest text-secondary/60 uppercase mb-1">Email ID</p>
-                <p className="text-sm md:text-base text-on-surface font-medium truncate">{profile.email}</p>
+                <p className="text-[9px] md:text-[10px] font-bold tracking-widest text-secondary/60 uppercase mb-1">
+                  Email ID
+                </p>
+                <p className="text-sm md:text-base text-on-surface font-medium truncate">
+                  {profile.email}
+                </p>
               </div>
               {profile.phone && (
                 <div className="border-t border-outline-variant/10 pt-4">
-                  <p className="text-[9px] md:text-[10px] font-bold tracking-widest text-secondary/60 uppercase mb-1">Mobile Number</p>
-                  <p className="text-sm md:text-base text-on-surface font-medium">{profile.phone}</p>
+                  <p className="text-[9px] md:text-[10px] font-bold tracking-widest text-secondary/60 uppercase mb-1">
+                    Mobile Number
+                  </p>
+                  <p className="text-sm md:text-base text-on-surface font-medium">
+                    {profile.phone}
+                  </p>
                 </div>
               )}
             </div>
@@ -99,5 +122,5 @@ export default async function StudentProfile() {
         </div>
       </div>
     </div>
-  )
+  );
 }

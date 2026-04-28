@@ -46,7 +46,7 @@ create table if not exists focus_sessions (
   user_id          uuid references auth.users on delete cascade,
   task_name        text,
   duration_minutes int,
-  mode             text check (mode in ('pomodoro', 'short', 'long')),
+  mode             text check (mode in ('half', 'short', 'long')),
   completed_at     timestamptz default now()
 );
 
