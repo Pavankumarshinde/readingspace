@@ -36,6 +36,7 @@ function AddStudentForm() {
     seat: "",
     startDate: "", // We will calculate this on mount to avoid SSR mismatch
     endDate: "",
+    paymentStatus: "paid", // default
   });
 
   // Hydrate dates safely on the client
@@ -322,6 +323,35 @@ function AddStudentForm() {
                           setFormData({ ...formData, endDate: e.target.value })
                         }
                       />
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2 space-y-3">
+                    <label className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest block ml-2">
+                      Payment Status
+                    </label>
+                    <div className="relative group">
+                      <select
+                        required
+                        suppressHydrationWarning
+                        className="w-full bg-surface-container-low/50 border border-transparent focus:border-outline-variant/20 focus:bg-surface-container-lowest rounded-2xl p-4 pl-4 pr-10 text-[15px] font-bold text-on-surface cursor-pointer appearance-none outline-none transition-all"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(0,0,0,0.5)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                          backgroundPosition: "right 1rem center",
+                          backgroundRepeat: "no-repeat",
+                          backgroundSize: "1.25rem",
+                        }}
+                        value={formData.paymentStatus}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentStatus: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="paid">Paid</option>
+                        <option value="due">Due</option>
+                      </select>
                     </div>
                   </div>
                 </div>

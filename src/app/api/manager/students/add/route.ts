@@ -16,7 +16,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, phone, room, seat, startDate, endDate } = await req.json();
+    const { name, phone, room, seat, startDate, endDate, paymentStatus } =
+      await req.json();
 
     // Log the payload for debugging
     console.log("Received payload:", {
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
       seat,
       startDate,
       endDate,
+      paymentStatus,
     });
 
     // ... Validation ...
@@ -136,24 +138,47 @@ export async function POST(req: Request) {
       "room:",
       room,
     );
-    const { error: subError } = await supabase.from("subscriptions").insert({
-      student_id: studentId,
-      room_id: room,
-      seat_number: seat?.trim() || "Unassigned",
-      tier: "standard",
-      start_date: startDate,
-      end_date: endDate,
-      status: "active",
-      invite_sent: false,
-      membership_type: "managed",
-    });
+    const { data: subData, error: subError } = await supabase
+      .from("subscriptions")
+      .insert({
+        student_id: studentId,
+        room_id: room,
+        seat_number: seat?.trim() || "Unassigned",
+        tier: "standard",
+        start_date: startDate,
+        end_date: endDate,
+        status: "active",
+        invite_sent: false,
+        membership_type: "managed",
+        payment_status: paymentStatus || "due",
+      })
+      .select("id")
+      .single();
 
-    if (subError) {
+    if (subError || !subData) {
       console.error("Sub Insert Error:", subError);
       return NextResponse.json(
-        { error: `Sub Insert Error: ${subError.message}`, details: subError },
+        { error: `Sub Insert Error: ${subError?.message}`, details: subError },
         { status: 500 },
       );
+    }
+
+    // Insert initial installment
+    const { error: installmentError } = await supabase
+      .from("installments")
+      .insert({
+        student_id: studentId,
+        room_id: room,
+        subscription_id: subData.id,
+        start_date: startDate,
+        end_date: endDate,
+        status: paymentStatus || "due",
+        payment_date: paymentStatus === "paid" ? new Date().toISOString() : null,
+      });
+
+    if (installmentError) {
+      console.error("Installment Insert Error:", installmentError);
+      // We don't fail the whole request, but it should be logged
     }
 
     return NextResponse.json({

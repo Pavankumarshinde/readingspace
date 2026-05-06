@@ -478,8 +478,8 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
                     </div>
                   </th>
                 ))}
-                <th className="sticky right-0 z-20 bg-surface-container-lowest shadow-[-4px_0_12px_rgba(0,0,0,0.02)] px-2 py-4 text-center text-[10px] font-black uppercase tracking-widest text-on-surface/30 w-[60px]">
-                  Streak
+                <th className="sticky right-0 z-20 bg-surface-container-lowest shadow-[-4px_0_12px_rgba(0,0,0,0.02)] px-2 py-4 text-center w-[70px]">
+                  {/* Action Column */}
                 </th>
               </tr>
             </thead>
@@ -560,50 +560,38 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
                           </td>
                         );
                       })}
-                      <td className="sticky right-0 z-10 bg-surface-container-lowest shadow-[-4px_0_12px_rgba(0,0,0,0.02)] group-hover:bg-surface-container/30 transition-all px-2 py-4 w-[60px]">
-                        <div className="flex items-center justify-end h-full relative">
-                          <div className="absolute right-2 opacity-100 group-hover:opacity-0 transition-opacity duration-200">
-                            {streak > 0 && (
-                              <span className="text-sm font-black text-primary whitespace-nowrap">
-                                🔥{streak}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute right-2 bg-surface-container-lowest/90 backdrop-blur-sm p-1 rounded-xl shadow-sm border border-outline-variant/20">
-                            <button
-                              onClick={() => {
-                                setEditingHabit(habit);
-                                setForm({
-                                  name: habit.name,
-                                  icon: habit.icon,
-                                  type: habit.habit_type,
-                                  target: habit.target_value,
-                                  unit: habit.unit,
-                                  freqType: habit.frequency_type,
-                                  freqDays: habit.frequency_days,
-                                  color: habit.color,
-                                });
-                                setShowModal(true);
-                              }}
-                              className="p-1.5 text-on-surface-variant/30 hover:text-tertiary hover:bg-surface-container rounded-lg transition-all"
-                            >
-                              <Settings2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => archiveHabit(habit)}
-                              className="p-1.5 text-on-surface-variant/30 hover:text-orange-500 hover:bg-surface-container rounded-lg transition-all"
-                            >
-                              <Archive size={14} />
-                            </button>
-                            {showArchived && (
-                              <button
-                                onClick={() => deleteHabit(habit.id)}
-                                className="p-1.5 text-on-surface-variant/30 hover:text-red-500 hover:bg-surface-container rounded-lg transition-all"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
+                      <td className="sticky right-0 z-10 bg-surface-container-lowest shadow-[-4px_0_12px_rgba(0,0,0,0.02)] group-hover:bg-surface-container/30 transition-all px-2 py-4 w-[70px]">
+                        <div className="flex items-center justify-center gap-1.5 h-full">
+                          <button
+                            onClick={() => {
+                              setEditingHabit(habit);
+                              setForm({
+                                name: habit.name,
+                                icon: habit.icon,
+                                type: habit.habit_type,
+                                target: habit.target_value,
+                                unit: habit.unit,
+                                freqType: habit.frequency_type,
+                                freqDays: habit.frequency_days,
+                                color: habit.color,
+                              });
+                              setShowModal(true);
+                            }}
+                            className="p-1.5 text-on-surface-variant/40 hover:text-primary hover:bg-surface-container rounded-lg transition-all"
+                            title="Edit"
+                          >
+                            <Settings2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (showArchived) deleteHabit(habit.id);
+                              else archiveHabit(habit);
+                            }}
+                            className="p-1.5 text-on-surface-variant/40 hover:text-error hover:bg-surface-container rounded-lg transition-all"
+                            title={showArchived ? "Delete Permanently" : "Delete"}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </td>
                     </tr>

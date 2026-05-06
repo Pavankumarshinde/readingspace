@@ -12,9 +12,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { subscriptionId, paymentStatus } = await req.json();
+    const { installmentId, subscriptionId, paymentStatus, paymentDate } =
+      await req.json();
 
-    if (!subscriptionId || !paymentStatus) {
+    if (!paymentStatus) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -29,10 +30,69 @@ export async function POST(req: Request) {
       );
     }
 
+    const resolvedPaymentDate =
+      paymentStatus === "paid"
+        ? paymentDate
+          ? new Date(paymentDate).toISOString()
+          : new Date().toISOString()
+        : null;
+
+    const supabaseAdmin = await createAdminClient();
+
+    // Update a specific installment by its own ID
+    if (installmentId) {
+      const { data: inst } = await supabase
+        .from("installments")
+        .select("id, room_id")
+        .eq("id", installmentId)
+        .single();
+
+      if (!inst) {
+        return NextResponse.json(
+          { error: "Installment not found" },
+          { status: 404 },
+        );
+      }
+
+      // Verify manager owns the room
+      const { data: roomCheck } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("id", inst.room_id)
+        .eq("manager_id", user.id)
+        .single();
+
+      if (!roomCheck) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      }
+
+      const { error } = await supabaseAdmin
+        .from("installments")
+        .update({
+          status: paymentStatus,
+          payment_date: resolvedPaymentDate,
+        })
+        .eq("id", installmentId);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Legacy path: update via subscription
+    if (!subscriptionId) {
+      return NextResponse.json(
+        { error: "Missing installmentId or subscriptionId" },
+        { status: 400 },
+      );
+    }
+
     // Verify this subscription belongs to a room this manager owns
     const { data: sub } = await supabase
       .from("subscriptions")
-      .select("id, room:rooms!inner(manager_id)")
+      .select("id, start_date, end_date, room:rooms!inner(manager_id)")
       .eq("id", subscriptionId)
       .eq("room.manager_id", user.id)
       .single();
@@ -44,15 +104,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabaseAdmin = await createAdminClient();
-    const { error } = await supabaseAdmin
+    const { error: subErr } = await supabaseAdmin
       .from("subscriptions")
       .update({ payment_status: paymentStatus })
       .eq("id", subscriptionId);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (subErr) {
+      return NextResponse.json({ error: subErr.message }, { status: 500 });
     }
+
+    // Also update the matching installment
+    await supabaseAdmin
+      .from("installments")
+      .update({
+        status: paymentStatus,
+        payment_date: resolvedPaymentDate,
+      })
+      .eq("subscription_id", subscriptionId)
+      .eq("start_date", sub.start_date)
+      .eq("end_date", sub.end_date);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

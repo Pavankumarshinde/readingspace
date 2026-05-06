@@ -11,8 +11,8 @@ import {
   QrCode,
   Search,
   User,
-  Filter,
-  CreditCard,
+  LogOut,
+  LogIn,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
@@ -31,14 +31,15 @@ export default function AttendanceScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
-  const [lastScanned, setLastScanned] = useState<any>(null);
+  const [lastScanned, setLastScanned] = useState<any>(null); // { name, email, action: 'check_in'|'check_out' }
   const scannedRef = useRef(false);
   const supabase = createClient();
 
   // New features
   const [viewMode, setViewMode] = useState<"scan" | "search">("scan");
   const [allStudents, setAllStudents] = useState<any[]>([]);
-  const [todayLogs, setTodayLogs] = useState<any[]>([]);
+  const [todayLogs, setTodayLogs] = useState<any[]>([]); // legacy for student status
+  const [todaySessions, setTodaySessions] = useState<any[]>([]); // new sessions feed
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingStudents, setLoadingStudents] = useState(false);
 
@@ -50,27 +51,33 @@ export default function AttendanceScanner({
         const today = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Kolkata",
         }).format(new Date());
-        const [{ data: students }, { data: logs }] = await Promise.all([
+        const [{ data: students }, { data: logs }, { data: sessions }] = await Promise.all([
           supabase
             .from("subscriptions")
-            .select(
-              `
- id, seat_number, qr_version,
- student:profiles!inner(id, name, email)
- `,
-            )
+            .select("id, seat_number, qr_version, student:profiles!inner(id, name, email)")
             .eq("room_id", roomId)
             .eq("status", "active"),
           supabase
             .from("attendance_logs")
-            .select("student_id, timestamp, student:profiles(name, email)")
+            .select("student_id, timestamp")
             .eq("room_id", roomId)
-            .eq("date", today)
-            .order("timestamp", { ascending: false }),
+            .eq("date", today),
+          fetch(`/api/manager/attendance/sessions?roomId=${roomId}&date=${today}`)
+            .then(r => r.json()).then(d => ({ data: d.sessions || [] })).catch(() => ({ data: [] })),
         ]);
 
         setAllStudents(students || []);
         setTodayLogs(logs || []);
+        // Enrich sessions with student names
+        const enriched = await Promise.all(
+          (sessions as any[]).map(async (s: any) => {
+            const st = (students || []).find((sub: any) => sub.student?.id === s.student_id);
+            return { ...s, student: st?.student || null };
+          })
+        );
+        setTodaySessions(enriched.sort((a, b) =>
+          new Date(b.check_in_at).getTime() - new Date(a.check_in_at).getTime()
+        ));
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {
@@ -188,40 +195,34 @@ export default function AttendanceScanner({
               const data = await res.json();
 
               if (res.ok) {
-                toast.success(`Attendance marked: ${data.student.name}`);
-                setLastScanned(data.student);
+                const isCheckOut = data.action === "check_out";
+                if (isCheckOut) {
+                  toast(`${data.student?.name || "Student"} checked out`, {
+                    icon: "🚪",
+                    style: { borderRadius: "10px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "12px", fontWeight: "bold" },
+                  });
+                } else {
+                  toast.success(`${data.student?.name || "Student"} checked in`);
+                }
+                setLastScanned({ ...data.student, action: data.action });
 
-                // Manually prepend to the list for instant UI feedback
-                const localLog = {
+                const newSession = {
+                  id: `local-${Date.now()}`,
                   student_id: payload.studentId,
-                  timestamp: new Date().toISOString(),
+                  check_in_at: data.check_in_at || new Date().toISOString(),
+                  check_out_at: data.check_out_at || null,
                   student: data.student,
+                  action: data.action,
                 };
-                setTodayLogs((prev) => {
-                  if (prev.some((l) => l.student_id === localLog.student_id))
-                    return prev;
-                  return [localLog, ...prev];
-                });
+                setTodaySessions((prev) => [newSession, ...prev]);
+                if (!isCheckOut) {
+                  setTodayLogs((prev) => {
+                    if (prev.some((l) => l.student_id === payload.studentId)) return prev;
+                    return [{ student_id: payload.studentId, timestamp: newSession.check_in_at }, ...prev];
+                  });
+                }
 
-                // Wait 2 seconds before allowing next scan
-                setTimeout(() => {
-                  scannedRef.current = false;
-                  setScanning(false);
-                }, 2000);
-              } else if (res.status === 409) {
-                toast(data.error || "Already marked today", {
-                  icon: "⚠️",
-                  style: {
-                    borderRadius: "10px",
-                    background: "#fff8f0",
-                    color: "#9B4000",
-                    border: "1px solid #ffdbcb",
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                  },
-                });
-                scannedRef.current = false;
-                setScanning(false);
+                setTimeout(() => { scannedRef.current = false; setScanning(false); }, 2000);
               } else {
                 throw new Error(data.error || "Failed to log attendance");
               }
@@ -257,52 +258,38 @@ export default function AttendanceScanner({
   const handleManualMark = async (student: any) => {
     if (scanning) return;
     setScanning(true);
-
     try {
       const res = await fetch("/api/manager/attendance/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: student.student.id,
-          roomId: roomId,
-          version: student.qr_version || 0,
-        }),
+        body: JSON.stringify({ studentId: student.student.id, roomId, version: student.qr_version || 0 }),
       });
-
       const data = await res.json();
-
       if (res.ok) {
-        toast.success(`Attendance marked: ${data.student.name}`);
-        setLastScanned(data.student);
-
-        // Manually prepend to the list for instant UI feedback
-        const localLog = {
+        const isCheckOut = data.action === "check_out";
+        if (isCheckOut) {
+          toast(`${data.student?.name} checked out`, { icon: "🚪", style: { borderRadius: "10px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "12px", fontWeight: "bold" } });
+        } else {
+          toast.success(`${data.student?.name} checked in`);
+        }
+        setLastScanned({ ...data.student, action: data.action });
+        const newSession = {
+          id: `local-${Date.now()}`,
           student_id: student.student.id,
-          timestamp: new Date().toISOString(),
+          check_in_at: data.check_in_at || new Date().toISOString(),
+          check_out_at: data.check_out_at || null,
           student: data.student,
         };
-        setTodayLogs((prev) => {
-          if (prev.some((l) => l.student_id === localLog.student_id))
-            return prev;
-          return [localLog, ...prev];
-        });
-
-        setTimeout(() => setScanning(false), 2000);
-      } else if (res.status === 409) {
-        toast(data.error || "Already marked today", {
-          icon: "⚠️",
-          style: {
-            borderRadius: "10px",
-            background: "#fff8f0",
-            color: "#9B4000",
-            border: "1px solid #ffdbcb",
-            fontSize: "12px",
-            fontWeight: "bold",
-          },
-        });
-        setScanning(false);
+        setTodaySessions((prev) => [newSession, ...prev]);
+        if (!isCheckOut) {
+          setTodayLogs((prev) => {
+            if (prev.some((l) => l.student_id === student.student.id)) return prev;
+            return [{ student_id: student.student.id, timestamp: newSession.check_in_at }, ...prev];
+          });
+        }
+        setTimeout(() => setScanning(false), 1500);
       } else {
-        throw new Error(data.error || "Failed to log attendance");
+        throw new Error(data.error || "Failed");
       }
     } catch (err: any) {
       toast.error(err.message || "Action failed");
@@ -311,6 +298,10 @@ export default function AttendanceScanner({
   };
 
   const markedStudentIds = new Set(todayLogs.map((log) => log.student_id));
+  // Students currently inside (checked in but not out)
+  const insideStudentIds = new Set(
+    todaySessions.filter(s => !s.check_out_at).map(s => s.student_id)
+  );
 
   const filteredResults = allStudents.filter(
     (s) =>
@@ -415,22 +406,30 @@ export default function AttendanceScanner({
               {/* Scanning Feedback relative to scanner */}
               <div className="mt-8 flex flex-col items-center gap-6 w-full max-w-sm shrink-0">
                 {lastScanned ? (
-                  <div className="w-full bg-emerald-50 border border-emerald-100 rounded-3xl p-5 flex items-center gap-4 animate-in slide-in-from-bottom-5 shadow-sm">
-                    <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 flex-shrink-0">
-                      <CheckCircle2 size={32} />
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
-                        Entry Recorded
-                      </p>
-                      <h4 className="text-on-surface truncate text-base font-medium">
-                        {lastScanned.name}
-                      </h4>
-                      <p className="text-xs font-bold text-secondary truncate">
-                        {lastScanned.email}
-                      </p>
-                    </div>
+                <div className={`w-full border rounded-3xl p-5 flex items-center gap-4 animate-in slide-in-from-bottom-5 shadow-sm ${
+                  lastScanned.action === "check_out"
+                    ? "bg-blue-50 border-blue-100"
+                    : "bg-emerald-50 border-emerald-100"
+                }`}>
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0 ${
+                    lastScanned.action === "check_out" ? "bg-blue-500 shadow-blue-500/20" : "bg-emerald-500 shadow-emerald-500/20"
+                  }`}>
+                    {lastScanned.action === "check_out" ? <LogOut size={28} /> : <LogIn size={28} />}
                   </div>
+                  <div className="flex-1 overflow-hidden">
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${
+                      lastScanned.action === "check_out" ? "text-blue-600" : "text-emerald-600"
+                    }`}>
+                      {lastScanned.action === "check_out" ? "Checked Out" : "Checked In"}
+                    </p>
+                    <h4 className="text-on-surface truncate text-base font-medium">
+                      {lastScanned.name}
+                    </h4>
+                    <p className="text-xs font-bold text-secondary truncate">
+                      {lastScanned.email}
+                    </p>
+                  </div>
+                </div>
                 ) : (
                   <div className="flex items-center gap-4 text-secondary bg-surface-container-low border border-outline-variant/10 rounded-3xl p-5 w-full">
                     <div className="w-14 h-14 bg-surface-container rounded-2xl flex items-center justify-center text-on-surface-variant">
@@ -506,16 +505,19 @@ export default function AttendanceScanner({
                           </div>
                         </div>
                         <button
-                          disabled={scanning || isMarked}
+                          disabled={scanning}
                           onClick={() => handleManualMark(s)}
                           className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
-                            isMarked
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-none"
-                              : "bg-primary text-white shadow-primary/20 hover:bg-primary/90 hover:shadow-primary/30 disabled:opacity-50"
+                            insideStudentIds.has(s.student.id)
+                              ? "bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100"
+                              : isMarked
+                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100"
+                              : "bg-primary text-white shadow-primary/20 hover:bg-primary/90 disabled:opacity-50"
                           }`}
                         >
-                          {isMarked && <CheckCircle2 size={12} />}
-                          {isMarked ? "Marked" : "Mark Present"}
+                          {insideStudentIds.has(s.student.id) ? <><LogOut size={12} /> Check Out</> :
+                           isMarked ? <><CheckCircle2 size={12} /> Marked</> :
+                           <><LogIn size={12} /> Check In</>}
                         </button>
                       </div>
                     );
@@ -534,18 +536,23 @@ export default function AttendanceScanner({
                 Activity Stream
               </span>
               <h4 className="text-on-surface uppercase text-base font-medium">
-                Today's Entries
+                Today's Sessions
               </h4>
             </div>
-            <div className="px-4 py-1.5 bg-primary/10 rounded-xl border border-primary/20">
-              <span className="text-xs font-black text-primary">
-                {todayLogs.length}
-              </span>
+            <div className="flex gap-2">
+              <div className="px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+                <span className="text-[8px] font-black text-emerald-600 uppercase block">Inside</span>
+                <span className="text-xs font-black text-emerald-600">{insideStudentIds.size}</span>
+              </div>
+              <div className="px-3 py-1.5 bg-primary/10 rounded-xl border border-primary/20 text-center">
+                <span className="text-[8px] font-black text-primary uppercase block">Total</span>
+                <span className="text-xs font-black text-primary">{todayLogs.length}</span>
+              </div>
             </div>
           </div>
 
-          <div className="h-[520px] overflow-y-auto space-y-3 custom-scrollbar pr-2">
-            {todayLogs.length === 0 ? (
+          <div className="h-[520px] overflow-y-auto space-y-2 custom-scrollbar pr-2">
+            {todaySessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 opacity-50 text-center">
                 <RefreshCw size={24} className="mb-2 text-secondary" />
                 <p className="text-[9px] font-black text-secondary uppercase tracking-widest">
@@ -553,29 +560,41 @@ export default function AttendanceScanner({
                 </p>
               </div>
             ) : (
-              todayLogs.map((log, i) => (
-                <div
-                  key={log.id || i}
-                  className="flex items-center gap-3 bg-surface-container-low p-3 rounded-2xl border border-outline-variant/10 animate-in slide-in-from-right-5 duration-300"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100 shrink-0">
-                    <CheckCircle2 size={14} />
+              todaySessions.map((s, i) => {
+                const isInside = !s.check_out_at;
+                return (
+                  <div
+                    key={s.id || i}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border animate-in slide-in-from-right-5 duration-300 ${
+                      isInside
+                        ? "bg-emerald-50 border-emerald-100"
+                        : "bg-surface-container-low border-outline-variant/10"
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                      isInside
+                        ? "bg-emerald-100 text-emerald-600"
+                        : "bg-surface-container text-secondary"
+                    }`}>
+                      {isInside ? <LogIn size={14} /> : <LogOut size={14} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-on-surface truncate uppercase">
+                        {s.student?.name || "Student"}
+                      </p>
+                      <p className="text-[9px] font-bold text-secondary uppercase tracking-tighter">
+                        In: {new Date(s.check_in_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                        {s.check_out_at && (
+                          <> &nbsp;|&nbsp; Out: {new Date(s.check_out_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</>
+                        )}
+                      </p>
+                    </div>
+                    {isInside && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-on-surface truncate uppercase ">
-                      {log.student?.name}
-                    </p>
-                    <p className="text-[9px] font-bold text-secondary uppercase tracking-tighter">
-                      {log.timestamp
-                        ? new Date(log.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "Just now"}
-                    </p>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
