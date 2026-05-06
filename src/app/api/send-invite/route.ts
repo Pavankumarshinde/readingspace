@@ -1,15 +1,15 @@
-import { Resend } from 'resend';
-import { InviteEmail } from '@/components/emails/InviteEmail';
-import { NextResponse } from 'next/server';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { Resend } from "resend";
+import { InviteEmail } from "@/components/emails/InviteEmail";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
+  const resend = new Resend(process.env.RESEND_API_KEY!);
   try {
-    const { studentName, studentEmail, roomName, seatNumber, inviteLink } = await req.json();
+    const { studentName, studentEmail, roomName, seatNumber, inviteLink } =
+      await req.json();
 
     const { data, error } = await resend.emails.send({
-      from: 'ReadingSpace <noreply@readingspace.app>',
+      from: "ReadingSpace <noreply@readingspace.app>",
       to: [studentEmail],
       subject: `You're invited to ${roomName}!`,
       react: InviteEmail({ studentName, roomName, seatNumber, inviteLink }),

@@ -1,36 +1,38 @@
-import Sidebar from '@/components/ui/Sidebar'
-import BottomNav from '@/components/ui/BottomNav'
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import Sidebar from "@/components/ui/Sidebar";
+import BottomNav from "@/components/ui/BottomNav";
+import { ManagerBrandHeader } from "@/components/manager/ManagerHeader";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function ManagerLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login')
+    redirect("/login");
   }
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex h-dvh overflow-hidden bg-surface">
       {/* Responsive Sidebar for Tablet/Laptop */}
       <Sidebar role="manager" />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
-           <div className="responsive-container py-1 md:py-1.5">
-              {children}
-           </div>
-        </main>
-        
+      <div className="page-shell flex-1 min-w-0">
+        {/* Mobile-only brand header */}
+        <ManagerBrandHeader />
+
+        <main className="flex-1 overflow-hidden">{children}</main>
+
         {/* Bottom Nav for Mobile */}
         <BottomNav role="manager" />
       </div>
     </div>
-  )
+  );
 }

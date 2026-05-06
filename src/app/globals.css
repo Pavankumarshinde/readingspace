@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  /* High-End Editorial Palette — "The Private Archive" — Warm Cream/Rust */
-  --color-primary: #9B4000;
+  /* Premium Reading Room Colors — Warm Cream & Rust */
+  --color-primary: #9b4000;
   --color-primary-container: #c15308;
   --color-on-primary: #ffffff;
   --color-primary-fixed: #ffdbcb;
@@ -58,30 +58,41 @@
   /* Surface tint */
   --color-surface-tint: #9f4200;
 
-  /* Editorial Typography — Newsreader for serif, Plus Jakarta Sans for body */
-  --font-newsreader: "Newsreader", serif;
-  --font-display: "Newsreader", serif;
-  --font-headline: "Newsreader", serif;
-  --font-sans: "Plus Jakarta Sans", "Inter", sans-serif;
-  --font-body: "Plus Jakarta Sans", "Inter", sans-serif;
-  --font-label: "Plus Jakarta Sans", "Inter", sans-serif;
-  --font-mono: "Plus Jakarta Sans", monospace;
+  /* Indian App Typography — Noto Sans (used by Google Pay, Flipkart, Google Maps India) */
+  --font-noto: "Noto Sans", "Plus Jakarta Sans", sans-serif;
+  --font-display: "Noto Serif", "Plus Jakarta Sans", serif;
+  --font-headline: "Noto Serif", serif;
+  --font-sans: "Noto Sans", "Plus Jakarta Sans", sans-serif;
+  --font-body: "Noto Sans", "Plus Jakarta Sans", sans-serif;
+  --font-label: "Noto Sans", "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Noto Sans", monospace;
 }
 
 @layer base {
+  html,
+  body {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   body {
     @apply bg-background text-on-surface font-body antialiased;
-    min-height: 100dvh;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     overflow-x: hidden;
     letter-spacing: -0.01em;
+    font-family: "Noto Sans", "Plus Jakarta Sans", sans-serif;
   }
 
-  h1, h2, h3, .font-display, .font-headline {
+  h1,
+  h2,
+  h3,
+  .font-display,
+  .font-headline {
     @apply font-headline;
     font-weight: 700;
     letter-spacing: -0.02em;
+    font-family: "Noto Serif", serif;
   }
 
   /* Responsive Containers */
@@ -93,10 +104,28 @@
   .student-container {
     @apply w-full max-w-lg mx-auto px-4 md:max-w-2xl;
   }
+
+  /* ── App Shell Layout Utilities ───────────────────────────────────────────
+ * page-shell : Full-height flex column — the root wrapper for every page (h-dvh)
+ * page-header: Fixed height header section (does not scroll)
+ * scroll-area: Fills remaining space and scrolls (flex-1)
+ * ──────────────────────────────────────────────────────────────────────── */
+  .page-shell {
+    @apply h-dvh flex flex-col overflow-hidden;
+  }
+
+  .page-header {
+    @apply shrink-0 bg-surface/95 backdrop-blur-md border-b border-outline-variant/10 z-20;
+  }
+
+  .scroll-area {
+    @apply flex-1 overflow-y-auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @layer components {
-  /* Editorial Component Overhaul */
+  /* Section Headers */
   .section-header {
     @apply font-display text-4xl lg:text-5xl text-on-surface mb-2;
     font-weight: 700;
@@ -107,13 +136,13 @@
     font-weight: 600;
   }
 
-  /* Editorial Cards — Tonal Layering */
+  /* Modern Floating Cards */
   .card {
-    @apply bg-surface-container-lowest rounded-[24px] p-8 lg:p-10 transition-all duration-300;
+    @apply bg-surface-container-lowest rounded-[20px] p-6 lg:p-8 transition-all duration-300;
   }
 
   .card-flat {
-    @apply bg-surface-container-low rounded-[24px] p-8 lg:p-10;
+    @apply bg-surface-container-low rounded-[20px] p-6 lg:p-8;
   }
 
   /* Student compact card */
@@ -127,13 +156,15 @@
 
   /* Buttons */
   .btn-primary {
-    @apply bg-primary text-on-primary px-8 py-3.5 rounded-[10px] text-sm transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2;
+    @apply bg-primary text-on-primary px-8 py-3 rounded-[10px] text-sm transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2;
     font-weight: 700;
+    font-family: "Noto Sans", sans-serif;
   }
 
   .btn-secondary {
-    @apply bg-surface-container-highest text-on-surface px-8 py-3.5 rounded-[10px] text-sm transition-all hover:bg-surface-container flex items-center justify-center gap-2;
+    @apply bg-surface-container-highest text-on-surface px-8 py-3 rounded-[10px] text-sm transition-all hover:bg-surface-container flex items-center justify-center gap-2;
     font-weight: 700;
+    font-family: "Noto Sans", sans-serif;
   }
 
   .btn-tertiary {
@@ -141,9 +172,10 @@
     font-weight: 700;
   }
 
-  /* Ghost Inputs */
+  /* Simple Clean Inputs */
   .input {
     @apply w-full bg-surface-container-lowest border border-outline-variant/15 rounded-[10px] px-5 py-3.5 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-outline-variant/40 transition-all;
+    font-family: "Noto Sans", sans-serif;
   }
 
   .input-label {
@@ -155,13 +187,25 @@
   .sidebar-active-indicator {
     @apply absolute left-0 w-1 h-6 bg-primary rounded-r-full;
   }
+
+  /* Sticky page title bar (used inside scroll containers) */
+  .sticky-page-header {
+    @apply sticky top-0 z-20 shrink-0 bg-surface/95 backdrop-blur-md border-b border-outline-variant/10;
+  }
 }
 
 @theme {
   --animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   @keyframes pulse-slow {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(1.05); }
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
   }
 }
 
@@ -175,6 +219,8 @@
     background: white !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   /* Hide everything on the page */
@@ -183,7 +229,7 @@
   }
 
   /* Force only the printable element into view */
-  .printable-pass, 
+  .printable-pass,
   .printable-pass * {
     visibility: visible !important;
   }
@@ -209,13 +255,14 @@
   }
 
   /* Ensure canvas and SVG QR codes are visible */
-  canvas, svg {
+  canvas,
+  svg {
     display: block !important;
     visibility: visible !important;
   }
 
   /* Hide buttons and interactive UI during print */
-  button, 
+  button,
   .print-hidden,
   .material-symbols-outlined {
     display: none !important;
