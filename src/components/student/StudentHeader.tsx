@@ -30,6 +30,11 @@ export function StudentBrandHeader() {
           .toUpperCase(),
       );
     });
+
+    // Request notification permission once per session
+    import("@/lib/utils/permissions").then(({ requestNotificationPermission }) => {
+      requestNotificationPermission();
+    });
   }, []);
 
   return (

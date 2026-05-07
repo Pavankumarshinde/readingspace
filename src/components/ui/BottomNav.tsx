@@ -21,10 +21,6 @@ const managerNavItems = [
 export default function BottomNav({ role }: { role: UserRole }) {
   const pathname = usePathname();
 
-  // ── Hide in Deep Room Views ───────────────────────────────────────────────
-  const isDeepRoomView = pathname.match(/^\/(student|manager)\/rooms\/[^/]+$/);
-  if (isDeepRoomView) return null;
-
   // ── Student — Floating Pill ────────────────────────────────────────────────
   if (role === "student") {
     return (

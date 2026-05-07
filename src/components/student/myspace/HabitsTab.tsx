@@ -27,7 +27,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  ArchiveRestore,
 } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Habit {
   id: string;
@@ -92,6 +94,16 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
   const [logs, setLogs] = useState<HabitLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
+  // Month/year for graph navigation
+  const [graphViewDate, setGraphViewDate] = useState<Date>(new Date());
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ open: false, title: "", message: "", onConfirm: () => {} });
 
   // Modal & Numeric Adjustment state
   const [showModal, setShowModal] = useState(false);
@@ -114,13 +126,13 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
 
   const days = getLast8Days();
   const today = days[days.length - 1];
-  const monthStart = startOfMonth(new Date());
-  const monthEnd = endOfMonth(new Date());
+  const monthStart = startOfMonth(graphViewDate);
+  const monthEnd = endOfMonth(graphViewDate);
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   useEffect(() => {
     fetchAll();
-  }, [userId]);
+  }, [userId, graphViewDate]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -134,8 +146,8 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
         .from("habit_logs")
         .select("*")
         .eq("user_id", userId)
-        .gte("log_date", format(startOfMonth(new Date()), "yyyy-MM-dd"))
-        .lte("log_date", format(endOfMonth(new Date()), "yyyy-MM-dd")),
+        .gte("log_date", format(startOfMonth(graphViewDate), "yyyy-MM-dd"))
+        .lte("log_date", format(endOfMonth(graphViewDate), "yyyy-MM-dd")),
     ]);
     if (hData) setHabits(hData as Habit[]);
     if (lData) setLogs(lData as HabitLog[]);
@@ -229,9 +241,27 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
   };
 
   const deleteHabit = async (id: string) => {
-    if (!confirm("This will delete all history for this habit.")) return;
-    await supabase.from("habits").delete().eq("id", id);
-    setHabits(habits.filter((h) => h.id !== id));
+    setConfirmDialog({
+      open: true,
+      title: "Delete Habit",
+      message: "This will permanently delete the habit and all its history. This cannot be undone.",
+      onConfirm: async () => {
+        await supabase.from("habits").delete().eq("id", id);
+        setHabits(habits.filter((h) => h.id !== id));
+        toast.success("Habit deleted permanently");
+      },
+    });
+  };
+
+  const retrieveHabit = async (habit: Habit) => {
+    const { error } = await supabase
+      .from("habits")
+      .update({ is_archived: false })
+      .eq("id", habit.id);
+    if (!error) {
+      setHabits(habits.map((h) => h.id === habit.id ? { ...h, is_archived: false } : h));
+      toast.success(`${habit.name} moved back to active`);
+    }
   };
 
   const archiveHabit = async (habit: Habit) => {
@@ -341,22 +371,28 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
         <div className="flex items-center justify-between mb-8 px-2">
           <div>
             <span className="text-[9px] font-black text-tertiary uppercase tracking-[0.4em] mb-1 block">
-              Weekly View
+              Monthly View
             </span>
             <h3 className="font-headline text-on-surface text-base font-medium">
-              {format(new Date(), "MMMM yyyy")}
+              {format(graphViewDate, "MMMM yyyy")}
             </h3>
           </div>
-          <div className="text-right">
-            <span className="text-[9px] font-black text-on-surface/30 uppercase tracking-widest block">
-              Today's Progress
+          <div className="flex items-center gap-1 bg-surface-container-low rounded-xl p-1">
+            <button
+              onClick={() => setGraphViewDate(d => { const nd = new Date(d); nd.setMonth(nd.getMonth() - 1); return nd; })}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:shadow-sm transition-all"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-[10px] font-black uppercase tracking-widest px-1 min-w-[60px] text-center text-primary">
+              {format(graphViewDate, "MMM yy")}
             </span>
-            <span className="text-xl font-bold text-tertiary">
-              {getDailyCompletionCount(new Date())}{" "}
-              <small className="text-xs text-on-surface/30">
-                / {maxPossible}
-              </small>
-            </span>
+            <button
+              onClick={() => setGraphViewDate(d => { const nd = new Date(d); nd.setMonth(nd.getMonth() + 1); return nd; })}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:shadow-sm transition-all"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         </div>
 
@@ -562,36 +598,54 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
                       })}
                       <td className="sticky right-0 z-10 bg-surface-container-lowest shadow-[-4px_0_12px_rgba(0,0,0,0.02)] group-hover:bg-surface-container/30 transition-all px-2 py-4 w-[70px]">
                         <div className="flex items-center justify-center gap-1.5 h-full">
-                          <button
-                            onClick={() => {
-                              setEditingHabit(habit);
-                              setForm({
-                                name: habit.name,
-                                icon: habit.icon,
-                                type: habit.habit_type,
-                                target: habit.target_value,
-                                unit: habit.unit,
-                                freqType: habit.frequency_type,
-                                freqDays: habit.frequency_days,
-                                color: habit.color,
-                              });
-                              setShowModal(true);
-                            }}
-                            className="p-1.5 text-on-surface-variant/40 hover:text-primary hover:bg-surface-container rounded-lg transition-all"
-                            title="Edit"
-                          >
-                            <Settings2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (showArchived) deleteHabit(habit.id);
-                              else archiveHabit(habit);
-                            }}
-                            className="p-1.5 text-on-surface-variant/40 hover:text-error hover:bg-surface-container rounded-lg transition-all"
-                            title={showArchived ? "Delete Permanently" : "Delete"}
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {showArchived ? (
+                            <>
+                              <button
+                                onClick={() => retrieveHabit(habit)}
+                                className="p-1.5 text-emerald-600/60 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                title="Retrieve (move to active)"
+                              >
+                                <ArchiveRestore size={16} />
+                              </button>
+                              <button
+                                onClick={() => deleteHabit(habit.id)}
+                                className="p-1.5 text-on-surface-variant/40 hover:text-error hover:bg-surface-container rounded-lg transition-all"
+                                title="Delete Permanently"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingHabit(habit);
+                                  setForm({
+                                    name: habit.name,
+                                    icon: habit.icon,
+                                    type: habit.habit_type,
+                                    target: habit.target_value,
+                                    unit: habit.unit,
+                                    freqType: habit.frequency_type,
+                                    freqDays: habit.frequency_days,
+                                    color: habit.color,
+                                  });
+                                  setShowModal(true);
+                                }}
+                                className="p-1.5 text-on-surface-variant/40 hover:text-primary hover:bg-surface-container rounded-lg transition-all"
+                                title="Edit"
+                              >
+                                <Settings2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => archiveHabit(habit)}
+                                className="p-1.5 text-on-surface-variant/40 hover:text-amber-500 hover:bg-surface-container rounded-lg transition-all"
+                                title="Archive"
+                              >
+                                <Archive size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -816,6 +870,16 @@ export default function HabitsTab({ userId }: HabitsTabProps) {
           </div>
         </div>
       )}
+      {/* Themed Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant="danger"
+        confirmLabel="Delete Forever"
+        onClose={() => setConfirmDialog((d) => ({ ...d, open: false }))}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   );
 }

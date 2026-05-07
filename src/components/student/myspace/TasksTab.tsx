@@ -283,17 +283,8 @@ export default function TasksTab({ userId }: TasksTabProps) {
                 </button>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span className="text-[9px] font-bold text-primary uppercase tracking-wider">
-                      {task.category}
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-on-surface/10" />
-                    <span className="flex items-center">
-                      {PriorityIcon(task.priority)}
-                    </span>
-                  </div>
                   <h3
-                    className={`text-sm font-semibold text-on-surface mb-2 leading-snug ${task.done ? "line-through opacity-50" : ""}`}
+                    className={`text-sm font-semibold text-on-surface mb-1 leading-snug ${task.done ? "line-through opacity-50" : ""}`}
                   >
                     {task.title}
                   </h3>
@@ -324,6 +315,7 @@ export default function TasksTab({ userId }: TasksTabProps) {
                     )}
                   </div>
                 </div>
+
 
                 <button
                   onClick={() => deleteTask(task.id)}

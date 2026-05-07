@@ -131,17 +131,6 @@ function AddStudentForm() {
               </p>
             </div>
           </div>
-          <button
-            form="enroll-form"
-            type="submit"
-            disabled={loading}
-            suppressHydrationWarning
-            className="bg-primary text-white py-2.5 px-6 rounded-2xl text-[11px] font-bold uppercase tracking-widest shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            <Save size={16} strokeWidth={2.5} />
-            <span className="hidden md:inline">Save Record</span>
-            <span className="md:hidden">Save</span>
-          </button>
         </div>
       </header>
 
@@ -374,7 +363,7 @@ function AddStudentForm() {
                 type="submit"
                 disabled={loading}
                 suppressHydrationWarning
-                className="w-full bg-primary text-white py-5 rounded-[2rem] text-[13px] font-bold uppercase tracking-widest shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-70 lg:hidden"
+                className="w-full bg-primary text-white py-5 rounded-[2rem] text-[13px] font-bold uppercase tracking-widest shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-70 mb-8"
               >
                 <CheckCircle2 size={18} strokeWidth={2.5} />
                 <span>

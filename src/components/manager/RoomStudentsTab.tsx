@@ -19,14 +19,16 @@ import {
   UserCircle,
   Pencil,
   Trash2,
-  Info,
+  CreditCard,
   QrCode,
   RefreshCw,
   Wifi,
   UserPlus,
+  X,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useRoomPresence } from "@/hooks/useRoomPresence";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const getStatusStyle = (status: string) => {
   switch (status) {
@@ -53,21 +55,17 @@ const getMemberTypeStyle = (type: string) => {
   }
 };
 
-const getComputedStatus = (dbStatus: string, endDate: string) => {
-  if (dbStatus !== "active") return dbStatus;
-
-  const end = new Date(endDate);
-  end.setHours(23, 59, 59, 999); // Valid until end of the expiry day
-  const now = new Date();
-
-  if (now > end) return "expired";
-
-  const diffDays = Math.ceil(
-    (end.getTime() - now.getTime()) / (1000 * 3600 * 24),
-  );
-  if (diffDays <= 3) return "due"; // Show due if 3 days or less
-
-  return "active";
+// Payment-based active/expired: active if any installment covering today is paid
+const getPaymentBasedStatus = (installments: any[]) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const covering = (installments || []).filter((ins: any) => {
+    const s = new Date(ins.start_date); s.setHours(0, 0, 0, 0);
+    const e = new Date(ins.end_date); e.setHours(23, 59, 59, 999);
+    return s <= today && today <= e;
+  });
+  if (covering.length === 0) return "expired";
+  return covering.some((ins: any) => ins.status === "paid") ? "active" : "expired";
 };
 
 const colors = [
@@ -101,6 +99,15 @@ export default function RoomStudentsTab({
 
   // Actions state
   const [acting, setActing] = useState(false);
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant?: "danger" | "warning" | "default";
+  }>({ open: false, title: "", message: "", onConfirm: () => {} });
 
   // QR Modal
   const [showQRModal, setShowQRModal] = useState(false);
@@ -292,23 +299,41 @@ export default function RoomStudentsTab({
       if (subsError) throw subsError;
 
       if (subsData) {
-        const formatted = subsData.map((sub: any, index: number) => ({
-          subscriptionId: sub.id,
-          id: sub.id.substring(0, 8).toUpperCase(),
-          studentUid: sub.student.id,
-          name: sub.student.name || "Unknown",
-          email: sub.student.email,
-          phone: sub.student.phone || "No phone",
-          status: getComputedStatus(sub.status || "active", sub.end_date),
-          start: sub.start_date,
-          expiry: sub.end_date,
-          seatNumber: sub.seat_number || "Unassigned",
-          membershipType:
-            sub.membership_type || sub.student.membership_type || "digital",
-          qrVersion: sub.qr_version || 0,
-          paymentStatus: sub.payment_status || "due",
-          color: colors[index % colors.length],
-        }));
+        // Fetch installments for all subscriptions to compute payment-based status
+        const subIds = subsData.map((s: any) => s.id);
+        const { data: allInstallments } = await supabase
+          .from("payment_history")
+          .select("subscription_id, start_date, end_date, status")
+          .in("subscription_id", subIds.length > 0 ? subIds : ["_none_"]);
+
+        const installmentsBySubId = new Map<string, any[]>();
+        (allInstallments || []).forEach((ins: any) => {
+          const arr = installmentsBySubId.get(ins.subscription_id) || [];
+          arr.push(ins);
+          installmentsBySubId.set(ins.subscription_id, arr);
+        });
+
+        const formatted = subsData.map((sub: any, index: number) => {
+          const subInstallments = installmentsBySubId.get(sub.id) || [];
+          const payStatus = getPaymentBasedStatus(subInstallments);
+          return {
+            subscriptionId: sub.id,
+            id: sub.id.substring(0, 8).toUpperCase(),
+            studentUid: sub.student.id,
+            name: sub.student.name || "Unknown",
+            email: sub.student.email,
+            phone: sub.student.phone || "No phone",
+            status: payStatus,
+            start: sub.start_date,
+            expiry: sub.end_date,
+            seatNumber: sub.seat_number || "Unassigned",
+            membershipType:
+              sub.membership_type || sub.student.membership_type || "digital",
+            qrVersion: sub.qr_version || 0,
+            paymentStatus: sub.payment_status || "due",
+            color: colors[index % colors.length],
+          };
+        });
         setStudents(formatted);
       }
 
@@ -327,33 +352,37 @@ export default function RoomStudentsTab({
     }
   };
 
+
   useEffect(() => {
     fetchData();
   }, [roomId]);
 
   const handleRegenerateStudentPass = async (subscriptionId: string) => {
-    if (!confirm("Invalidate current access pass and issue a new one?")) return;
-    try {
-      const res = await fetch("/api/manager/students/regenerate-pass", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId }),
-      });
-      if (res.ok) {
-        toast.success("Student pass regenerated");
-        // Update local state to reflect new version without full re-fetch delay
-        setSelectedStudentQR((prev: any) => ({
-          ...prev,
-          qrVersion: (prev.qrVersion || 0) + 1,
-        }));
-        fetchData(); // Still re-fetch to keep entire list in sync
-      } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to regenerate");
-      }
-    } catch (e) {
-      toast.error("Network failure");
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Regenerate Pass",
+      message: "This will invalidate the current access pass and issue a new one. Continue?",
+      variant: "warning",
+      onConfirm: async () => {
+        try {
+          const res = await fetch("/api/manager/students/regenerate-pass", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscriptionId }),
+          });
+          if (res.ok) {
+            toast.success("Student pass regenerated");
+            setSelectedStudentQR((prev: any) => ({ ...prev, qrVersion: (prev.qrVersion || 0) + 1 }));
+            fetchData();
+          } else {
+            const err = await res.json();
+            toast.error(err.error || "Failed to regenerate");
+          }
+        } catch (e) {
+          toast.error("Network failure");
+        }
+      },
+    });
   };
 
   const handleDeclineRequest = async (requestId: string) => {
@@ -466,25 +495,32 @@ export default function RoomStudentsTab({
   };
 
   const handleDeleteStudent = async (subscriptionId: string) => {
-    if (!confirm("Are you sure you want to remove this student?")) return;
-    setActing(true);
-    try {
-      const res = await fetch("/api/manager/students/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId }),
-      });
-      if (res.ok) {
-        toast.success("Student removed");
-        fetchData();
-      } else {
-        toast.error("Failed to remove");
-      }
-    } catch (e) {
-      toast.error("Network error");
-    } finally {
-      setActing(false);
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Remove Student",
+      message: "Are you sure you want to remove this student from the room? This action cannot be undone.",
+      variant: "danger",
+      onConfirm: async () => {
+        setActing(true);
+        try {
+          const res = await fetch("/api/manager/students/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscriptionId }),
+          });
+          if (res.ok) {
+            toast.success("Student removed");
+            fetchData();
+          } else {
+            toast.error("Failed to remove");
+          }
+        } catch (e) {
+          toast.error("Network error");
+        } finally {
+          setActing(false);
+        }
+      },
+    });
   };
 
   const filteredItems =
@@ -699,37 +735,8 @@ export default function RoomStudentsTab({
                       className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-secondary hover:bg-secondary/5 transition-colors"
                       title="Payment History"
                     >
-                      <Info size={14} />
+                      <CreditCard size={14} />
                     </button>
-                    <button
-                      onClick={() => {
-                        setSelectedStudentQR(student);
-                        setShowQRModal(true);
-                      }}
-                      className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-primary hover:bg-primary hover:text-white transition-colors"
-                      title="View QR"
-                    >
-                      <QrCode size={14} />
-                    </button>
-                    {student.status !== "active" && (
-                      <button
-                        onClick={() => {
-                          setSelectedStudentForRenew(student);
-                          setRenewFormData({
-                            startDate: format(new Date(), "yyyy-MM-dd"),
-                            endDate: format(
-                              new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                              "yyyy-MM-dd",
-                            ),
-                          });
-                          setShowRenewModal(true);
-                        }}
-                        className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
-                        title="Renew"
-                      >
-                        <RefreshCw size={14} />
-                      </button>
-                    )}
                     <button
                       onClick={() => {
                         setSelectedStudentForEdit(student);
@@ -762,6 +769,7 @@ export default function RoomStudentsTab({
                   </div>
                 </div>
               ))}
+
         </div>
       )}
 
@@ -1358,6 +1366,17 @@ export default function RoomStudentsTab({
           </div>
         </Modal>
       )}
+
+      {/* Themed Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant || "danger"}
+        confirmLabel="Yes, Proceed"
+        onClose={() => setConfirmDialog((d) => ({ ...d, open: false }))}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   );
 }

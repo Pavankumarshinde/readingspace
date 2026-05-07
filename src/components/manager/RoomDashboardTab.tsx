@@ -56,7 +56,9 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
     }
   });
   const maxHourCount = Math.max(...hourCounts, 1);
-  const displayHours = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
+  // All 24 hours on x-axis (0=12AM ... 23=11PM)
+  const allHours = Array.from({ length: 24 }, (_, i) => i);
+  const xLabels = ["12A","1A","2A","3A","4A","5A","6A","7A","8A","9A","10A","11A","12P","1P","2P","3P","4P","5P","6P","7P","8P","9P","10P","11P"];
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -231,28 +233,52 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
                 </p>
               </div>
             </div>
-            {attendanceLoading ? (
-              <div className="h-24 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" /></div>
-            ) : (
-              <div className="flex items-end gap-1 h-24">
-                {displayHours.map((h) => {
-                  const pct = (hourCounts[h] / maxHourCount) * 100;
-                  const label = h === 12 ? "12P" : h > 12 ? `${h-12}P` : `${h}A`;
-                  return (
-                    <div key={h} className="flex flex-col justify-end items-center gap-1 flex-1 h-full group">
-                      <div title={`${label}: ${hourCounts[h]} sessions`}
-                        className={`w-full rounded-t transition-all bg-blue-500 relative`}
-                        style={{ height: `${Math.max(pct, 2)}%`, minHeight: hourCounts[h] > 0 ? "6px" : "2px", opacity: hourCounts[h] > 0 ? 1 : 0.15 }}>
-                        {hourCounts[h] > 0 && (
-                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black text-on-surface opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{hourCounts[h]}</span>
+          {attendanceLoading ? (
+              <div className="h-32 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" /></div>
+            ) : (() => {
+              const svgW = 24 * 32; // ~768 logical units
+              const svgH = 96;
+              const padL = 28; const padB = 20; const padT = 12; const padR = 8;
+              const plotW = svgW - padL - padR;
+              const plotH = svgH - padT - padB;
+              const pts = allHours.map((h, i) => ({
+                x: padL + (i / 23) * plotW,
+                y: padT + plotH - (hourCounts[h] / maxHourCount) * plotH,
+                count: hourCounts[h],
+              }));
+              const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+              return (
+                <div className="overflow-x-auto">
+                  <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full min-w-[480px]" style={{ height: svgH }}>
+                    {/* Y-axis label */}
+                    <text x="2" y={padT + plotH / 2} fontSize="7" fill="#94a3b8" textAnchor="middle"
+                      transform={`rotate(-90, 8, ${padT + plotH / 2})`} fontWeight="700" letterSpacing="1">
+                      Sessions
+                    </text>
+                    {/* Grid line at max */}
+                    <line x1={padL} y1={padT} x2={svgW - padR} y2={padT} stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="3 3" />
+                    <line x1={padL} y1={padT + plotH} x2={svgW - padR} y2={padT + plotH} stroke="#e2e8f0" strokeWidth="0.5" />
+                    {/* Line */}
+                    <path d={pathD} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                    {/* Dots */}
+                    {pts.map((p, i) => (
+                      <g key={i}>
+                        <circle cx={p.x} cy={p.y} r={p.count > 0 ? 3 : 1.5}
+                          fill={p.count > 0 ? "#3b82f6" : "#cbd5e1"} stroke="white" strokeWidth="1" />
+                        {p.count > 0 && (
+                          <text x={p.x} y={p.y - 5} fontSize="6" fill="#1e40af" textAnchor="middle" fontWeight="700">{p.count}</text>
                         )}
-                      </div>
-                      <span className="text-[7px] text-on-surface-variant/40 font-bold">{label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                      </g>
+                    ))}
+                    {/* X-axis labels — show every 2nd label on mobile */}
+                    {allHours.map((h, i) => (
+                      <text key={h} x={pts[i].x} y={svgH - 4} fontSize="6.5" fill="#94a3b8"
+                        textAnchor="middle" fontWeight="700">{xLabels[i]}</text>
+                    ))}
+                  </svg>
+                </div>
+              );
+            })()}
             {sessions.length === 0 && !attendanceLoading && (
               <p className="text-center text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest mt-4">No sessions in this period</p>
             )}
@@ -340,14 +366,13 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
                 <th className="px-4 py-5 text-[9px] font-black text-secondary uppercase tracking-[0.3em]">Seat</th>
                 <th className="px-4 py-5 text-[9px] font-black text-secondary uppercase tracking-[0.3em]">Check In</th>
                 <th className="px-4 py-5 text-[9px] font-black text-secondary uppercase tracking-[0.3em]">Check Out</th>
-                <th className="px-4 py-5 text-right text-[9px] font-black text-secondary uppercase tracking-[0.3em]">Duration</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-low/30">
               {attendanceLoading ? (
-                <tr><td colSpan={5} className="py-20 text-center"><div className="w-8 h-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={4} className="py-20 text-center"><div className="w-8 h-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : displaySessions.length === 0 ? (
-                <tr><td colSpan={5} className="py-20 text-center text-[10px] font-black text-on-surface-variant/30 uppercase tracking-[0.3em]">No records found</td></tr>
+                <tr><td colSpan={4} className="py-20 text-center text-[10px] font-black text-on-surface-variant/30 uppercase tracking-[0.3em]">No records found</td></tr>
               ) : displaySessions.map((s, i) => {
                 const isOpen = !s.check_out_at;
                 const dur = durationLabel(s.check_in_at, s.check_out_at);
@@ -380,9 +405,6 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
                           </span>
                         </div>
                       )}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      {dur && <span className="text-[10px] font-bold text-secondary bg-surface-container-low px-3 py-1 rounded-xl">{dur}</span>}
                     </td>
                   </tr>
                 );

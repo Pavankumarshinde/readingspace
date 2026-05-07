@@ -6,26 +6,23 @@ import { useRouter } from "next/navigation";
 import { StudentBrandHeader } from "@/components/student/StudentHeader";
 import NotesTab from "@/components/student/myspace/NotesTab";
 import TasksTab from "@/components/student/myspace/TasksTab";
-import CalendarTab from "@/components/student/myspace/CalendarTab";
 import FocusTab from "@/components/student/myspace/FocusTab";
 import DiaryTab from "@/components/student/myspace/DiaryTab";
 import HabitsTab from "@/components/student/myspace/HabitsTab";
 import {
   FileText,
   CheckCircle2,
-  Calendar,
   Zap,
   Book,
   Flame,
   LucideIcon,
 } from "lucide-react";
 
-type Tab = "notes" | "tasks" | "calendar" | "focus" | "diary" | "habits";
+type Tab = "notes" | "tasks" | "focus" | "diary" | "habits";
 
 const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
   { key: "notes", label: "Notes", icon: FileText },
   { key: "tasks", label: "Tasks", icon: CheckCircle2 },
-  { key: "calendar", label: "Calendar", icon: Calendar },
   { key: "focus", label: "Focus", icon: Zap },
   { key: "diary", label: "Diary", icon: Book },
   { key: "habits", label: "Habits", icon: Flame },
@@ -108,7 +105,6 @@ export default function MySpacePage() {
         <div className="animate-in fade-in duration-200" key={activeTab}>
           {activeTab === "notes" && <NotesTab userId={userId} />}
           {activeTab === "tasks" && <TasksTab userId={userId} />}
-          {activeTab === "calendar" && <CalendarTab userId={userId} />}
           {activeTab === "focus" && <FocusTab userId={userId} />}
           {activeTab === "diary" && <DiaryTab userId={userId} />}
           {activeTab === "habits" && <HabitsTab userId={userId} />}

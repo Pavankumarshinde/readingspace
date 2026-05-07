@@ -110,13 +110,9 @@ export default async function StudentProfile() {
                 <SendQueryButton />
               </div>
               <ProfileActions />
-            </div>
-
-            <div className="mt-8 pt-6 text-center border-t border-outline-variant/10">
-              <p className="text-[10px] text-on-surface-variant/50 leading-relaxed max-w-[260px] mx-auto mb-4">
-                Your data is saved safely. Changes apply right away.
-              </p>
-              <ClearCacheButton />
+              <div className="text-center pt-1">
+                <ClearCacheButton />
+              </div>
             </div>
           </div>
         </div>

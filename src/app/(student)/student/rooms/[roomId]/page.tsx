@@ -17,7 +17,7 @@ import {
   parseISO,
   getDay,
 } from "date-fns";
-import { Loader2, LogIn, LogOut } from "lucide-react";
+import { Loader2, LogIn, LogOut, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { StudentRoomHeader } from "@/components/student/StudentHeader";
 import RoomChat from "@/components/shared/RoomChat";
@@ -51,6 +51,7 @@ export default function RoomDetail({
   const [openSession, setOpenSession] = useState<any>(null); // current open session
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null); // YYYY-MM-DD for histogram filter
+  const [calendarFilter, setCalendarFilter] = useState<"day" | "month">("month");
   const supabase = createClient();
 
   const fetchInstallments = async () => {
@@ -225,6 +226,10 @@ export default function RoomDetail({
 
   useEffect(() => {
     fetchData();
+    // Request location permission proactively on page load
+    import("@/lib/utils/permissions").then(({ requestLocationPermission }) => {
+      requestLocationPermission();
+    });
   }, [roomId]);
 
   const startCheckIn = async () => {
@@ -630,7 +635,7 @@ export default function RoomDetail({
               <div className="space-y-4">
                 {/* Calendar */}
                 <div className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/10">
-                  <div className="flex justify-between items-center mb-5">
+                  <div className="flex justify-between items-center mb-4">
                     <h3 className="font-headline leading-tight text-base font-medium">
                       Attendance Record
                     </h3>
@@ -657,6 +662,28 @@ export default function RoomDetail({
                       </button>
                     </div>
                   </div>
+
+                  {/* Day / Month filter pills */}
+                  <div className="flex gap-1 p-1 bg-surface-container-low rounded-xl mb-4">
+                    {(["day", "month"] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => {
+                          setCalendarFilter(f);
+                          if (f === "month") setSelectedDay(null);
+                          else setSelectedDay(format(new Date(), "yyyy-MM-dd"));
+                        }}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                          calendarFilter === f
+                            ? "bg-white shadow-sm text-primary"
+                            : "text-on-surface/40 hover:text-on-surface"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="grid grid-cols-7 gap-y-3 justify-items-center mb-2">
                     {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
                       <span key={d} className="text-[9px] font-bold text-secondary/50 uppercase tracking-widest">{d}</span>
@@ -670,7 +697,10 @@ export default function RoomDetail({
                       const isSelected = selectedDay === dayStr;
                       return (
                         <div key={i}
-                          onClick={() => setSelectedDay(isSelected ? null : dayStr)}
+                          onClick={() => {
+                            setCalendarFilter("day");
+                            setSelectedDay(isSelected ? null : dayStr);
+                          }}
                           className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-semibold transition-all cursor-pointer ${
                             isSelected ? "ring-2 ring-primary ring-offset-1 scale-110" : ""
                           } ${attended ? "bg-tertiary text-white shadow-sm" : today ? "border-2 border-primary text-primary font-extrabold" : "text-on-surface/40 hover:bg-surface-container-low"}`}>
@@ -679,16 +709,15 @@ export default function RoomDetail({
                       );
                     })}
                   </div>
-                  <div className="mt-5 flex justify-center border-t border-outline-variant/10 pt-3">
+                  <div className="mt-4 flex justify-center border-t border-outline-variant/10 pt-3">
                     <span className="text-[10px] uppercase tracking-widest text-secondary/60 font-bold">
                       {format(currentMonth, "MMMM yyyy")}
                     </span>
                   </div>
                 </div>
 
-                {/* Busy Hours Histogram */}
+                {/* Busy Hours — SVG Line+Dot Graph */}
                 {(() => {
-                  // Filter sessions: by selectedDay if set, else whole month
                   const filteredSessions = selectedDay
                     ? sessions.filter(s => s.date === selectedDay)
                     : sessions;
@@ -696,17 +725,10 @@ export default function RoomDetail({
                   filteredSessions.forEach((s) => {
                     const start = new Date(s.check_in_at);
                     const end = s.check_out_at ? new Date(s.check_out_at) : new Date();
-                    
                     if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
-                    
                     const startHour = start.getHours();
                     let endHour = end.getHours();
-                    
-                    // If checkout is on a different day, limit to 23
-                    if (end.getDate() !== start.getDate() || end.getMonth() !== start.getMonth()) {
-                        endHour = 23;
-                    }
-                    
+                    if (end.getDate() !== start.getDate() || end.getMonth() !== start.getMonth()) endHour = 23;
                     if (startHour <= endHour) {
                       for (let h = startHour; h <= endHour; h++) {
                         if (h >= 0 && h < 24) hourCounts[h]++;
@@ -714,44 +736,56 @@ export default function RoomDetail({
                     }
                   });
                   const maxCount = Math.max(...hourCounts, 1);
-                  const displayHours = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
-                  const label = selectedDay
-                    ? format(parseISO(selectedDay), "dd MMM")
-                    : format(currentMonth, "MMM yyyy");
+                  const allHours = Array.from({ length: 24 }, (_, i) => i);
+                  const xLabels = ["12A","1A","2A","3A","4A","5A","6A","7A","8A","9A","10A","11A","12P","1P","2P","3P","4P","5P","6P","7P","8P","9P","10P","11P"];
+                  const periodLabel = selectedDay ? format(parseISO(selectedDay), "dd MMM") : format(currentMonth, "MMM yyyy");
+                  // SVG geometry
+                  const svgW = 24 * 28; const svgH = 80;
+                  const padL = 24; const padB = 18; const padT = 10; const padR = 6;
+                  const plotW = svgW - padL - padR; const plotH = svgH - padT - padB;
+                  const pts = allHours.map((h, i) => ({
+                    x: padL + (i / 23) * plotW,
+                    y: padT + plotH - (hourCounts[h] / maxCount) * plotH,
+                    count: hourCounts[h],
+                  }));
+                  const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
                   return (
                     <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/10">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xs font-black uppercase tracking-widest text-on-surface-variant">Busy Hours</h3>
                         <div className="flex items-center gap-2">
                           {selectedDay && (
-                            <button onClick={() => setSelectedDay(null)} className="text-[8px] font-black text-primary uppercase bg-primary/10 px-2 py-0.5 rounded-full hover:bg-primary/20 transition-colors">Clear</button>
+                            <button onClick={() => { setSelectedDay(null); setCalendarFilter("month"); }} className="text-[8px] font-black text-primary uppercase bg-primary/10 px-2 py-0.5 rounded-full hover:bg-primary/20 transition-colors">Clear</button>
                           )}
-                          <span className="text-[9px] text-secondary/60 font-bold uppercase">{label}</span>
+                          <span className="text-[9px] text-secondary/60 font-bold uppercase">{periodLabel}</span>
                         </div>
                       </div>
-                      <div className="flex items-end gap-1 h-16">
-                        {displayHours.map((h) => {
-                          const pct = (hourCounts[h] / maxCount) * 100;
-                          const label2 = h === 12 ? "12P" : h > 12 ? `${h-12}P` : `${h}A`;
-                          return (
-                            <div key={h} className="flex flex-col justify-end items-center gap-1 flex-1 h-full">
-                              <div
-                                className={`w-full rounded-t-sm transition-all bg-blue-500`}
-                                style={{ height: `${Math.max(pct, 2)}%`, minHeight: hourCounts[h] > 0 ? "4px" : "2px", opacity: hourCounts[h] > 0 ? 1 : 0.15 }}
-                                title={`${label2}: ${hourCounts[h]} check-in${hourCounts[h] !== 1 ? "s" : ""}`}
-                              />
-                              <span className="text-[7px] text-on-surface-variant/40 font-bold">{label2}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="flex gap-3 mt-2 justify-center">
-                        {[["bg-amber-400","Morning"],["bg-primary","Afternoon"],["bg-indigo-500","Evening"]].map(([c,l]) => (
-                          <div key={l} className="flex items-center gap-1">
-                            <div className={`w-2 h-2 rounded-full ${c}`} />
-                            <span className="text-[8px] font-bold text-on-surface-variant/60">{l}</span>
-                          </div>
-                        ))}
+                      <div className="overflow-x-auto">
+                        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full min-w-[320px]" style={{ height: svgH }}>
+                          {/* Y-axis label */}
+                          <text x="2" y={padT + plotH / 2} fontSize="6" fill="#94a3b8" textAnchor="middle"
+                            transform={`rotate(-90, 8, ${padT + plotH / 2})`} fontWeight="700" letterSpacing="1">Sessions</text>
+                          {/* Grid lines */}
+                          <line x1={padL} y1={padT} x2={svgW - padR} y2={padT} stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="3 3" />
+                          <line x1={padL} y1={padT + plotH} x2={svgW - padR} y2={padT + plotH} stroke="#e2e8f0" strokeWidth="0.5" />
+                          {/* Line */}
+                          <path d={pathD} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                          {/* Dots */}
+                          {pts.map((p, i) => (
+                            <g key={i}>
+                              <circle cx={p.x} cy={p.y} r={p.count > 0 ? 3 : 1.5}
+                                fill={p.count > 0 ? "#3b82f6" : "#cbd5e1"} stroke="white" strokeWidth="1" />
+                              {p.count > 0 && (
+                                <text x={p.x} y={p.y - 5} fontSize="5.5" fill="#1e40af" textAnchor="middle" fontWeight="700">{p.count}</text>
+                              )}
+                            </g>
+                          ))}
+                          {/* X-axis labels */}
+                          {allHours.map((h, i) => (
+                            <text key={h} x={pts[i].x} y={svgH - 3} fontSize="5.5" fill="#94a3b8"
+                              textAnchor="middle" fontWeight="700">{xLabels[i]}</text>
+                          ))}
+                        </svg>
                       </div>
                     </div>
                   );
@@ -789,8 +823,8 @@ export default function RoomDetail({
                               }`}>
                                 {isOpen ? <LogIn size={12} /> : <LogOut size={12} />}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[10px] font-bold text-on-surface">
+                           <div className="flex-1 min-w-0">
+                                 <p className="text-[10px] font-bold text-on-surface">
                                   {format(checkIn, "dd MMM, EEE")}
                                 </p>
                                 <p className="text-[9px] text-secondary/70 font-medium">
@@ -803,13 +837,9 @@ export default function RoomDetail({
                                 </p>
                               </div>
                               <div className="text-right shrink-0">
-                                {isOpen ? (
+                                {isOpen && (
                                   <span className="text-[8px] font-black text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded-full">Inside</span>
-                                ) : durationMin !== null ? (
-                                  <span className="text-[9px] font-bold text-secondary">
-                                    {durationMin >= 60 ? `${Math.floor(durationMin/60)}h ${durationMin%60}m` : `${durationMin}m`}
-                                  </span>
-                                ) : null}
+                                )}
                               </div>
                             </div>
                           );

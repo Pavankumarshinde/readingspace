@@ -34,7 +34,7 @@ export function ClearCacheButton() {
   const handleClearCache = () => {
     localStorage.clear();
     sessionStorage.clear();
-    toast.success("Local archive cleared");
+    toast.success("Local cache cleared");
     setTimeout(() => window.location.reload(), 800);
   };
 
@@ -43,7 +43,7 @@ export function ClearCacheButton() {
       onClick={handleClearCache}
       className="text-error/60 text-[9px] font-bold tracking-widest uppercase hover:text-error transition-colors"
     >
-      Terminate Local Archive
+      Remove Local Cache
     </button>
   );
 }
