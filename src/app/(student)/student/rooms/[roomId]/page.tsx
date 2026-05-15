@@ -254,48 +254,63 @@ export default function RoomDetail({
   }, [roomId]);
 
   const startCheckIn = async () => {
-    if (room.latitude && room.longitude) {
-      setLoading(true);
+    setLoading(true);
+    try {
+      // Always request location permission first
       try {
-        try {
-          const { Geolocation } = await import("@capacitor/geolocation");
-          const p = await Geolocation.checkPermissions();
-          if (p.location !== "granted") await Geolocation.requestPermissions();
-        } catch {}
-        if (!navigator.geolocation) {
-          toast.error("Location needed for check-in");
-          setLoading(false);
-          return;
-        }
-        const { getPreciseLocation } = await import("@/lib/utils/geolocation");
-        const position = await getPreciseLocation();
-        if (!position) {
-          toast.error("Location check failed");
-          setLoading(false);
-          return;
-        }
+        const { Geolocation } = await import("@capacitor/geolocation");
+        const p = await Geolocation.checkPermissions();
+        if (p.location !== "granted") await Geolocation.requestPermissions();
+      } catch {}
+
+      // Get fresh current location (no cache)
+      const { getPreciseLocation } = await import("@/lib/utils/geolocation");
+      const position = await getPreciseLocation();
+      if (!position) {
+        toast.error("Could not get your location. Please enable location access.");
+        setLoading(false);
+        return;
+      }
+
+      // Re-fetch room data fresh from DB so we always use the latest geofence
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: freshRoom } = await supabase
+        .from("rooms")
+        .select("name, latitude, longitude, radius")
+        .eq("id", roomId)
+        .single();
+
+      if (!freshRoom) {
+        toast.error("Room not found");
+        setLoading(false);
+        return;
+      }
+
+      // Client-side geofence pre-check using latest room location
+      if (freshRoom.latitude && freshRoom.longitude) {
         const { calculateDistance } = await import("@/lib/utils/distance");
         const distance = calculateDistance(
           position.latitude,
           position.longitude,
-          room.latitude,
-          room.longitude,
+          freshRoom.latitude,
+          freshRoom.longitude,
         );
-        if (distance > (room.radius || 200)) {
+        if (distance > (freshRoom.radius || 200)) {
           toast.error(
-            `You are ${Math.round(distance)}m away. Please come closer to ${room.name}.`,
+            `You are ${Math.round(distance)}m away. Please come closer to ${freshRoom.name}.`,
             { duration: 6000 },
           );
+          setLoading(false);
           return;
         }
-        setShowScanner(true);
-      } catch {
-        toast.error("Check-in failed");
-      } finally {
-        setLoading(false);
       }
-    } else {
+
       setShowScanner(true);
+    } catch {
+      toast.error("Check-in failed");
+    } finally {
+      setLoading(false);
     }
   };
 

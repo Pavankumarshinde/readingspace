@@ -5,8 +5,8 @@ export async function getPreciseLocation(): Promise<{
 } | null> {
   const options = {
     enableHighAccuracy: true,
-    timeout: 30000, // Increased timeout to 30s so the GPS module has enough time to acquire lock
-    maximumAge: 5000, // Allows up to 5s old cached location which is usually very good and quick
+    timeout: 30000,
+    maximumAge: 0, // Always force a fresh GPS fix — never serve cached location
   };
 
   try {
