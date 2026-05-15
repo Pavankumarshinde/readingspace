@@ -40,7 +40,25 @@ export async function POST(req: Request) {
     const today = todayIST();
     const supabaseAdmin = await createAdminClient();
 
-    // 4. Check for open session today
+    // 4. Gate on active paid installment (installments = source of truth)
+    const { data: activeInstallment } = await supabase
+      .from("installments")
+      .select("id")
+      .eq("student_id", user.id)
+      .eq("room_id", roomId)
+      .eq("status", "paid")
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .limit(1)
+      .maybeSingle();
+
+    if (!activeInstallment)
+      return NextResponse.json(
+        { error: "Your plan has expired. Please contact the room manager to renew." },
+        { status: 403 },
+      );
+
+    // 5. Check for open session today
     const { data: openSession } = await supabaseAdmin
       .from("attendance_sessions")
       .select("id")

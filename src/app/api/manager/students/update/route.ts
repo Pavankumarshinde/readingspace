@@ -17,11 +17,7 @@ export async function POST(req: Request) {
       name,
       phone,
       seat,
-      startDate,
-      endDate,
       membershipType,
-      status,
-      paymentStatus,
     } = await req.json();
 
     if (!subscriptionId) {
@@ -35,7 +31,7 @@ export async function POST(req: Request) {
     const supabaseAdmin = await createAdminClient();
     const { data: sub, error: subError } = await supabaseAdmin
       .from("subscriptions")
-      .select("student_id, room_id, start_date, end_date, rooms(manager_id)")
+      .select("student_id, room_id, rooms(manager_id)")
       .eq("id", subscriptionId)
       .single();
 
@@ -53,16 +49,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Update the Subscription
+    // 2. Update enrollment metadata on subscription (seat, membership_type only)
+    // Dates, status, payment_status are NOT stored here — installments are the source of truth
     const { error: subUpdateError } = await supabaseAdmin
       .from("subscriptions")
       .update({
         seat_number: seat,
-        start_date: startDate,
-        end_date: endDate,
         membership_type: membershipType || "digital",
-        status: status || "active",
-        payment_status: paymentStatus !== undefined ? paymentStatus : undefined,
       })
       .eq("id", subscriptionId);
 
@@ -74,41 +67,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2.5 Handle Installments if dates changed or forced
-    if (startDate && endDate) {
-      // Check if an installment for these exact dates already exists
-      const { data: existingInstallment } = await supabaseAdmin
-        .from("installments")
-        .select("id")
-        .eq("subscription_id", subscriptionId)
-        .eq("start_date", startDate)
-        .eq("end_date", endDate)
-        .maybeSingle();
-
-      if (!existingInstallment) {
-        // Date changed (likely a renewal), log a new installment
-        await supabaseAdmin.from("installments").insert({
-          student_id: sub.student_id,
-          room_id: sub.room_id,
-          subscription_id: subscriptionId,
-          start_date: startDate,
-          end_date: endDate,
-          status: paymentStatus || "due",
-          payment_date: paymentStatus === "paid" ? new Date().toISOString() : null,
-        });
-      } else if (paymentStatus) {
-        // Update the existing installment's status
-        await supabaseAdmin
-          .from("installments")
-          .update({
-            status: paymentStatus,
-            payment_date: paymentStatus === "paid" ? new Date().toISOString() : null,
-          })
-          .eq("id", existingInstallment.id);
-      }
-    }
-
-    // 3. Update the Profile (Name & Phone) using 'upsert' to handle edge cases
+    // 3. Update the Profile (Name & Phone)
     const profileUpsert: any = { id: sub.student_id };
     if (name) profileUpsert.name = name;
     if (phone !== undefined) profileUpsert.phone = phone;

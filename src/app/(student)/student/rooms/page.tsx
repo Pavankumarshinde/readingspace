@@ -10,6 +10,36 @@ import toast from "react-hot-toast";
 import { Loader2 } from "lucide-react";
 import { StudentBrandHeader } from "@/components/student/StudentHeader";
 
+// Compute active/expired from installments (same logic as manager)
+function computePaymentStatus(installments: any[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const paid = (installments || []).filter((i: any) => i.status === "paid");
+
+  const activePaid = paid.filter((ins: any) => {
+    const s = new Date(ins.start_date);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(ins.end_date);
+    e.setHours(23, 59, 59, 999);
+    return s <= today && today <= e;
+  });
+
+  const effectiveExpiry =
+    paid.length > 0
+      ? paid.reduce(
+          (max: string, ins: any) =>
+            ins.end_date > max ? ins.end_date : max,
+          paid[0].end_date
+        )
+      : null;
+
+  return {
+    isActive: activePaid.length > 0,
+    effectiveExpiry,
+  };
+}
+
 export default function StudentRooms() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -33,13 +63,48 @@ export default function StudentRooms() {
         router.push("/login");
         return;
       }
+
+      // Fetch ALL subscriptions (not filtered by status) — status will be computed from installments
       const { data: subs, error } = await supabase
         .from("subscriptions")
         .select(`*, rooms (*)`)
-        .eq("student_id", user.id)
-        .eq("status", "active");
+        .eq("student_id", user.id);
+
       if (error) throw error;
-      setRooms(subs || []);
+
+      if (!subs || subs.length === 0) {
+        setRooms([]);
+        return;
+      }
+
+      // Batch-fetch installments for all rooms in one request
+      const roomIds = subs.map((s: any) => s.room_id);
+      const { data: allInstallments } = await supabase
+        .from("installments")
+        .select("room_id, start_date, end_date, status")
+        .eq("student_id", user.id)
+        .in("room_id", roomIds);
+
+      // Group installments by room_id
+      const instByRoom = new Map<string, any[]>();
+      (allInstallments || []).forEach((ins: any) => {
+        const arr = instByRoom.get(ins.room_id) || [];
+        arr.push(ins);
+        instByRoom.set(ins.room_id, arr);
+      });
+
+      // Enrich each subscription with payment-based status
+      const enriched = subs.map((sub: any) => {
+        const roomInst = instByRoom.get(sub.room_id) || [];
+        const { isActive, effectiveExpiry } = computePaymentStatus(roomInst);
+        return {
+          ...sub,
+          isActive,
+          effectiveExpiry: effectiveExpiry || sub.end_date,
+        };
+      });
+
+      setRooms(enriched);
     } catch (err: any) {
       toast.error("Could not load your rooms");
       console.error(err);
@@ -67,6 +132,9 @@ export default function StudentRooms() {
   const RoomCard = ({ sub }: { sub: any }) => {
     const room = sub.rooms;
     if (!room) return null;
+    const isActive: boolean = sub.isActive;
+    const displayExpiry: string = sub.effectiveExpiry;
+
     return (
       <div className="border border-outline-variant/30 rounded-xl p-3.5 bg-surface-container-low transition-all group hover:border-outline-variant/50 hover:shadow-sm">
         {/* Card Header */}
@@ -87,9 +155,18 @@ export default function StudentRooms() {
               </span>
             </p>
           </div>
-          <div className="text-emerald-700 text-[8px] font-bold tracking-widest flex items-center gap-1 uppercase shrink-0 mt-0.5">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-            Active
+          {/* Active / Expired badge — payment-based */}
+          <div
+            className={`text-[8px] font-bold tracking-widest flex items-center gap-1 uppercase shrink-0 mt-0.5 px-1.5 py-0.5 rounded-sm ${
+              isActive
+                ? "text-emerald-700 bg-emerald-50 border border-emerald-100"
+                : "text-rose-600 bg-rose-50 border border-rose-100"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-rose-400"}`}
+            />
+            {isActive ? "Active" : "Expired"}
           </div>
         </div>
 
@@ -97,10 +174,10 @@ export default function StudentRooms() {
         <div className="grid grid-cols-3 gap-2 items-center border-t border-outline-variant/20 pt-2.5">
           <div>
             <p className="text-[8px] uppercase tracking-widest text-outline font-bold">
-              Valid Till
+              {isActive ? "Valid Till" : "Expired"}
             </p>
             <p className="text-[11px] font-semibold text-on-surface">
-              {format(new Date(sub.end_date), "dd MMM yyyy").toUpperCase()}
+              {format(new Date(displayExpiry), "dd MMM yyyy").toUpperCase()}
             </p>
           </div>
           <div>

@@ -55,8 +55,7 @@ export default function AttendanceScanner({
           supabase
             .from("subscriptions")
             .select("id, seat_number, qr_version, student:profiles!inner(id, name, email)")
-            .eq("room_id", roomId)
-            .eq("status", "active"),
+            .eq("room_id", roomId),
           supabase
             .from("attendance_logs")
             .select("student_id, timestamp")

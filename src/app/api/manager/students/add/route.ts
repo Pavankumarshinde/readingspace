@@ -19,18 +19,7 @@ export async function POST(req: Request) {
     const { name, phone, room, seat, startDate, endDate, paymentStatus } =
       await req.json();
 
-    // Log the payload for debugging
-    console.log("Received payload:", {
-      name,
-      phone,
-      room,
-      seat,
-      startDate,
-      endDate,
-      paymentStatus,
-    });
-
-    // ... Validation ...
+    // Validation
     if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json(
         { error: "Student name is required" },
@@ -59,7 +48,6 @@ export async function POST(req: Request) {
       .single();
 
     if (roomError || !roomCheck) {
-      console.log("Room check failed:", roomError);
       return NextResponse.json(
         { error: "Room not found or unauthorized" },
         { status: 403 },
@@ -69,8 +57,6 @@ export async function POST(req: Request) {
     const supabaseAdmin = await createAdminClient();
     const placeholderEmail = generateManagedPlaceholderEmail(name.trim(), room);
     const placeholderPassword = generateManagedPassword();
-
-    console.log("Creating auth user with email:", placeholderEmail);
 
     const { data: authData, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
@@ -94,9 +80,8 @@ export async function POST(req: Request) {
     }
 
     const studentId = authData.user.id;
-    console.log("Auth user created:", studentId);
 
-    const { error: profileUpsertError } = await supabaseAdmin
+    await supabaseAdmin
       .from("profiles")
       .upsert(
         {
@@ -104,53 +89,42 @@ export async function POST(req: Request) {
           name: name.trim(),
           phone: phone?.trim() || "",
           membership_type: "managed",
-          email: placeholderEmail, // Might be required by DB schema
+          email: placeholderEmail,
         },
         { onConflict: "id" },
       );
 
-    if (profileUpsertError) {
-      console.error("Profile Upsert Error:", profileUpsertError);
-      // Usually non-fatal if trigger handles it, but maybe schema fails
-    }
-
-    // Dup check
-    const { data: existingSub, error: subCheckErr } = await supabaseAdmin
+    // Dup check — already enrolled?
+    const { data: existingSub } = await supabaseAdmin
       .from("subscriptions")
       .select("id")
       .eq("student_id", studentId)
       .eq("room_id", room)
-      .eq("status", "active")
       .maybeSingle();
-
-    if (subCheckErr) console.error("Sub check error:", subCheckErr);
 
     if (existingSub) {
       return NextResponse.json(
-        { error: "Student already has active subscription" },
+        { error: "Student is already enrolled in this room" },
         { status: 400 },
       );
     }
 
-    console.log(
-      "Inserting subscription for student:",
-      studentId,
-      "room:",
-      room,
-    );
-    const { data: subData, error: subError } = await supabase
+    // Create enrollment record.
+    // start_date / end_date are stored here to satisfy the DB NOT NULL constraint.
+    // They are NOT used by app logic — the installments table is the source of truth
+    // for all payment, plan period, and status data.
+    const { data: subData, error: subError } = await supabaseAdmin
       .from("subscriptions")
       .insert({
         student_id: studentId,
         room_id: room,
         seat_number: seat?.trim() || "Unassigned",
         tier: "standard",
+        membership_type: "managed",
+        invite_sent: false,
+        // Shadow copies for DB schema compat — app reads these from installments
         start_date: startDate,
         end_date: endDate,
-        status: "active",
-        invite_sent: false,
-        membership_type: "managed",
-        payment_status: paymentStatus || "due",
       })
       .select("id")
       .single();
@@ -158,13 +132,15 @@ export async function POST(req: Request) {
     if (subError || !subData) {
       console.error("Sub Insert Error:", subError);
       return NextResponse.json(
-        { error: `Sub Insert Error: ${subError?.message}`, details: subError },
+        { error: `Enrollment failed: ${subError?.message}` },
         { status: 500 },
       );
     }
 
-    // Insert initial installment
-    const { error: installmentError } = await supabase
+    // Create the first installment — this is the authoritative payment record.
+    // start_date, end_date, and payment status live exclusively here.
+    const resolvedStatus = paymentStatus || "due";
+    const { error: installmentError } = await supabaseAdmin
       .from("installments")
       .insert({
         student_id: studentId,
@@ -172,13 +148,14 @@ export async function POST(req: Request) {
         subscription_id: subData.id,
         start_date: startDate,
         end_date: endDate,
-        status: paymentStatus || "due",
-        payment_date: paymentStatus === "paid" ? new Date().toISOString() : null,
+        status: resolvedStatus,
+        payment_date:
+          resolvedStatus === "paid" ? new Date().toISOString() : null,
       });
 
     if (installmentError) {
       console.error("Installment Insert Error:", installmentError);
-      // We don't fail the whole request, but it should be logged
+      // Enrollment succeeded — manager can add installment via Plan & Billing modal
     }
 
     return NextResponse.json({

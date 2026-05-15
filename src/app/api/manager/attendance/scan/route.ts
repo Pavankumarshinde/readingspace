@@ -7,9 +7,6 @@ const todayIST = () =>
 
 const nowIST = () => new Date().toISOString();
 
-const endOfDayIST = (dateStr: string) =>
-  new Date(`${dateStr}T23:59:59+05:30`).toISOString();
-
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -26,25 +23,38 @@ export async function POST(req: Request) {
     if (!roomCheck)
       return NextResponse.json({ error: "Unauthorized or room not found" }, { status: 403 });
 
-    // 2. Verify QR version
-    const { data: subscription } = await supabase
-      .from("subscriptions").select("qr_version, status")
+    // 2. Verify QR version (enrollment metadata — still from subscriptions)
+    const { data: enrollment } = await supabase
+      .from("subscriptions").select("qr_version")
       .eq("student_id", studentId).eq("room_id", roomId).single();
-    if (!subscription)
-      return NextResponse.json({ error: "Active subscription not found" }, { status: 404 });
-    if (subscription.status !== "active")
-      return NextResponse.json({ error: "Subscription is not active" }, { status: 403 });
-    if ((subscription.qr_version || 0) !== (version || 0))
+    if (!enrollment)
+      return NextResponse.json({ error: "Student is not enrolled in this room" }, { status: 404 });
+    if ((enrollment.qr_version || 0) !== (version || 0))
       return NextResponse.json({ error: "This QR code has been regenerated and is no longer valid." }, { status: 401 });
 
-    // 3. Get student profile
+    // 3. Gate on active paid installment (installments = source of truth for payment status)
+    const today = todayIST();
+    const { data: activeInstallment } = await supabase
+      .from("installments")
+      .select("id")
+      .eq("student_id", studentId)
+      .eq("room_id", roomId)
+      .eq("status", "paid")
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .limit(1)
+      .maybeSingle();
+
+    if (!activeInstallment)
+      return NextResponse.json({ error: "No active paid installment. Please contact the manager." }, { status: 403 });
+
+    // 4. Get student profile
     const { data: profile } = await supabase
       .from("profiles").select("name, email").eq("id", studentId).single();
 
-    const today = todayIST();
     const supabaseAdmin = await createAdminClient();
 
-    // 4. Check for open session today (check_out_at IS NULL)
+    // 5. Check for open session today (check_out_at IS NULL)
     const { data: openSession } = await supabaseAdmin
       .from("attendance_sessions")
       .select("id")

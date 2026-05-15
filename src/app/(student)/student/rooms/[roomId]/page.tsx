@@ -46,6 +46,10 @@ export default function RoomDetail({
   const [showInstallmentsModal, setShowInstallmentsModal] = useState(false);
   const [installments, setInstallments] = useState<any[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
+  const [paymentIsActive, setPaymentIsActive] = useState(false);
+  const [effectiveExpiry, setEffectiveExpiry] = useState<string | null>(null);
+  const [planStart, setPlanStart] = useState<string | null>(null);
+  const [planEnd, setPlanEnd] = useState<string | null>(null);
   // Sessions
   const [sessions, setSessions] = useState<any[]>([]);
   const [openSession, setOpenSession] = useState<any>(null); // current open session
@@ -59,7 +63,16 @@ export default function RoomDetail({
     try {
       const res = await fetch(`/api/student/installments?roomId=${roomId}`);
       const data = await res.json();
-      if (res.ok) setInstallments(data.installments || []);
+      if (res.ok) {
+        setInstallments(data.installments || []);
+        // Use computed payment status from API
+        if (data.paymentStatus) {
+          setPaymentIsActive(data.paymentStatus.isActive);
+          setEffectiveExpiry(data.paymentStatus.effectiveExpiry);
+          setPlanStart(data.paymentStatus.planStart);
+          setPlanEnd(data.paymentStatus.planEnd);
+        }
+      }
     } catch (err) { console.error(err); }
     finally { setLoadingInstallments(false); }
   };
@@ -73,7 +86,8 @@ export default function RoomDetail({
       if (res.ok) {
         const s = data.sessions || [];
         setSessions(s);
-        const today = format(new Date(), "yyyy-MM-dd");
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+        // Open session = today's session with no check-out
         const open = s.find((sess: any) => sess.date === today && !sess.check_out_at);
         setOpenSession(open || null);
       }
@@ -161,19 +175,9 @@ export default function RoomDetail({
       const attendanceLogs = logsData || [];
       setLogs(attendanceLogs);
       calculateStreaks(attendanceLogs);
-      // Fetch sessions for current month
+      // Fetch sessions for current month via dedicated function
       const m = format(new Date(), "yyyy-MM");
-      try {
-        const res = await fetch(`/api/student/attendance/sessions?roomId=${roomId}&month=${m}`);
-        const d = await res.json();
-        if (res.ok) {
-          const s = d.sessions || [];
-          setSessions(s);
-          const today = format(new Date(), "yyyy-MM-dd");
-          const open = s.find((sess: any) => sess.date === today && !sess.check_out_at);
-          setOpenSession(open || null);
-        }
-      } catch {}
+      await fetchSessions(m);
     } catch { toast.error("Could not load room details"); }
     finally { setLoading(false); }
   };
@@ -226,6 +230,7 @@ export default function RoomDetail({
 
   useEffect(() => {
     fetchData();
+    fetchInstallments(); // Load installments & compute real active/expired status on page load
     // Request location permission proactively on page load
     import("@/lib/utils/permissions").then(({ requestLocationPermission }) => {
       requestLocationPermission();
@@ -313,7 +318,13 @@ export default function RoomDetail({
         } else {
           toast.success(data.message || "Checked in!");
         }
-        await fetchData();
+        // Refresh sessions for currently viewed month AND today's month
+        const todayMonth = format(new Date(), "yyyy-MM");
+        const currentDisplayMonth = format(currentMonth, "yyyy-MM");
+        await fetchSessions(todayMonth);
+        if (currentDisplayMonth !== todayMonth) {
+          await fetchSessions(currentDisplayMonth);
+        }
       } else {
         toast.error(data.error || "Failed");
       }
@@ -405,8 +416,12 @@ export default function RoomDetail({
   const leadingEmpties = getDay(monthStart);
   const isAttended = (day: Date) =>
     logs.some((l) => isSameDay(parseISO(l.date), day));
+  // Use effective expiry from paid installments; fall back to subscription end_date
+  const displayStart = planStart || subscription?.start_date || new Date().toISOString();
+  const displayExpiry = planEnd || effectiveExpiry || subscription?.end_date || new Date().toISOString();
+
   const expiresIn = differenceInDays(
-    parseISO(subscription.end_date),
+    parseISO(displayExpiry),
     new Date(),
   );
 
@@ -578,9 +593,17 @@ export default function RoomDetail({
                       </button>
                     </span>
                     <p className="text-xs font-bold text-on-surface mt-0.5">
-                      {format(parseISO(subscription.start_date), "dd MMM")} -{" "}
-                      {format(parseISO(subscription.end_date), "dd MMM")}
+                      {format(parseISO(displayStart), "dd MMM")} -{" "}
+                      {format(parseISO(displayExpiry), "dd MMM")}
                     </p>
+                    {/* Active/Expired payment badge */}
+                    <span className={`mt-1 self-end text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${
+                      paymentIsActive
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        : "bg-rose-50 text-rose-600 border border-rose-100"
+                    }`}>
+                      {paymentIsActive ? "Active" : "Expired"}
+                    </span>
                   </div>
                 </div>
 
@@ -740,8 +763,8 @@ export default function RoomDetail({
                   const xLabels = ["12A","1A","2A","3A","4A","5A","6A","7A","8A","9A","10A","11A","12P","1P","2P","3P","4P","5P","6P","7P","8P","9P","10P","11P"];
                   const periodLabel = selectedDay ? format(parseISO(selectedDay), "dd MMM") : format(currentMonth, "MMM yyyy");
                   // SVG geometry
-                  const svgW = 24 * 28; const svgH = 80;
-                  const padL = 24; const padB = 18; const padT = 10; const padR = 6;
+                  const svgW = 24 * 28; const svgH = 100;
+                  const padL = 24; const padB = 24; const padT = 16; const padR = 6;
                   const plotW = svgW - padL - padR; const plotH = svgH - padT - padB;
                   const pts = allHours.map((h, i) => ({
                     x: padL + (i / 23) * plotW,
@@ -760,8 +783,8 @@ export default function RoomDetail({
                           <span className="text-[9px] text-secondary/60 font-bold uppercase">{periodLabel}</span>
                         </div>
                       </div>
-                      <div className="overflow-x-auto">
-                        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full min-w-[320px]" style={{ height: svgH }}>
+                      <div className="overflow-x-auto custom-scrollbar pb-2">
+                        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full min-w-[320px]" style={{ height: "auto", maxHeight: "140px" }}>
                           {/* Y-axis label */}
                           <text x="2" y={padT + plotH / 2} fontSize="6" fill="#94a3b8" textAnchor="middle"
                             transform={`rotate(-90, 8, ${padT + plotH / 2})`} fontWeight="700" letterSpacing="1">Sessions</text>
@@ -782,7 +805,7 @@ export default function RoomDetail({
                           ))}
                           {/* X-axis labels */}
                           {allHours.map((h, i) => (
-                            <text key={h} x={pts[i].x} y={svgH - 3} fontSize="5.5" fill="#94a3b8"
+                            <text key={h} x={pts[i].x} y={svgH - 6} fontSize="5.5" fill="#94a3b8"
                               textAnchor="middle" fontWeight="700">{xLabels[i]}</text>
                           ))}
                         </svg>
@@ -809,36 +832,73 @@ export default function RoomDetail({
                         {selectedDay ? "No sessions on this day" : "No sessions this month"}
                       </div>
                     ) : (
-                      <div className="divide-y divide-outline-variant/10 max-h-64 overflow-y-auto">
-                        {filteredSessions.slice(0, 30).map((s, i) => {
+                      <div className="divide-y divide-outline-variant/10 max-h-72 overflow-y-auto">
+                        {filteredSessions.slice(0, 50).map((s, i) => {
                           const checkIn = new Date(s.check_in_at);
                           const checkOut = s.check_out_at ? new Date(s.check_out_at) : null;
                           const durationMin = checkOut ? Math.round((checkOut.getTime() - checkIn.getTime()) / 60000) : null;
                           const isAuto = s.is_auto_checkout;
                           const isOpen = !s.check_out_at;
+                          const timeOpts: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" };
+                          const checkInStr = checkIn.toLocaleTimeString("en-IN", timeOpts);
+                          const checkOutStr = checkOut ? checkOut.toLocaleTimeString("en-IN", timeOpts) : null;
+                          const durationLabel = durationMin !== null
+                            ? durationMin < 60
+                              ? `${durationMin}m`
+                              : `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
+                            : null;
                           return (
-                            <div key={s.id || i} className="px-4 py-2.5 flex items-center gap-3">
-                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                isOpen ? "bg-emerald-50 text-emerald-600" : "bg-surface-container text-secondary"
+                            <div key={s.id || i} className="px-4 py-3 flex items-start gap-3">
+                              {/* Icon */}
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                isOpen ? "bg-emerald-50 text-emerald-600" :
+                                isAuto ? "bg-orange-50 text-orange-500" :
+                                "bg-blue-50 text-blue-600"
                               }`}>
-                                {isOpen ? <LogIn size={12} /> : <LogOut size={12} />}
+                                <span className="material-symbols-outlined" style={{ fontSize: "14px", fontVariationSettings: "'FILL' 1" }}>
+                                  {isOpen ? "login" : "logout"}
+                                </span>
                               </div>
-                           <div className="flex-1 min-w-0">
-                                 <p className="text-[10px] font-bold text-on-surface">
+
+                              {/* Date + Times */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[10px] font-bold text-on-surface leading-tight">
                                   {format(checkIn, "dd MMM, EEE")}
                                 </p>
-                                <p className="text-[9px] text-secondary/70 font-medium">
-                                  {checkIn.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                                  {checkOut && (
-                                    <> &rarr; {checkOut.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                                      {isAuto && <span className="ml-1 text-orange-500">(auto)</span>}
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  {/* Check-in time */}
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-on-surface/70">
+                                    <span className="material-symbols-outlined text-emerald-500" style={{ fontSize: "10px" }}>login</span>
+                                    {checkInStr}
+                                  </span>
+                                  {/* Arrow + Check-out */}
+                                  {checkOutStr && (
+                                    <>
+                                      <span className="text-[9px] text-outline/40">→</span>
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-on-surface/70">
+                                        <span className="material-symbols-outlined text-blue-500" style={{ fontSize: "10px" }}>logout</span>
+                                        {checkOutStr}
+                                      </span>
                                     </>
                                   )}
-                                </p>
+                                </div>
+                                {/* Duration row */}
+                                {durationLabel && (
+                                  <p className="text-[9px] text-secondary/60 font-medium mt-0.5">
+                                    {durationLabel} session
+                                    {isAuto && <span className="ml-1 text-orange-500 font-bold">(auto-closed)</span>}
+                                  </p>
+                                )}
                               </div>
-                              <div className="text-right shrink-0">
-                                {isOpen && (
-                                  <span className="text-[8px] font-black text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded-full">Inside</span>
+
+                              {/* Status badge */}
+                              <div className="shrink-0 mt-0.5">
+                                {isOpen ? (
+                                  <span className="text-[8px] font-black text-emerald-600 uppercase bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">Inside</span>
+                                ) : isAuto ? (
+                                  <span className="text-[8px] font-black text-orange-500 uppercase bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">Auto</span>
+                                ) : (
+                                  <span className="text-[8px] font-black text-blue-600 uppercase bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">Done</span>
                                 )}
                               </div>
                             </div>

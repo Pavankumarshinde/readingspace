@@ -10,6 +10,7 @@ import {
 } from "date-fns";
 import { useRealtimeAttendance } from "@/hooks/useRealtimeAttendance";
 import toast from "react-hot-toast";
+import StudentPlanBillingModal from "./StudentPlanBillingModal";
 
 type Timeframe = "day" | "week" | "month";
 
@@ -26,6 +27,10 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
   const [searchTermExpiring, setSearchTermExpiring] = useState("");
   const [searchTermHistory, setSearchTermHistory] = useState("");
   const [sessions, setSessions] = useState<any[]>([]);
+
+  // Plan & Billing Modal State
+  const [showInstallmentsModal, setShowInstallmentsModal] = useState(false);
+  const [selectedStudentForInstallments, setSelectedStudentForInstallments] = useState<any>(null);
 
   const realtimeLogs = useRealtimeAttendance(roomId);
 
@@ -78,16 +83,20 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
         rangeEnd = endOfMonth(selectedDate);
       }
 
-      // Fetch sessions for chosen range
+      // Fetch sessions for chosen range via secure API
       const dateFrom = format(rangeStart, "yyyy-MM-dd");
       const dateTo = format(rangeEnd, "yyyy-MM-dd");
-      const { data: sessData } = await supabase
-        .from("attendance_sessions")
-        .select("*, student:profiles(name, email)")
-        .eq("room_id", roomId)
-        .gte("date", dateFrom)
-        .lte("date", dateTo)
-        .order("check_in_at", { ascending: false });
+      
+      let sessData = [];
+      try {
+        const res = await fetch(`/api/manager/attendance/sessions?roomId=${roomId}&dateFrom=${dateFrom}&dateTo=${dateTo}`);
+        const d = await res.json();
+        if (res.ok && d.sessions) {
+          sessData = d.sessions;
+        }
+      } catch (err) {
+        console.error("Failed to fetch sessions via API", err);
+      }
 
       // Enrich with seat numbers
       const { data: seats } = await supabase
@@ -124,27 +133,49 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
     const fetchExpiringPlans = async () => {
       setExpiringLoading(true);
       const supabase = createClient();
-      const start = startOfMonth(expiringViewDate);
-      const end = endOfMonth(expiringViewDate);
-      const { data: expiringSubs } = await supabase
-        .from("subscriptions")
-        .select(`id, end_date, seat_number, status, room_id, student_id, student:profiles!inner(name, email)`)
-        .eq("room_id", roomId)
-        .gte("end_date", format(start, "yyyy-MM-dd"))
-        .lte("end_date", format(end, "yyyy-MM-dd"))
-        .order("end_date", { ascending: true });
+      const startMonth = startOfDay(startOfMonth(expiringViewDate));
+      const endMonth = endOfDay(endOfMonth(expiringViewDate));
       const today = startOfDay(new Date());
-      setExpiringPlans((expiringSubs || []).map((sub: any) => {
-        const endDate = startOfDay(new Date(sub.end_date));
-        return {
-          name: sub.student?.name || "Unknown",
-          initial: (sub.student?.name || "U").substring(0, 2).toUpperCase(),
-          seat: sub.seat_number,
-          daysLeft: Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24)),
-          isExpired: endDate < today,
-          endDate,
-        };
-      }));
+
+      // Fetch all active subscriptions and their installments to find true expiry
+      const { data: subs } = await supabase
+        .from("subscriptions")
+        .select(`id, seat_number, status, room_id, student_id, student:profiles!inner(name, email), installments (id, end_date, status)`)
+        .eq("room_id", roomId)
+        .eq("status", "active");
+
+      if (subs) {
+        const plans = subs.map((sub: any) => {
+          // Find latest paid or overall latest installment for effective end date
+          const insts = sub.installments || [];
+          const paidInsts = insts.filter((i: any) => i.status === "paid");
+          let effectiveEndStr = sub.end_date;
+          if (paidInsts.length > 0) {
+            effectiveEndStr = paidInsts.reduce((max: string, i: any) => i.end_date > max ? i.end_date : max, paidInsts[0].end_date);
+          } else if (insts.length > 0) {
+            effectiveEndStr = insts.reduce((max: string, i: any) => i.end_date > max ? i.end_date : max, insts[0].end_date);
+          }
+          
+          const endDate = startOfDay(new Date(effectiveEndStr));
+          return {
+            studentUid: sub.student_id,
+            subscriptionId: sub.id,
+            status: sub.status,
+            email: sub.student?.email || "",
+            name: sub.student?.name || "Unknown",
+            initial: (sub.student?.name || "U").substring(0, 2).toUpperCase(),
+            seat: sub.seat_number,
+            daysLeft: Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24)),
+            isExpired: endDate < today,
+            endDate,
+          };
+        }).filter(p => p.endDate >= startMonth && p.endDate <= endMonth)
+          .sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+
+        setExpiringPlans(plans);
+      } else {
+        setExpiringPlans([]);
+      }
       setExpiringLoading(false);
     };
     fetchExpiringPlans();
@@ -318,15 +349,27 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
                             <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-0.5">Seat #{plan.seat}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          {plan.isExpired ? (
-                            <span className="text-[10px] font-black text-error uppercase tracking-widest">Expired</span>
-                          ) : (
-                            <div className="flex flex-col items-end gap-0.5">
-                              <span className="text-[8px] font-semibold text-on-surface-variant/60">Expires on</span>
-                              <span className="text-[11px] font-black text-primary">{format(plan.endDate, "dd MMM")}</span>
-                            </div>
-                          )}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            {plan.isExpired ? (
+                              <span className="text-[10px] font-black text-error uppercase tracking-widest">Expired</span>
+                            ) : (
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span className="text-[8px] font-semibold text-on-surface-variant/60">Expires on</span>
+                                <span className="text-[11px] font-black text-primary">{format(plan.endDate, "dd MMM")}</span>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedStudentForInstallments(plan);
+                              setShowInstallmentsModal(true);
+                            }}
+                            className="w-8 h-8 flex items-center justify-center bg-surface-container-low border border-outline-variant/10 shadow-sm rounded-lg text-primary hover:bg-primary hover:text-white transition-colors"
+                            title="Renew / Payments"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>receipt_long</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -413,6 +456,20 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
           </table>
         </div>
       </div>
+      
+      {/* Student Plan & Billing Modal */}
+      {showInstallmentsModal && selectedStudentForInstallments && (
+        <StudentPlanBillingModal
+          open={showInstallmentsModal}
+          onClose={() => setShowInstallmentsModal(false)}
+          roomId={roomId}
+          student={selectedStudentForInstallments}
+          onUpdate={() => {
+            // Re-fetch expiring plans when a payment changes
+            setExpiringViewDate(new Date(expiringViewDate.getTime())); 
+          }}
+        />
+      )}
     </div>
   );
 }

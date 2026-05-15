@@ -22,6 +22,8 @@ export default function StudentHome() {
 
   const [profile, setProfile] = useState<any>(null);
   const [activeSub, setActiveSub] = useState<any>(null);
+  const [subIsActive, setSubIsActive] = useState(false);
+  const [effectiveExpiry, setEffectiveExpiry] = useState<string | null>(null);
   const [stats, setStats] = useState({ sessions: 0, notes: 0 });
   const [recentNotes, setRecentNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,11 +45,13 @@ export default function StudentHome() {
         { data: notesData, count: notesCount },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
+        // Fetch any subscription (not filtered by status — we compute real status from installments)
         supabase
           .from("subscriptions")
           .select("*, room:rooms(*)")
           .eq("student_id", user.id)
-          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .maybeSingle(),
         supabase
           .from("attendance_logs")
@@ -62,7 +66,38 @@ export default function StudentHome() {
       ]);
 
       if (profileData) setProfile(profileData);
-      if (subData) setActiveSub(subData);
+
+      if (subData) {
+        setActiveSub(subData);
+        // Fetch installments to compute real active/expired status
+        const { data: installments } = await supabase
+          .from("installments")
+          .select("start_date, end_date, status")
+          .eq("student_id", user.id)
+          .eq("room_id", subData.room_id);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const paid = (installments || []).filter((i: any) => i.status === "paid");
+        const activePaid = paid.filter((ins: any) => {
+          const s = new Date(ins.start_date);
+          s.setHours(0, 0, 0, 0);
+          const e = new Date(ins.end_date);
+          e.setHours(23, 59, 59, 999);
+          return s <= today && today <= e;
+        });
+        const expiry =
+          paid.length > 0
+            ? paid.reduce(
+                (max: string, ins: any) =>
+                  ins.end_date > max ? ins.end_date : max,
+                paid[0].end_date
+              )
+            : null;
+        setSubIsActive(activePaid.length > 0);
+        setEffectiveExpiry(expiry || subData.end_date);
+      }
+
       setStats({ sessions: attendanceCount || 0, notes: notesCount || 0 });
       if (notesData) setRecentNotes(notesData);
       setLoading(false);
@@ -157,7 +192,7 @@ export default function StudentHome() {
         <div className="max-w-7xl mx-auto space-y-5 pb-4 animate-in fade-in duration-700">
           {/* Active Membership Card */}
           <section>
-            {activeSub ? (
+            {activeSub && subIsActive ? (
               <div className="card p-5 bg-gradient-to-br from-primary to-indigo-700 text-white border-none shadow-2xl shadow-primary/30 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-400/20 rounded-full blur-[100px] -mr-48 -mt-48 transition-transform duration-700 group-hover:scale-125" />
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-violet-400/20 rounded-full blur-[80px] -ml-32 -mb-32 transition-transform duration-700 group-hover:translate-x-10" />
@@ -183,7 +218,7 @@ export default function StudentHome() {
                       <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 shadow-sm">
                         <Calendar size={14} />
                         <span className="text-[11px] font-bold uppercase">
-                          Till {format(new Date(activeSub.end_date), "dd MMM")}
+                          Till {format(new Date(effectiveExpiry || activeSub.end_date), "dd MMM")}
                         </span>
                       </div>
                     </div>
@@ -194,6 +229,34 @@ export default function StudentHome() {
                   >
                     <button className="px-6 py-2.5 bg-white text-primary rounded-xl text-xs font-extrabold shadow-2xl shadow-black/10 hover:shadow-black/20 hover:scale-[1.02] active:scale-95 transition-all">
                       Go to Room
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            ) : activeSub && !subIsActive ? (
+              // Has subscription but payment expired
+              <div className="card p-5 bg-gradient-to-br from-rose-500 to-rose-700 text-white border-none shadow-2xl shadow-rose-500/20 relative overflow-hidden">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-white/60" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">
+                        Membership Expired
+                      </span>
+                    </div>
+                    <h3 className="font-headline tracking-tight text-base font-medium">
+                      {activeSub.room?.name}
+                    </h3>
+                    <p className="text-xs text-white/70">
+                      Contact your room manager to renew your plan.
+                    </p>
+                  </div>
+                  <Link
+                    href={`/student/rooms/${activeSub.room_id}`}
+                    className="shrink-0"
+                  >
+                    <button className="px-6 py-2.5 bg-white text-rose-600 rounded-xl text-xs font-extrabold hover:scale-[1.02] active:scale-95 transition-all">
+                      View Room
                     </button>
                   </Link>
                 </div>

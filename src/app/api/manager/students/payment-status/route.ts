@@ -39,11 +39,11 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = await createAdminClient();
 
-    // Update a specific installment by its own ID
+    // ── Update a specific installment by its own ID ────────────────────────
     if (installmentId) {
       const { data: inst } = await supabase
         .from("installments")
-        .select("id, room_id")
+        .select("id, room_id, student_id, subscription_id")
         .eq("id", installmentId)
         .single();
 
@@ -78,10 +78,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
+      // Installments are the source of truth — no sync back to subscriptions
       return NextResponse.json({ success: true });
     }
 
-    // Legacy path: update via subscription
+    // ── Legacy path: update via subscription ───────────────────────────────
     if (!subscriptionId) {
       return NextResponse.json(
         { error: "Missing installmentId or subscriptionId" },
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
     // Verify this subscription belongs to a room this manager owns
     const { data: sub } = await supabase
       .from("subscriptions")
-      .select("id, start_date, end_date, room:rooms!inner(manager_id)")
+      .select("id, student_id, room_id, room:rooms!inner(manager_id)")
       .eq("id", subscriptionId)
       .eq("room.manager_id", user.id)
       .single();
@@ -104,26 +105,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const { error: subErr } = await supabaseAdmin
-      .from("subscriptions")
-      .update({ payment_status: paymentStatus })
-      .eq("id", subscriptionId);
-
-    if (subErr) {
-      return NextResponse.json({ error: subErr.message }, { status: 500 });
-    }
-
-    // Also update the matching installment
+    // Update the matching installment(s) for this subscription
     await supabaseAdmin
       .from("installments")
       .update({
         status: paymentStatus,
         payment_date: resolvedPaymentDate,
       })
-      .eq("subscription_id", subscriptionId)
-      .eq("start_date", sub.start_date)
-      .eq("end_date", sub.end_date);
+      .eq("subscription_id", subscriptionId);
 
+    // Installments are the source of truth — no sync back to subscriptions
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json(

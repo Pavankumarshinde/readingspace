@@ -35,7 +35,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Fetch installments
+    // Fetch installments — source of truth for all payment/plan data
     const { data: installments, error: instError } = await supabase
       .from("installments")
       .select("*")
@@ -45,17 +45,15 @@ export async function GET(req: Request) {
 
     if (instError) throw instError;
 
-    // Fetch current subscription (plan summary)
-    const { data: subscription } = await supabase
+    // Fetch enrollment metadata from subscriptions (seat, tier, qr_version — NOT dates/status)
+    const { data: enrollment } = await supabase
       .from("subscriptions")
-      .select(
-        "id, seat_number, tier, start_date, end_date, status, membership_type, payment_status",
-      )
+      .select("id, seat_number, tier, membership_type, qr_version")
       .eq("student_id", studentId)
       .eq("room_id", roomId)
       .maybeSingle();
 
-    return NextResponse.json({ installments, subscription });
+    return NextResponse.json({ installments, subscription: enrollment });
   } catch (err: any) {
     console.error("Error fetching installments:", err);
     return NextResponse.json(

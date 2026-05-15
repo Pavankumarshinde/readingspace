@@ -29,6 +29,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useRoomPresence } from "@/hooks/useRoomPresence";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import StudentPlanBillingModal from "./StudentPlanBillingModal";
 
 const getStatusStyle = (status: string) => {
   switch (status) {
@@ -55,17 +56,40 @@ const getMemberTypeStyle = (type: string) => {
   }
 };
 
-// Payment-based active/expired: active if any installment covering today is paid
-const getPaymentBasedStatus = (installments: any[]) => {
+// Payment-based active/expired:
+// - ACTIVE if any PAID installment covers today
+// - effectiveExpiry = latest end_date among all paid installments (what's shown as expiry)
+const getPaymentBasedStatus = (
+  installments: any[]
+): { status: "active" | "expired"; effectiveExpiry: string | null } => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const covering = (installments || []).filter((ins: any) => {
-    const s = new Date(ins.start_date); s.setHours(0, 0, 0, 0);
-    const e = new Date(ins.end_date); e.setHours(23, 59, 59, 999);
+
+  const paid = (installments || []).filter((ins: any) => ins.status === "paid");
+
+  // Active if any paid installment covers today
+  const activePaid = paid.filter((ins: any) => {
+    const s = new Date(ins.start_date);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(ins.end_date);
+    e.setHours(23, 59, 59, 999);
     return s <= today && today <= e;
   });
-  if (covering.length === 0) return "expired";
-  return covering.some((ins: any) => ins.status === "paid") ? "active" : "expired";
+
+  // Latest end_date among all paid installments (used as displayed expiry)
+  const effectiveExpiry =
+    paid.length > 0
+      ? paid.reduce(
+          (max: string, ins: any) =>
+            ins.end_date > max ? ins.end_date : max,
+          paid[0].end_date
+        )
+      : null;
+
+  return {
+    status: activePaid.length > 0 ? "active" : "expired",
+    effectiveExpiry,
+  };
 };
 
 const colors = [
@@ -134,10 +158,7 @@ export default function RoomStudentsTab({
     name: "",
     phone: "",
     seat: "",
-    startDate: "",
-    endDate: "",
     membershipType: "digital",
-    status: "active",
   });
 
   // Renew Modal
@@ -153,135 +174,6 @@ export default function RoomStudentsTab({
   const [showInstallmentsModal, setShowInstallmentsModal] = useState(false);
   const [selectedStudentForInstallments, setSelectedStudentForInstallments] =
     useState<any>(null);
-  const [installments, setInstallments] = useState<any[]>([]);
-  const [planSummary, setPlanSummary] = useState<any>(null);
-  const [loadingInstallments, setLoadingInstallments] = useState(false);
-  const [rowActing, setRowActing] = useState<string | null>(null); // installment id being updated
-  // Inline mark-paid date picker per row
-  const [markPaidRow, setMarkPaidRow] = useState<string | null>(null);
-  const [markPaidDate, setMarkPaidDate] = useState<string>("");
-  // Add period form
-  const [showAddPeriod, setShowAddPeriod] = useState(false);
-  const [addPeriodForm, setAddPeriodForm] = useState({
-    startDate: "",
-    endDate: "",
-    amount: "",
-    notes: "",
-    status: "due",
-    paymentDate: "",
-  });
-  const [savingPeriod, setSavingPeriod] = useState(false);
-
-  const fetchInstallments = async (studentId: string) => {
-    setLoadingInstallments(true);
-    try {
-      const res = await fetch(
-        `/api/manager/students/installments?studentId=${studentId}&roomId=${roomId}`,
-      );
-      const data = await res.json();
-      if (res.ok) {
-        setInstallments(data.installments || []);
-        setPlanSummary(data.subscription || null);
-      } else {
-        toast.error(data.error || "Failed to fetch installments");
-      }
-    } catch (err) {
-      toast.error("Network error");
-    } finally {
-      setLoadingInstallments(false);
-    }
-  };
-
-  const handleMarkInstallmentPaid = async (
-    installmentId: string,
-    newStatus: string,
-    paymentDate: string,
-  ) => {
-    setRowActing(installmentId);
-    try {
-      const res = await fetch("/api/manager/students/payment-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ installmentId, paymentStatus: newStatus, paymentDate }),
-      });
-      if (res.ok) {
-        toast.success(`Marked as ${newStatus}`);
-        setMarkPaidRow(null);
-        fetchInstallments(selectedStudentForInstallments.studentUid);
-      } else {
-        toast.error("Failed to update");
-      }
-    } catch {
-      toast.error("Network error");
-    } finally {
-      setRowActing(null);
-    }
-  };
-
-  const handleAddPeriod = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedStudentForInstallments) return;
-    setSavingPeriod(true);
-    try {
-      const res = await fetch("/api/manager/students/installments/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: selectedStudentForInstallments.studentUid,
-          roomId,
-          subscriptionId: planSummary?.id || null,
-          startDate: addPeriodForm.startDate,
-          endDate: addPeriodForm.endDate,
-          status: addPeriodForm.status,
-          paymentDate: addPeriodForm.paymentDate || undefined,
-          amount: addPeriodForm.amount || undefined,
-          notes: addPeriodForm.notes || undefined,
-        }),
-      });
-      if (res.ok) {
-        toast.success("Period added");
-        setShowAddPeriod(false);
-        setAddPeriodForm({ startDate: "", endDate: "", amount: "", notes: "", status: "due", paymentDate: "" });
-        fetchInstallments(selectedStudentForInstallments.studentUid);
-      } else {
-        const d = await res.json();
-        toast.error(d.error || "Failed to add period");
-      }
-    } catch {
-      toast.error("Network error");
-    } finally {
-      setSavingPeriod(false);
-    }
-  };
-
-  const handleTogglePayment = async (
-    subscriptionId: string,
-    currentStatus: string,
-  ) => {
-    setActing(true);
-    const newStatus = currentStatus === "paid" ? "due" : "paid";
-    try {
-      const res = await fetch("/api/manager/students/payment-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subscriptionId,
-          paymentStatus: newStatus,
-        }),
-      });
-      if (res.ok) {
-        toast.success(`Payment marked as ${newStatus}`);
-        fetchData();
-      } else {
-        toast.error("Failed to update payment status");
-      }
-    } catch (err) {
-      toast.error("Network error");
-    } finally {
-      setActing(false);
-    }
-  };
-
 
   const fetchData = async () => {
     setLoading(true);
@@ -290,7 +182,7 @@ export default function RoomStudentsTab({
         .from("subscriptions")
         .select(
           `
- id, seat_number, tier, start_date, end_date, status, notes, membership_type, qr_version, payment_status,
+ id, seat_number, tier, membership_type, qr_version,
  student:profiles!inner(id, name, email, phone, gender, membership_type)
  `,
         )
@@ -299,23 +191,41 @@ export default function RoomStudentsTab({
       if (subsError) throw subsError;
 
       if (subsData) {
-        // Fetch installments for all subscriptions to compute payment-based status
-        const subIds = subsData.map((s: any) => s.id);
+        // Fetch installments for ALL students in this room (single query, no N+1)
+        // We key by student_id+room_id since installments don't always have subscription_id
+        const studentIds = subsData.map((s: any) => s.student.id);
         const { data: allInstallments } = await supabase
-          .from("payment_history")
-          .select("subscription_id, start_date, end_date, status")
-          .in("subscription_id", subIds.length > 0 ? subIds : ["_none_"]);
+          .from("installments")
+          .select("subscription_id, student_id, start_date, end_date, status")
+          .eq("room_id", roomId)
+          .in("student_id", studentIds.length > 0 ? studentIds : ["_none_"]);
 
+        // Group installments by subscription_id, fall back to student_id matching
         const installmentsBySubId = new Map<string, any[]>();
+        const installmentsByStudentId = new Map<string, any[]>();
         (allInstallments || []).forEach((ins: any) => {
-          const arr = installmentsBySubId.get(ins.subscription_id) || [];
-          arr.push(ins);
-          installmentsBySubId.set(ins.subscription_id, arr);
+          if (ins.subscription_id) {
+            const arr = installmentsBySubId.get(ins.subscription_id) || [];
+            arr.push(ins);
+            installmentsBySubId.set(ins.subscription_id, arr);
+          }
+          // Also index by student_id for fallback
+          const sarr = installmentsByStudentId.get(ins.student_id) || [];
+          sarr.push(ins);
+          installmentsByStudentId.set(ins.student_id, sarr);
         });
 
         const formatted = subsData.map((sub: any, index: number) => {
-          const subInstallments = installmentsBySubId.get(sub.id) || [];
-          const payStatus = getPaymentBasedStatus(subInstallments);
+          // Prefer sub-id match; fall back to student_id match
+          const subInstallments =
+            installmentsBySubId.get(sub.id) ||
+            installmentsByStudentId.get(sub.student.id) ||
+            [];
+          const { status: payStatus, effectiveExpiry } =
+            getPaymentBasedStatus(subInstallments);
+          // effectiveExpiry = latest paid installment end_date; null if no paid installments
+          // sub.end_date is no longer fetched (not in select) — installments are the source of truth
+          const displayExpiry = effectiveExpiry ?? null;
           return {
             subscriptionId: sub.id,
             id: sub.id.substring(0, 8).toUpperCase(),
@@ -325,12 +235,11 @@ export default function RoomStudentsTab({
             phone: sub.student.phone || "No phone",
             status: payStatus,
             start: sub.start_date,
-            expiry: sub.end_date,
+            expiry: displayExpiry,
             seatNumber: sub.seat_number || "Unassigned",
             membershipType:
               sub.membership_type || sub.student.membership_type || "digital",
             qrVersion: sub.qr_version || 0,
-            paymentStatus: sub.payment_status || "due",
             color: colors[index % colors.length],
           };
         });
@@ -356,6 +265,17 @@ export default function RoomStudentsTab({
   useEffect(() => {
     fetchData();
   }, [roomId]);
+
+  // Sync the open billing modal's student snapshot whenever the students list refreshes.
+  // This ensures the status badge and expiry in the modal update immediately after
+  // any payment action — because everything is derived from the installments table.
+  useEffect(() => {
+    if (!showInstallmentsModal || !selectedStudentForInstallments) return;
+    const updated = students.find(
+      (s) => s.studentUid === selectedStudentForInstallments.studentUid
+    );
+    if (updated) setSelectedStudentForInstallments(updated);
+  }, [students]);
 
   const handleRegenerateStudentPass = async (subscriptionId: string) => {
     setConfirmDialog({
@@ -407,18 +327,36 @@ export default function RoomStudentsTab({
     if (!selectedRequest) return;
     setActing(true);
     try {
-      const { error: subError } = await supabase.from("subscriptions").insert({
-        student_id: selectedRequest.student_id,
-        room_id: roomId,
-        seat_number: approvalData.seatNumber,
-        tier: approvalData.tier,
-        start_date: approvalData.startDate,
-        end_date: approvalData.endDate,
-        status: "active",
-      });
+      // 1. Create enrollment record (seat, tier only — no payment data)
+      const { data: newSub, error: subError } = await supabase
+        .from("subscriptions")
+        .insert({
+          student_id: selectedRequest.student_id,
+          room_id: roomId,
+          seat_number: approvalData.seatNumber,
+          tier: approvalData.tier,
+          // Shadow copies for DB NOT NULL constraint — app reads from installments
+          start_date: approvalData.startDate,
+          end_date: approvalData.endDate,
+        })
+        .select("id")
+        .single();
 
       if (subError) throw subError;
 
+      // 2. Create first installment — the real payment/plan record
+      const today = format(new Date(), "yyyy-MM-dd");
+      await supabase.from("installments").insert({
+        student_id: selectedRequest.student_id,
+        room_id: roomId,
+        subscription_id: newSub.id,
+        start_date: approvalData.startDate,
+        end_date: approvalData.endDate,
+        status: "paid",
+        payment_date: new Date().toISOString(),
+      });
+
+      // 3. Mark join request accepted
       const { error: reqUpdateError } = await supabase
         .from("join_requests")
         .update({ status: "accepted" })
@@ -446,7 +384,10 @@ export default function RoomStudentsTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subscriptionId: selectedStudentForEdit.subscriptionId,
-          ...editFormData,
+          name: editFormData.name,
+          phone: editFormData.phone,
+          seat: editFormData.seat,
+          membershipType: editFormData.membershipType,
         }),
       });
 
@@ -469,23 +410,28 @@ export default function RoomStudentsTab({
     if (!selectedStudentForRenew) return;
     setActing(true);
     try {
-      const res = await fetch("/api/manager/students/update", {
+      // Renewal = add a new paid installment; status is computed from installments
+      const res = await fetch("/api/manager/students/installments/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          studentId: selectedStudentForRenew.studentUid,
+          roomId,
           subscriptionId: selectedStudentForRenew.subscriptionId,
           startDate: renewFormData.startDate,
           endDate: renewFormData.endDate,
-          status: "active",
+          status: "paid",
+          paymentDate: new Date().toISOString(),
         }),
       });
 
       if (res.ok) {
-        toast.success("Subscription renewed");
+        toast.success("Subscription renewed — new paid installment added");
         setShowRenewModal(false);
         fetchData();
       } else {
-        toast.error("Failed to renew");
+        const d = await res.json();
+        toast.error(d.error || "Failed to renew");
       }
     } catch (e) {
       toast.error("Network error");
@@ -708,20 +654,10 @@ export default function RoomStudentsTab({
                           size={10}
                           className="text-outline-variant/50"
                         />
-                        EXP {format(new Date(student.expiry), "dd MMM")}
+                        {student.expiry
+                          ? `EXP ${format(new Date(student.expiry), "dd MMM")}`
+                          : "EXP —"}
                       </span>
-                      <button
-                        onClick={() => handleTogglePayment(student.subscriptionId, student.paymentStatus)}
-                        disabled={acting}
-                        className={`px-1.5 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest transition-colors ${
-                          student.paymentStatus === "paid" 
-                            ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100" 
-                            : "bg-rose-50 text-rose-600 border border-rose-100 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-100"
-                        }`}
-                        title="Toggle Payment Status"
-                      >
-                        {student.paymentStatus}
-                      </button>
                     </div>
                   </div>
 
@@ -729,7 +665,6 @@ export default function RoomStudentsTab({
                     <button
                       onClick={() => {
                         setSelectedStudentForInstallments(student);
-                        fetchInstallments(student.studentUid);
                         setShowInstallmentsModal(true);
                       }}
                       className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-secondary hover:bg-secondary/5 transition-colors"
@@ -745,10 +680,7 @@ export default function RoomStudentsTab({
                           phone:
                             student.phone === "No phone" ? "" : student.phone,
                           seat: student.seatNumber,
-                          startDate: student.start,
-                          endDate: student.expiry,
                           membershipType: student.membershipType,
-                          status: student.status,
                         });
                         setShowEditModal(true);
                       }}
@@ -915,56 +847,6 @@ export default function RoomStudentsTab({
                   <option value="managed">Managed</option>
                 </select>
               </div>
-              <div>
-                <label className="text-xs font-bold text-on-surface-variant">
-                  Status
-                </label>
-                <select
-                  className="input mt-1"
-                  value={editFormData.status}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, status: e.target.value })
-                  }
-                >
-                  <option value="active">Active</option>
-                  <option value="expired">Expired</option>
-                  <option value="due">Due</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-on-surface-variant">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  className="input mt-1"
-                  value={editFormData.startDate}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      startDate: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-on-surface-variant">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  className="input mt-1"
-                  value={editFormData.endDate}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      endDate: e.target.value,
-                    })
-                  }
-                />
-              </div>
             </div>
             <button
               disabled={acting}
@@ -986,11 +868,11 @@ export default function RoomStudentsTab({
         >
           <form onSubmit={handleRenewSubmit} className="space-y-4 pt-4">
             <p className="text-sm text-on-surface-variant mb-2">
-              Renew subscription for{" "}
+              Add a new paid period for{" "}
               <span className="font-bold text-on-surface">
                 {selectedStudentForRenew.name}
               </span>
-              . This will set their status back to <strong>Active</strong>.
+              . A new installment will be created and their status updated automatically.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1160,211 +1042,13 @@ export default function RoomStudentsTab({
 
       {/* Student Plan & Billing Modal */}
       {showInstallmentsModal && selectedStudentForInstallments && (
-        <Modal
+        <StudentPlanBillingModal
           open={showInstallmentsModal}
-          onClose={() => { setShowInstallmentsModal(false); setMarkPaidRow(null); setShowAddPeriod(false); }}
-          title="Student Plan & Billing"
-        >
-          <div className="space-y-4 pt-2">
-
-            {/* Section A: Plan Summary */}
-            <div className="p-3.5 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center font-black text-lg text-primary uppercase shrink-0">
-                  {selectedStudentForInstallments.name?.[0] || "S"}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-on-surface truncate">{selectedStudentForInstallments.name}</h3>
-                  <p className="text-[9px] text-on-surface-variant/60 uppercase tracking-widest font-bold truncate">{selectedStudentForInstallments.email}</p>
-                </div>
-                <span className={`ml-auto shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                  selectedStudentForInstallments.status === "active"
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                    : "bg-rose-50 text-rose-600 border border-rose-100"
-                }`}>
-                  {selectedStudentForInstallments.status}
-                </span>
-              </div>
-              {planSummary && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-surface-container p-2.5 rounded-xl">
-                    <p className="text-[8px] text-on-surface-variant/50 uppercase tracking-widest font-bold mb-0.5">Plan Period</p>
-                    <p className="text-[10px] font-bold text-on-surface">
-                      {format(new Date(planSummary.start_date), "dd MMM")} → {format(new Date(planSummary.end_date), "dd MMM, yyyy")}
-                    </p>
-                  </div>
-                  <div className="bg-surface-container p-2.5 rounded-xl">
-                    <p className="text-[8px] text-on-surface-variant/50 uppercase tracking-widest font-bold mb-0.5">Seat Â. Tier</p>
-                    <p className="text-[10px] font-bold text-on-surface">
-                      #{planSummary.seat_number} Â. {planSummary.tier}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Section B: Payment Timeline */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Payment History</p>
-                {!loadingInstallments && installments.length > 0 && (
-                  <div className="flex gap-3 text-[9px] font-bold">
-                    <span className="text-emerald-600">✓ {installments.filter(i => i.status === "paid").length} Paid</span>
-                    <span className="text-rose-500">● {installments.filter(i => i.status !== "paid").length} Due</span>
-                  </div>
-                )}
-              </div>
-
-              {loadingInstallments ? (
-                <div className="py-8 flex justify-center">
-                  <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                </div>
-              ) : installments.length === 0 ? (
-                <div className="text-center py-6 bg-surface-container-lowest border border-outline-variant/5 rounded-2xl">
-                  <p className="font-bold text-on-surface-variant text-xs">No payment records yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[38vh] overflow-y-auto pr-1">
-                  {installments.map((inst) => (
-                    <div key={inst.id} className="bg-surface-container-lowest border border-outline-variant/10 rounded-xl overflow-hidden">
-                      <div className="p-3 flex items-start justify-between gap-3">
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="text-[10px] font-bold text-on-surface">
-                            {format(new Date(inst.start_date), "dd MMM")} – {format(new Date(inst.end_date), "dd MMM, yyyy")}
-                          </span>
-                          {inst.payment_date && (
-                            <span className="text-[9px] text-emerald-600 font-medium">
-                              Paid on {format(new Date(inst.payment_date), "dd MMM, yyyy")}
-                            </span>
-                          )}
-                          {inst.amount && <span className="text-[9px] text-on-surface-variant/60">₹{inst.amount}</span>}
-                          {inst.notes && <span className="text-[9px] text-on-surface-variant/40 italic">{inst.notes}</span>}
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${
-                            inst.status === "paid"
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                              : "bg-rose-50 text-rose-600 border border-rose-100"
-                          }`}>{inst.status}</span>
-                          {inst.status !== "paid" ? (
-                            <button
-                              onClick={() => { setMarkPaidRow(markPaidRow === inst.id ? null : inst.id); setMarkPaidDate(format(new Date(), "yyyy-MM-dd")); }}
-                              disabled={rowActing === inst.id}
-                              className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-colors"
-                            >
-                              {rowActing === inst.id ? "..." : "Mark Paid"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleMarkInstallmentPaid(inst.id, "due", "")}
-                              disabled={rowActing === inst.id}
-                              className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-surface-container text-on-surface-variant hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                            >
-                              {rowActing === inst.id ? "..." : "Undo"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {markPaidRow === inst.id && (
-                        <div className="px-3 pb-3 pt-2 border-t border-primary/10 bg-primary/5 flex items-center gap-2 flex-wrap">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-primary">Date</label>
-                          <input
-                            type="date"
-                            value={markPaidDate}
-                            max={format(new Date(), "yyyy-MM-dd")}
-                            onChange={(e) => setMarkPaidDate(e.target.value)}
-                            className="input py-1 text-xs flex-1 min-w-0"
-                          />
-                          <button
-                            onClick={() => handleMarkInstallmentPaid(inst.id, "paid", markPaidDate)}
-                            disabled={!markPaidDate || rowActing === inst.id}
-                            className="px-3 py-1.5 bg-primary text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:opacity-90 disabled:opacity-40"
-                          >
-                            Confirm
-                          </button>
-                          <button onClick={() => setMarkPaidRow(null)} className="px-2 py-1.5 bg-surface-container text-on-surface-variant rounded-lg text-[9px] font-black uppercase">
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Section C: Add New Period */}
-            <div className="border border-outline-variant/10 rounded-2xl overflow-hidden">
-              <button
-                onClick={() => setShowAddPeriod(!showAddPeriod)}
-                className="w-full flex items-center justify-between px-4 py-3 text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
-              >
-                <span>+ Add New Period</span>
-                <span>{showAddPeriod ? "▲" : "▼"}</span>
-              </button>
-              {showAddPeriod && (
-                <form onSubmit={handleAddPeriod} className="p-4 space-y-3 bg-surface-container-lowest">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Start Date</label>
-                      <input required type="date" className="input mt-1 text-xs py-2"
-                        value={addPeriodForm.startDate}
-                        onChange={e => setAddPeriodForm({...addPeriodForm, startDate: e.target.value})} />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">End Date</label>
-                      <input required type="date" className="input mt-1 text-xs py-2"
-                        value={addPeriodForm.endDate}
-                        onChange={e => setAddPeriodForm({...addPeriodForm, endDate: e.target.value})} />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Amount (₹)</label>
-                      <input type="number" min="0" placeholder="Optional" className="input mt-1 text-xs py-2"
-                        value={addPeriodForm.amount}
-                        onChange={e => setAddPeriodForm({...addPeriodForm, amount: e.target.value})} />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Status</label>
-                      <select className="input mt-1 text-xs py-2"
-                        value={addPeriodForm.status}
-                        onChange={e => setAddPeriodForm({...addPeriodForm, status: e.target.value})}>
-                        <option value="due">Due</option>
-                        <option value="paid">Paid</option>
-                        <option value="overdue">Overdue</option>
-                      </select>
-                    </div>
-                    {addPeriodForm.status === "paid" && (
-                      <div className="col-span-2">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Payment Date</label>
-                        <input type="date" className="input mt-1 text-xs py-2"
-                          value={addPeriodForm.paymentDate}
-                          max={format(new Date(), "yyyy-MM-dd")}
-                          onChange={e => setAddPeriodForm({...addPeriodForm, paymentDate: e.target.value})} />
-                      </div>
-                    )}
-                    <div className="col-span-2">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Notes</label>
-                      <input type="text" placeholder="e.g. Half month discount" className="input mt-1 text-xs py-2"
-                        value={addPeriodForm.notes}
-                        onChange={e => setAddPeriodForm({...addPeriodForm, notes: e.target.value})} />
-                    </div>
-                  </div>
-                  <button disabled={savingPeriod} type="submit"
-                    className="w-full py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 disabled:opacity-50">
-                    {savingPeriod ? "Saving..." : "Save Period"}
-                  </button>
-                </form>
-              )}
-            </div>
-
-            <button
-              onClick={() => { setShowInstallmentsModal(false); setMarkPaidRow(null); setShowAddPeriod(false); }}
-              className="w-full py-3 bg-surface-container text-on-surface text-[11px] font-bold rounded-xl hover:bg-surface-container-high transition-colors uppercase tracking-widest"
-            >
-              Close
-            </button>
-          </div>
-        </Modal>
+          onClose={() => setShowInstallmentsModal(false)}
+          roomId={roomId}
+          student={selectedStudentForInstallments}
+          onUpdate={fetchData}
+        />
       )}
 
       {/* Themed Confirm Dialog */}
