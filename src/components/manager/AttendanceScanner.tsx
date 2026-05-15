@@ -35,11 +35,9 @@ export default function AttendanceScanner({
   const scannedRef = useRef(false);
   const supabase = createClient();
 
-  // New features
   const [viewMode, setViewMode] = useState<"scan" | "search">("scan");
   const [allStudents, setAllStudents] = useState<any[]>([]);
-  const [todayLogs, setTodayLogs] = useState<any[]>([]); // legacy for student status
-  const [todaySessions, setTodaySessions] = useState<any[]>([]); // new sessions feed
+  const [todaySessions, setTodaySessions] = useState<any[]>([]); // all today's sessions
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingStudents, setLoadingStudents] = useState(false);
 
@@ -51,25 +49,20 @@ export default function AttendanceScanner({
         const today = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Kolkata",
         }).format(new Date());
-        const [{ data: students }, { data: logs }, { data: sessions }] = await Promise.all([
+        const [{ data: students }, sessionsResult] = await Promise.all([
           supabase
             .from("subscriptions")
             .select("id, seat_number, qr_version, student:profiles!inner(id, name, email)")
             .eq("room_id", roomId),
-          supabase
-            .from("attendance_logs")
-            .select("student_id, timestamp")
-            .eq("room_id", roomId)
-            .eq("date", today),
           fetch(`/api/manager/attendance/sessions?roomId=${roomId}&date=${today}`)
             .then(r => r.json()).then(d => ({ data: d.sessions || [] })).catch(() => ({ data: [] })),
         ]);
 
         setAllStudents(students || []);
-        setTodayLogs(logs || []);
+
         // Enrich sessions with student names
         const enriched = await Promise.all(
-          (sessions as any[]).map(async (s: any) => {
+          (sessionsResult.data as any[]).map(async (s: any) => {
             const st = (students || []).find((sub: any) => sub.student?.id === s.student_id);
             return { ...s, student: st?.student || null };
           })
@@ -85,41 +78,55 @@ export default function AttendanceScanner({
     }
     fetchStudents();
 
-    // Real-time listener for today's logs
+    // Real-time listener for attendance_sessions INSERT and UPDATE
     const channel = supabase
-      .channel("scanner-updates")
+      .channel("scanner-session-updates")
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
-          table: "attendance_logs",
+          table: "attendance_sessions",
           filter: `room_id=eq.${roomId}`,
         },
         async (payload: any) => {
-          const newLog = payload.new;
-          // Only care if it's today
+          const newSession = payload.new;
           const today = new Intl.DateTimeFormat("en-CA", {
             timeZone: "Asia/Kolkata",
           }).format(new Date());
-          if (newLog.date !== today) return;
+          if (newSession.date !== today) return;
 
-          // Fetch student details for the feed
+          // Fetch student name for the new session
           const { data: student } = await supabase
             .from("profiles")
             .select("name, email")
-            .eq("id", newLog.student_id)
+            .eq("id", newSession.student_id)
             .single();
 
-          const expandedLog = { ...newLog, student };
-          setTodayLogs((prev) => {
-            if (prev.some((l) => l.student_id === newLog.student_id))
-              return prev;
-            return [expandedLog, ...prev];
-          });
-
-          // If we manually marked someone, we already show the success card,
-          // but this ensures the button updates immediately too.
+          setTodaySessions((prev) => [
+            { ...newSession, student },
+            ...prev,
+          ]);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "attendance_sessions",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload: any) => {
+          const updated = payload.new;
+          const today = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Kolkata",
+          }).format(new Date());
+          if (updated.date !== today) return;
+          // Update the session in state (marks check_out_at)
+          setTodaySessions((prev) =>
+            prev.map((s) => s.id === updated.id ? { ...s, ...updated } : s)
+          );
         },
       )
       .subscribe();
@@ -268,24 +275,27 @@ export default function AttendanceScanner({
         const isCheckOut = data.action === "check_out";
         if (isCheckOut) {
           toast(`${data.student?.name} checked out`, { icon: "🚪", style: { borderRadius: "10px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "12px", fontWeight: "bold" } });
+          // Update the existing open session to have a check-out time
+          setTodaySessions((prev) =>
+            prev.map((s) =>
+              s.student_id === student.student.id && !s.check_out_at
+                ? { ...s, check_out_at: data.check_out_at || new Date().toISOString() }
+                : s
+            )
+          );
         } else {
           toast.success(`${data.student?.name} checked in`);
+          // Add new check-in session
+          const newSession = {
+            id: `local-${Date.now()}`,
+            student_id: student.student.id,
+            check_in_at: data.check_in_at || new Date().toISOString(),
+            check_out_at: null,
+            student: data.student,
+          };
+          setTodaySessions((prev) => [newSession, ...prev]);
         }
         setLastScanned({ ...data.student, action: data.action });
-        const newSession = {
-          id: `local-${Date.now()}`,
-          student_id: student.student.id,
-          check_in_at: data.check_in_at || new Date().toISOString(),
-          check_out_at: data.check_out_at || null,
-          student: data.student,
-        };
-        setTodaySessions((prev) => [newSession, ...prev]);
-        if (!isCheckOut) {
-          setTodayLogs((prev) => {
-            if (prev.some((l) => l.student_id === student.student.id)) return prev;
-            return [{ student_id: student.student.id, timestamp: newSession.check_in_at }, ...prev];
-          });
-        }
         setTimeout(() => setScanning(false), 1500);
       } else {
         throw new Error(data.error || "Failed");
@@ -296,11 +306,13 @@ export default function AttendanceScanner({
     }
   };
 
-  const markedStudentIds = new Set(todayLogs.map((log) => log.student_id));
-  // Students currently inside (checked in but not out)
+  // Students currently inside (checked in but not out yet — based on open sessions)
   const insideStudentIds = new Set(
     todaySessions.filter(s => !s.check_out_at).map(s => s.student_id)
   );
+
+  // Count of unique students who came today (any session)
+  const totalTodayStudentIds = new Set(todaySessions.map(s => s.student_id));
 
   const filteredResults = allStudents.filter(
     (s) =>
@@ -481,8 +493,8 @@ export default function AttendanceScanner({
                     </span>
                   </div>
                 ) : (
-                  filteredResults.map((s) => {
-                    const isMarked = markedStudentIds.has(s.student.id);
+                filteredResults.map((s) => {
+                    const isInside = insideStudentIds.has(s.student.id);
                     return (
                       <div
                         key={s.id}
@@ -509,14 +521,12 @@ export default function AttendanceScanner({
                           className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
                             insideStudentIds.has(s.student.id)
                               ? "bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100"
-                              : isMarked
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100"
                               : "bg-primary text-white shadow-primary/20 hover:bg-primary/90 disabled:opacity-50"
                           }`}
                         >
-                          {insideStudentIds.has(s.student.id) ? <><LogOut size={12} /> Check Out</> :
-                           isMarked ? <><CheckCircle2 size={12} /> Marked</> :
-                           <><LogIn size={12} /> Check In</>}
+                          {insideStudentIds.has(s.student.id)
+                            ? <><LogOut size={12} /> Check Out</>
+                            : <><LogIn size={12} /> Check In</>}
                         </button>
                       </div>
                     );
@@ -545,7 +555,7 @@ export default function AttendanceScanner({
               </div>
               <div className="px-3 py-1.5 bg-primary/10 rounded-xl border border-primary/20 text-center">
                 <span className="text-[8px] font-black text-primary uppercase block">Total</span>
-                <span className="text-xs font-black text-primary">{todayLogs.length}</span>
+                <span className="text-xs font-black text-primary">{totalTodayStudentIds.size}</span>
               </div>
             </div>
           </div>

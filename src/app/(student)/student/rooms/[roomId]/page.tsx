@@ -81,15 +81,31 @@ export default function RoomDetail({
     setLoadingSessions(true);
     try {
       const m = monthStr || format(currentMonth, "yyyy-MM");
+      // Always fetch today's sessions separately to get accurate open-session state
+      const todayIST = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+      const todayMonth = format(new Date(), "yyyy-MM");
+
+      // Fetch the requested month
       const res = await fetch(`/api/student/attendance/sessions?roomId=${roomId}&month=${m}`);
       const data = await res.json();
       if (res.ok) {
         const s = data.sessions || [];
         setSessions(s);
-        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
-        // Open session = today's session with no check-out
-        const open = s.find((sess: any) => sess.date === today && !sess.check_out_at);
+        // Find open session — today's session with no check-out
+        const open = s.find((sess: any) => sess.date === todayIST && !sess.check_out_at);
         setOpenSession(open || null);
+      }
+
+      // If the requested month is not today's month, also fetch today separately
+      // to ensure openSession state is always accurate
+      if (m !== todayMonth) {
+        const todayRes = await fetch(`/api/student/attendance/sessions?roomId=${roomId}&month=${todayMonth}`);
+        const todayData = await todayRes.json();
+        if (todayRes.ok) {
+          const todaySessions = todayData.sessions || [];
+          const open = todaySessions.find((sess: any) => sess.date === todayIST && !sess.check_out_at);
+          setOpenSession(open || null);
+        }
       }
     } catch (err) { console.error(err); }
     finally { setLoadingSessions(false); }
@@ -314,17 +330,19 @@ export default function RoomDetail({
             icon: "🚪",
             style: { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" },
           });
+          // Immediately clear open session so button shows "Check In" right away
           setOpenSession(null);
         } else {
           toast.success(data.message || "Checked in!");
         }
-        // Refresh sessions for currently viewed month AND today's month
+        // Refresh sessions for currently viewed month AND today's month to get latest state
         const todayMonth = format(new Date(), "yyyy-MM");
         const currentDisplayMonth = format(currentMonth, "yyyy-MM");
-        await fetchSessions(todayMonth);
         if (currentDisplayMonth !== todayMonth) {
           await fetchSessions(currentDisplayMonth);
         }
+        // Always refresh today's month last so openSession is accurate
+        await fetchSessions(todayMonth);
       } else {
         toast.error(data.error || "Failed");
       }
