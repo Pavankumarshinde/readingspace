@@ -45,10 +45,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Delete the subscription
+    // 2. Perform Soft Delete on the subscription
     const { error: deleteError } = await supabaseAdmin
       .from("subscriptions")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", subscriptionId);
 
     if (deleteError) {

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import "@/lib/env"; // Trigger environment validation on boot
+import OfflineBanner from "@/components/OfflineBanner";
 
 export const metadata: Metadata = {
   title: "ReadingSpace",
@@ -47,6 +49,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning className="h-dvh overflow-hidden">
+        <OfflineBanner />
         {children}
         <Toaster position="top-center" />
       </body>

@@ -14,9 +14,9 @@ import {
   CheckCircle2,
   Zap,
   Book,
-  Flame,
   LucideIcon,
 } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 type Tab = "notes" | "tasks" | "focus" | "diary" | "habits";
 
@@ -69,13 +69,16 @@ export default function MySpacePage() {
       {/* ── Fixed Page Header: Title + Tab Bar ──────────────────────────── */}
       <div className="sticky-page-header pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0 shrink-0">
         {/* Page Title */}
-        <div className="px-4 md:px-8 pt-4 pb-1 max-w-[1400px] mx-auto">
-          <h1 className="font-headline text-on-surface tracking-tight leading-none text-base font-bold">
-            My Space
-          </h1>
-          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">
-            Your study corner
-          </p>
+        <div className="px-4 md:px-8 pt-4 pb-1 max-w-[1400px] mx-auto flex items-center gap-3">
+          <BackButton className="md:hidden -mt-2" />
+          <div>
+            <h1 className="font-headline text-on-surface tracking-tight leading-none text-base font-bold">
+              My Space
+            </h1>
+            <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">
+              Your study corner
+            </p>
+          </div>
         </div>
 
         {/* Tab Pill Bar — scrollable horizontally but fixed vertically */}

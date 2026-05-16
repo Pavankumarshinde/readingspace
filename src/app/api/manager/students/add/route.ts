@@ -81,81 +81,32 @@ export async function POST(req: Request) {
 
     const studentId = authData.user.id;
 
-    await supabaseAdmin
-      .from("profiles")
-      .upsert(
-        {
-          id: studentId,
-          name: name.trim(),
-          phone: phone?.trim() || "",
-          membership_type: "managed",
-          email: placeholderEmail,
-        },
-        { onConflict: "id" },
-      );
-
-    // Dup check — already enrolled?
-    const { data: existingSub } = await supabaseAdmin
-      .from("subscriptions")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("room_id", room)
-      .maybeSingle();
-
-    if (existingSub) {
-      return NextResponse.json(
-        { error: "Student is already enrolled in this room" },
-        { status: 400 },
-      );
-    }
-
-    // Create enrollment record.
-    // start_date / end_date are stored here to satisfy the DB NOT NULL constraint.
-    // They are NOT used by app logic — the installments table is the source of truth
-    // for all payment, plan period, and status data.
-    const { data: subData, error: subError } = await supabaseAdmin
-      .from("subscriptions")
-      .insert({
-        student_id: studentId,
-        room_id: room,
-        seat_number: seat?.trim() || "Unassigned",
-        tier: "standard",
-        membership_type: "managed",
-        invite_sent: false,
-        // Shadow copies for DB schema compat — app reads these from installments
-        start_date: startDate,
-        end_date: endDate,
-      })
-      .select("id")
-      .single();
-
-    if (subError || !subData) {
-      console.error("Sub Insert Error:", subError);
-      return NextResponse.json(
-        { error: `Enrollment failed: ${subError?.message}` },
-        { status: 500 },
-      );
-    }
-
-    // Create the first installment — this is the authoritative payment record.
-    // start_date, end_date, and payment status live exclusively here.
+    // Use the atomic RPC transaction to insert profile, subscription, and installment
     const resolvedStatus = paymentStatus || "due";
-    const { error: installmentError } = await supabaseAdmin
-      .from("installments")
-      .insert({
-        student_id: studentId,
-        room_id: room,
-        subscription_id: subData.id,
-        start_date: startDate,
-        end_date: endDate,
-        status: resolvedStatus,
-        payment_date:
-          resolvedStatus === "paid" ? new Date().toISOString() : null,
-      });
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+      "enroll_student_transaction",
+      {
+        p_student_id: studentId,
+        p_name: name.trim(),
+        p_phone: phone?.trim() || "",
+        p_email: placeholderEmail,
+        p_room_id: room,
+        p_seat_number: seat?.trim() || "Unassigned",
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_payment_status: resolvedStatus,
+      }
+    );
 
-    if (installmentError) {
-      console.error("Installment Insert Error:", installmentError);
-      // Enrollment succeeded — manager can add installment via Plan & Billing modal
+    if (rpcError) {
+      console.error("RPC Transaction Error:", rpcError);
+      // Rollback: Delete the auth user if DB insertion failed
+      await supabaseAdmin.auth.admin.deleteUser(studentId);
+      
+      return NextResponse.json(
+        { error: `Enrollment failed: ${rpcError.message}. Auth user rolled back.` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

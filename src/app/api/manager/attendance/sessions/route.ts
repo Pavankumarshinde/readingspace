@@ -17,6 +17,10 @@ export async function GET(req: Request) {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const offset = (page - 1) * limit;
+
     if (!roomId) return NextResponse.json({ error: "roomId required" }, { status: 400 });
 
     const { data: roomCheck } = await supabaseAuth
@@ -25,7 +29,7 @@ export async function GET(req: Request) {
 
     let query = supabaseAdmin
       .from("attendance_sessions")
-      .select("*, student:profiles(name, email)")
+      .select("*, student:profiles(name, email)", { count: "exact" })
       .eq("room_id", roomId)
       .order("check_in_at", { ascending: false });
 
@@ -47,10 +51,10 @@ export async function GET(req: Request) {
       query = query.gte("date", `${month}-01`).lt("date", nextMonthStr);
     }
 
-    const { data, error } = await query;
+    const { data, count, error } = await query.range(offset, offset + limit - 1);
     if (error) throw error;
 
-    return NextResponse.json({ sessions: data || [] });
+    return NextResponse.json({ sessions: data || [], total: count || 0, page, limit });
   } catch (err: any) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

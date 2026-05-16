@@ -3,8 +3,9 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { calculateDistance } from "@/lib/utils/distance";
 
 const todayIST = () =>
+const todayIST = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
-const nowIST = () => new Date().toISOString();
+const nowUTC = () => new Date().toISOString();
 const endOfDayIST = (dateStr: string) =>
   new Date(`${dateStr}T23:59:59+05:30`).toISOString();
 
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
 
     if (openSession) {
       // CHECK OUT
-      const checkOutTime = nowIST();
+      const checkOutTime = nowUTC();
       await supabaseAdmin
         .from("attendance_sessions")
         .update({ check_out_at: checkOutTime })
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
     }
 
     // CHECK IN
-    const checkInTime = nowIST();
+    const checkInTime = nowUTC();
     const { error: sessionError } = await supabaseAdmin
       .from("attendance_sessions")
       .insert({

@@ -33,15 +33,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // 2. Generate New Key (8 chars hex)
-    const newKey = Math.random().toString(36).substring(2, 10).toUpperCase();
-
-    // 3. Update using Admin Client to ensure it bypasses any potential RLS restrictions on 'join_key' direct update
+    // 2. Generate New Key and Update (With Retry Loop for Collisions)
     const supabaseAdmin = await createAdminClient();
-    const { error: updateError } = await supabaseAdmin
-      .from("rooms")
-      .update({ join_key: newKey })
-      .eq("id", roomId);
+    let newKey = "";
+    let updateError = null;
+    const MAX_RETRIES = 5;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      newKey = Math.random().toString(36).substring(2, 10).toUpperCase();
+      
+      const { error } = await supabaseAdmin
+        .from("rooms")
+        .update({ join_key: newKey })
+        .eq("id", roomId);
+
+      if (!error) {
+        updateError = null;
+        break; // Success
+      }
+
+      // 23505 is PostgreSQL unique_violation
+      if (error.code !== "23505") {
+        updateError = error;
+        break; // Fail on non-collision errors immediately
+      }
+      
+      updateError = error; // Will be returned if we exhaust retries
+    }
 
     if (updateError) {
       console.error("Update Key Error:", updateError);

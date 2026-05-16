@@ -27,6 +27,13 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
   const [searchTermExpiring, setSearchTermExpiring] = useState("");
   const [searchTermHistory, setSearchTermHistory] = useState("");
   const [sessions, setSessions] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const limit = 50;
+
+  useEffect(() => {
+    setPage(1);
+  }, [timeframe, selectedDate]);
 
   // Plan & Billing Modal State
   const [showInstallmentsModal, setShowInstallmentsModal] = useState(false);
@@ -89,10 +96,11 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
       
       let sessData = [];
       try {
-        const res = await fetch(`/api/manager/attendance/sessions?roomId=${roomId}&dateFrom=${dateFrom}&dateTo=${dateTo}`);
+        const res = await fetch(`/api/manager/attendance/sessions?roomId=${roomId}&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}&limit=${limit}`);
         const d = await res.json();
         if (res.ok && d.sessions) {
           sessData = d.sessions;
+          setTotalSessions(d.total || 0);
         }
       } catch (err) {
         console.error("Failed to fetch sessions via API", err);
@@ -127,7 +135,7 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
       setLoading(false);
     };
     fetchDashboardData();
-  }, [roomId, timeframe, selectedDate, viewDate]);
+  }, [roomId, timeframe, selectedDate, viewDate, page]);
 
   useEffect(() => {
     const fetchExpiringPlans = async () => {
@@ -210,10 +218,10 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
                   <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-1">{format(viewDate, "MMMM yyyy")}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors">
+                  <button aria-label="Previous month" onClick={() => setViewDate(subMonths(viewDate, 1))} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors">
                     <ChevronLeft size={18} />
                   </button>
-                  <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors">
+                  <button aria-label="Next month" onClick={() => setViewDate(addMonths(viewDate, 1))} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container transition-colors">
                     <ChevronRight size={18} />
                   </button>
                 </div>
@@ -324,9 +332,9 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
                 <div className="flex items-center justify-between">
                   <h3 className="text-on-surface text-base font-medium">Upcoming Expiries</h3>
                   <div className="flex items-center gap-1.5 bg-surface-container-low rounded-xl p-1">
-                    <button onClick={() => setExpiringViewDate(subMonths(expiringViewDate, 1))} className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:shadow-sm transition-all"><ChevronLeft size={16} /></button>
+                    <button aria-label="Previous month" onClick={() => setExpiringViewDate(subMonths(expiringViewDate, 1))} className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:shadow-sm transition-all"><ChevronLeft size={16} /></button>
                     <span className="text-[10px] font-black uppercase tracking-widest px-1 min-w-[70px] text-center text-primary">{format(expiringViewDate, "MMM yy")}</span>
-                    <button onClick={() => setExpiringViewDate(addMonths(expiringViewDate, 1))} className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:shadow-sm transition-all"><ChevronRight size={16} /></button>
+                    <button aria-label="Next month" onClick={() => setExpiringViewDate(addMonths(expiringViewDate, 1))} className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-white hover:shadow-sm transition-all"><ChevronRight size={16} /></button>
                   </div>
                 </div>
                 <div className="relative w-full">
@@ -367,6 +375,7 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
                             }}
                             className="w-8 h-8 flex items-center justify-center bg-surface-container-low border border-outline-variant/10 shadow-sm rounded-lg text-primary hover:bg-primary hover:text-white transition-colors"
                             title="Renew / Payments"
+                            aria-label="Renew or view payments"
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>receipt_long</span>
                           </button>
@@ -455,6 +464,31 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalSessions > limit && (
+          <div className="px-6 py-4 border-t border-outline-variant/5 bg-surface-container-lowest flex items-center justify-between">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+              Showing {(page - 1) * limit + 1} - {Math.min(page * limit, totalSessions)} of {totalSessions}
+            </span>
+            <div className="flex gap-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-surface-container-low text-on-surface hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                disabled={page * limit >= totalSessions}
+                onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-surface-container-low text-on-surface hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Student Plan & Billing Modal */}

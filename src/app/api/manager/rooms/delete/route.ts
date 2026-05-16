@@ -39,10 +39,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Perform Cascading Delete (DB level handles the children)
+    // 2. Perform Soft Delete
     const { error: deleteError } = await supabaseAdmin
       .from("rooms")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", roomId);
 
     if (deleteError) {

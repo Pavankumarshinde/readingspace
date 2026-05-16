@@ -7,6 +7,7 @@ import {
   HowToUseManagerButton,
   EditManagerProfileFlow,
 } from "./ProfileClient";
+import BackButton from "@/components/ui/BackButton";
 
 export default async function ManagerProfile() {
   const supabase = await createClient();
@@ -48,13 +49,16 @@ export default async function ManagerProfile() {
     <div className="page-shell">
       {/* Fixed page title */}
       <div className="sticky-page-header px-4 md:px-8 py-4">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="font-headline text-on-surface tracking-tight leading-none text-base font-bold">
-            My Profile
-          </h1>
-          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">
-            Your account details
-          </p>
+        <div className="max-w-4xl mx-auto flex items-center gap-3">
+          <BackButton className="md:hidden" />
+          <div>
+            <h1 className="font-headline text-on-surface tracking-tight leading-none text-base font-bold">
+              My Profile
+            </h1>
+            <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-0.5">
+              Your account details
+            </p>
+          </div>
         </div>
       </div>
 

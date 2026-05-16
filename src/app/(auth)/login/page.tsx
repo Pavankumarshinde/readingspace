@@ -48,7 +48,11 @@ export default function LoginPage() {
         else router.push("/student/rooms");
       }
     } catch (err: any) {
-      toast.error(err.message || "Invalid email or password");
+      if (err.status === 429 || err.message?.toLowerCase().includes("rate limit") || err.message?.toLowerCase().includes("security purposes")) {
+        toast.error("Too many attempts. Please try again later or reset your password.", { duration: 5000 });
+      } else {
+        toast.error(err.message || "Invalid email or password");
+      }
     } finally {
       setLoading(false);
     }

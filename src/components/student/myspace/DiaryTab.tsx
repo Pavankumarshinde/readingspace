@@ -149,11 +149,7 @@ export default function DiaryTab({ userId }: DiaryTabProps) {
           placeholder="Write here..."
         />
 
-        {/* Footer */}
-        <div className="mt-4 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
-          <span className="text-[10px] text-on-surface/30 font-bold">
-            {wordCount(editContent)} words
-          </span>
+        <div className="mt-4 pt-4 border-t border-outline-variant/10 flex items-center justify-end">
           <div className="flex gap-2">
             <button
               onClick={deleteEntry}
@@ -259,10 +255,7 @@ export default function DiaryTab({ userId }: DiaryTabProps) {
                 placeholder="How was your day?"
                 className="w-full bg-transparent resize-none text-sm leading-relaxed font-medium text-on-surface placeholder:text-on-surface/20 outline-none"
               />
-              <div className="flex items-center justify-between border-t border-outline-variant/10 pt-3">
-                <span className="text-[10px] text-on-surface/30 font-bold">
-                  {wordCount(todayContent)} words
-                </span>
+              <div className="flex items-center justify-end border-t border-outline-variant/10 pt-3">
                 <button
                   onClick={saveToday}
                   disabled={saving || !todayContent.trim()}
@@ -318,9 +311,6 @@ export default function DiaryTab({ userId }: DiaryTabProps) {
                 <p className="text-[13px] text-on-surface-variant leading-relaxed line-clamp-2 font-medium">
                   {entry.content}
                 </p>
-                <span className="mt-1.5 inline-block text-[9px] font-black uppercase tracking-widest text-on-surface/20">
-                  {entry.word_count} words
-                </span>
               </button>
             ))}
           </div>

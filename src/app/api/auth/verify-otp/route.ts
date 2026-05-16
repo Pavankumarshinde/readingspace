@@ -11,7 +11,30 @@ import {
   timingSafeEqualHex,
 } from "@/lib/security/otp";
 
+const ipRateLimit = new Map<string, { count: number; expiresAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = ipRateLimit.get(ip);
+  if (record && record.expiresAt > now) {
+    if (record.count >= 10) return false;
+    record.count++;
+  } else {
+    // 10 requests per minute per IP
+    ipRateLimit.set(ip, { count: 1, expiresAt: now + 60 * 1000 }); 
+  }
+  return true;
+}
+
 export async function POST(req: Request) {
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const { identifier, otpCode } = await req.json();
 

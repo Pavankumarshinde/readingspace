@@ -60,6 +60,7 @@ export default function TasksTab({ userId }: TasksTabProps) {
   const [newCategory, setNewCategory] = useState("Study");
   const [newDueDate, setNewDueDate] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
   const fetchTasks = useCallback(async () => {
     const { data } = await supabase
@@ -75,30 +76,54 @@ export default function TasksTab({ userId }: TasksTabProps) {
     fetchTasks();
   }, [fetchTasks]);
 
-  const addTask = async () => {
+  const saveTask = async () => {
     if (!newTitle.trim()) return;
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert({
-        user_id: userId,
-        title: newTitle.trim(),
-        priority: newPriority,
-        category: newCategory,
-        due_date: newDueDate || null,
-        completed_at: null,
-      })
-      .select()
-      .single();
 
-    if (error) {
-      toast.error("Failed to add task");
-      return;
+    if (editingTaskId) {
+      const { data, error } = await supabase
+        .from("tasks")
+        .update({
+          title: newTitle.trim(),
+          priority: newPriority,
+          category: newCategory,
+          due_date: newDueDate || null,
+        })
+        .eq("id", editingTaskId)
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to update task");
+        return;
+      }
+      setTasks(tasks.map((t) => (t.id === editingTaskId ? (data as Task) : t)));
+      toast.success("Task Updated");
+    } else {
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({
+          user_id: userId,
+          title: newTitle.trim(),
+          priority: newPriority,
+          category: newCategory,
+          due_date: newDueDate || null,
+          completed_at: null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to add task");
+        return;
+      }
+      setTasks([data as Task, ...tasks]);
+      toast.success("Task Added");
     }
-    setTasks([data as Task, ...tasks]);
+
     setNewTitle("");
     setNewDueDate("");
+    setEditingTaskId(null);
     setShowAddForm(false);
-    toast.success("Task Added");
   };
 
   const toggleDone = async (task: Task) => {
@@ -124,6 +149,15 @@ export default function TasksTab({ userId }: TasksTabProps) {
     await supabase.from("tasks").delete().eq("id", id);
     setTasks(tasks.filter((t) => t.id !== id));
     toast.success("Task Deleted");
+  };
+
+  const startEditTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setNewTitle(task.title);
+    setNewPriority(task.priority);
+    setNewCategory(task.category);
+    setNewDueDate(task.due_date ? format(parseISO(task.due_date), "yyyy-MM-dd") : "");
+    setShowAddForm(true);
   };
 
   const filteredTasks = tasks.filter((t) => {
@@ -160,7 +194,16 @@ export default function TasksTab({ userId }: TasksTabProps) {
             </p>
           </div>
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => {
+              if (showAddForm) {
+                setShowAddForm(false);
+                setEditingTaskId(null);
+                setNewTitle("");
+                setNewDueDate("");
+              } else {
+                setShowAddForm(true);
+              }
+            }}
             className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${showAddForm ? "bg-surface-container-high text-on-surface rotate-45" : "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95"}`}
           >
             <Plus size={20} />
@@ -245,10 +288,10 @@ export default function TasksTab({ userId }: TasksTabProps) {
             </div>
             <div className="flex justify-end mt-2">
               <button
-                onClick={addTask}
+                onClick={saveTask}
                 className="px-5 py-2 bg-primary text-white rounded-lg text-[11px] font-bold uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-sm"
               >
-                Add Task
+                {editingTaskId ? "Update Task" : "Add Task"}
               </button>
             </div>
           </div>
@@ -317,12 +360,22 @@ export default function TasksTab({ userId }: TasksTabProps) {
                 </div>
 
 
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="p-1.5 text-secondary/30 hover:text-error opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-error/10"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => startEditTask(task)}
+                    className="p-1.5 text-secondary/30 hover:text-primary rounded-md hover:bg-primary/10"
+                    aria-label="Edit task"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>edit</span>
+                  </button>
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="p-1.5 text-secondary/30 hover:text-error rounded-md hover:bg-error/10"
+                    aria-label="Delete task"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           ))

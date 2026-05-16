@@ -5,7 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 const todayIST = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 
-const nowIST = () => new Date().toISOString();
+const nowUTC = () => new Date().toISOString();
 
 export async function POST(req: Request) {
   try {
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     if (openSession) {
       // CHECK OUT — close the open session
-      const checkOutTime = nowIST();
+      const checkOutTime = nowUTC();
       await supabaseAdmin
         .from("attendance_sessions")
         .update({ check_out_at: checkOutTime })
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     }
 
     // CHECK IN — create new session
-    const checkInTime = nowIST();
+    const checkInTime = nowUTC();
     const { error: sessionError } = await supabaseAdmin
       .from("attendance_sessions")
       .insert({

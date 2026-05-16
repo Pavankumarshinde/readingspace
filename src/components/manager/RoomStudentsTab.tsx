@@ -119,6 +119,9 @@ export default function RoomStudentsTab({
   const [students, setStudents] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const pageSize = 50;
   const supabase = createClient();
 
   // Actions state
@@ -181,12 +184,13 @@ export default function RoomStudentsTab({
       const { data: subsData, error: subsError } = await supabase
         .from("subscriptions")
         .select(
-          `
- id, seat_number, tier, membership_type, qr_version,
- student:profiles!inner(id, name, email, phone, gender, membership_type)
- `,
+          `id, seat_number, tier, membership_type, qr_version, student:profiles!inner(id, name, email, phone, gender, membership_type)`,
+          { count: "exact" }
         )
-        .eq("room_id", roomId);
+        .eq("room_id", roomId)
+        .range((page - 1) * pageSize, page * pageSize - 1);
+
+      setTotalStudents(count || 0);
 
       if (subsError) throw subsError;
 
@@ -264,7 +268,12 @@ export default function RoomStudentsTab({
 
   useEffect(() => {
     fetchData();
-  }, [roomId]);
+  }, [roomId, page]);
+
+  // Reset page when switching tabs or changing search
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filter]);
 
   // Sync the open billing modal's student snapshot whenever the students list refreshes.
   // This ensures the status badge and expiry in the modal update immediately after
@@ -535,6 +544,7 @@ export default function RoomStudentsTab({
           {/* Enroll Button / Add Icon */}
           <a
             href={`/manager/students/add?room=${roomId}`}
+            aria-label="Add student"
             className="shrink-0 flex items-center justify-center w-12 h-12 lg:w-auto lg:px-6 lg:py-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all font-black text-[11px] uppercase tracking-widest gap-2"
           >
             <UserPlus size={20} className="lg:w-4 lg:h-4" />
@@ -612,6 +622,7 @@ export default function RoomStudentsTab({
                     <button
                       disabled={acting}
                       onClick={() => handleDeclineRequest(req.id)}
+                      aria-label="Decline request"
                       className="w-10 flex items-center justify-center bg-error/10 text-error rounded-lg"
                     >
                       <XCircle size={18} />
@@ -669,6 +680,7 @@ export default function RoomStudentsTab({
                       }}
                       className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-secondary hover:bg-secondary/5 transition-colors"
                       title="Payment History"
+                      aria-label="View payment history"
                     >
                       <CreditCard size={14} />
                     </button>
@@ -686,6 +698,7 @@ export default function RoomStudentsTab({
                       }}
                       className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-primary transition-colors"
                       title="Edit"
+                      aria-label="Edit student"
                     >
                       <Pencil size={14} />
                     </button>
@@ -695,6 +708,7 @@ export default function RoomStudentsTab({
                       }
                       className="w-8 h-8 flex items-center justify-center bg-white border border-outline-variant/10 shadow-sm rounded-lg text-on-surface-variant hover:text-error transition-colors"
                       title="Delete"
+                      aria-label="Delete student"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -702,6 +716,31 @@ export default function RoomStudentsTab({
                 </div>
               ))}
 
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalStudents > pageSize && filter !== "requests" && (
+        <div className="flex items-center justify-between px-4 py-4 mt-6 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl">
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+            Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, totalStudents)} of {totalStudents}
+          </span>
+          <div className="flex gap-2">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-surface-container-low text-on-surface hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              disabled={page * pageSize >= totalStudents}
+              onClick={() => setPage(p => p + 1)}
+              className="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-surface-container-low text-on-surface hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

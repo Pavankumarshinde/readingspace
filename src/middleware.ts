@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -48,9 +48,14 @@ export async function proxy(request: NextRequest) {
   }
 
   // Fast path: no auth cookie → redirect protected routes to login
+  const projectId = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    .replace(/^https?:\/\//, "")
+    .split(".")[0];
+  const expectedCookiePrefix = `sb-${projectId}-auth-token`;
+
   const authCookie = request.cookies
     .getAll()
-    .find((c) => c.name.includes("auth-token"));
+    .find((c) => c.name.startsWith(expectedCookiePrefix));
   if (!authCookie) {
     if (!isPublic) {
       return NextResponse.redirect(new URL("/login", request.url));

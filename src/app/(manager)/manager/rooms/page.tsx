@@ -188,6 +188,7 @@ export default function ManagerRooms() {
             e.preventDefault();
             handleEditRoom(room);
           }}
+          aria-label={`Edit ${room.name}`}
           className="w-7 h-7 rounded-full bg-surface-container text-outline flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all shrink-0"
         >
           <Pencil size={12} />
@@ -327,6 +328,7 @@ export default function ManagerRooms() {
               />
               {searchQuery && (
                 <button
+                  aria-label="Clear search"
                   className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors"
                   onClick={() => setSearchQuery("")}
                 >

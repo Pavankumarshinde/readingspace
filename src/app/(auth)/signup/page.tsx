@@ -230,9 +230,9 @@ export default function SignupPage() {
                       type="password"
                       name="password"
                       required
-                      minLength={6}
+                      minLength={8}
                       className={inputClass}
-                      placeholder="Min. 6 characters"
+                      placeholder="Min. 8 characters"
                       value={formData.password}
                       onChange={handleChange}
                     />,
@@ -251,7 +251,7 @@ export default function SignupPage() {
                       type="password"
                       name="confirmPassword"
                       required
-                      minLength={6}
+                      minLength={8}
                       className={inputClass}
                       placeholder="••••••••"
                       value={formData.confirmPassword}

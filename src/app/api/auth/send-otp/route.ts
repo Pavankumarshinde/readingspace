@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/server";
 import {
   buildGenericOtpSendMessage,
@@ -16,7 +16,30 @@ import {
 // nodemailer requires Node.js net/tls/dns — must use nodejs runtime
 export const runtime = "nodejs";
 
+const ipRateLimit = new Map<string, { count: number; expiresAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = ipRateLimit.get(ip);
+  if (record && record.expiresAt > now) {
+    if (record.count >= 5) return false;
+    record.count++;
+  } else {
+    // 5 requests per minute per IP
+    ipRateLimit.set(ip, { count: 1, expiresAt: now + 60 * 1000 }); 
+  }
+  return true;
+}
+
 export async function POST(req: Request) {
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const { identifier } = await req.json();
 
@@ -111,29 +134,11 @@ export async function POST(req: Request) {
     }
 
     try {
-      const gmailUser = process.env.GMAIL_USER!;
-      const gmailPass = process.env.GMAIL_APP_PASSWORD!;
-
-      if (!gmailUser || !gmailPass) {
-        throw new Error("Gmail credentials not configured in environment");
-      }
-
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true, // SSL
-        auth: {
-          user: gmailUser,
-          pass: gmailPass,
-        },
-        tls: {
-          rejectUnauthorized: false, // fix self-signed cert error in some environments
-        },
-      });
-
-      await transporter.sendMail({
-        from: `"ReadingSpace Security" <${gmailUser}>`,
-        to: targetEmail,
+      const resend = new Resend(process.env.RESEND_API_KEY!);
+      
+      await resend.emails.send({
+        from: "ReadingSpace Security <noreply@readingspace.app>",
+        to: [targetEmail],
         subject: `Your Password Reset Code: ${otpCode}`,
         html: `
 <div style="font-family: 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; background: #fffaf5; border-radius: 16px; padding: 40px; color: #1f1f1f; border: 1px solid #f0ebe0;">

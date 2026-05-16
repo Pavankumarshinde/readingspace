@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const authHeader = req.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -73,20 +73,33 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3. Close each session with end-of-day timestamp for its date
-    const updates = allOpenSessions.map((session) =>
-      supabaseAdmin
-        .from("attendance_sessions")
-        .update({
-          check_out_at: endOfDayIST(session.date),
-          is_auto_checkout: true,
-        })
-        .eq("id", session.id)
-    );
+    // 3. Close each session with end-of-day timestamp for its date using the bulk RPC
+    const sessionsByDate = allOpenSessions.reduce((acc, session) => {
+      if (!acc[session.date]) acc[session.date] = [];
+      acc[session.date].push(session.id);
+      return acc;
+    }, {} as Record<string, string[]>);
 
-    const results = await Promise.allSettled(updates);
-    const succeeded = results.filter((r) => r.status === "fulfilled").length;
-    const failed = results.filter((r) => r.status === "rejected").length;
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const [date, sessionIds] of Object.entries(sessionsByDate)) {
+      const closeTime = endOfDayIST(date);
+      const { data: updatedCount, error } = await supabaseAdmin.rpc(
+        "bulk_close_attendance_sessions",
+        {
+          p_session_ids: sessionIds,
+          p_close_time: closeTime,
+        }
+      );
+
+      if (error) {
+        console.error(`Bulk update failed for date ${date}:`, error);
+        failed += sessionIds.length;
+      } else {
+        succeeded += updatedCount || 0;
+      }
+    }
 
     console.log(`Auto-checkout: closed ${succeeded} sessions, ${failed} failed`);
 

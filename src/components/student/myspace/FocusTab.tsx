@@ -20,7 +20,7 @@ interface FocusTabProps {
 type Mode = "pomodoro" | "short" | "long";
 const MODES: { key: Mode; label: string; emoji: string; secs: number }[] = [
   { key: "short", label: "Short Break", emoji: "⚡", secs: 10 * 60 },
-  { key: "pomodoro", label: "Medium", emoji: "🎯", secs: 30 * 60 },
+  { key: "pomodoro", label: "Medium Break", emoji: "🎯", secs: 30 * 60 },
   { key: "long", label: "Long Break", emoji: "🔋", secs: 60 * 60 },
 ];
 
@@ -66,12 +66,15 @@ export default function FocusTab({ userId }: FocusTabProps) {
     setRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
     const modeData = MODES.find((m) => m.key === mode)!;
+    const elapsedSecs = totalSecs - secsLeft;
+    const actualMins = Math.max(1, Math.round(elapsedSecs / 60));
+
     const { data } = await supabase
       .from("focus_sessions")
       .insert({
         user_id: userId,
         task_name: taskName || null,
-        duration_minutes: Math.round(modeData.secs / 60),
+        duration_minutes: actualMins,
         mode,
       })
       .select()
@@ -130,7 +133,7 @@ export default function FocusTab({ userId }: FocusTabProps) {
               Focus Timer
             </p>
           </div>
-          
+
           <div className="relative">
             <button
               onClick={() => setShowModeDropdown(!showModeDropdown)}
@@ -140,10 +143,10 @@ export default function FocusTab({ userId }: FocusTabProps) {
               {MODES.find((m) => m.key === mode)?.label}
               <ChevronDown size={14} className="opacity-50" />
             </button>
-            
+
             {showModeDropdown && (
               <>
-                <div 
+                <div
                   className="fixed inset-0 z-40"
                   onClick={() => setShowModeDropdown(false)}
                 />
@@ -155,11 +158,10 @@ export default function FocusTab({ userId }: FocusTabProps) {
                         setModeAndReset(m.key);
                         setShowModeDropdown(false);
                       }}
-                      className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                        mode === m.key
+                      className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${mode === m.key
                           ? "bg-primary text-white shadow-sm"
                           : "text-on-surface-variant hover:bg-surface-container"
-                      }`}
+                        }`}
                     >
                       <span className="text-sm">{m.emoji}</span>
                       {m.label}
@@ -227,11 +229,10 @@ export default function FocusTab({ userId }: FocusTabProps) {
           <div className="flex items-center gap-2 w-full">
             <button
               onClick={() => setRunning(!running)}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                running
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${running
                   ? "bg-surface-container-high text-on-surface"
                   : "bg-primary text-white shadow-sm shadow-primary/20"
-              }`}
+                }`}
             >
               {running ? (
                 <Pause size={16} className="fill-current" />
@@ -285,8 +286,11 @@ export default function FocusTab({ userId }: FocusTabProps) {
                     </div>
                   </div>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary/50">
-                  {s.duration_minutes} min
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 text-right">
+                  {s.duration_minutes} min<br />
+                  <span className="text-[8px] opacity-70">
+                    / {Math.round((MODES.find((m) => m.key === s.mode)?.secs || 0) / 60)} min
+                  </span>
                 </span>
               </div>
             ))}
