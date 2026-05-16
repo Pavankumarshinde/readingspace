@@ -127,54 +127,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-surface font-body relative overflow-hidden">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-surface font-body relative overflow-hidden px-5 py-12">
       {/* Subtle background blobs */}
       <div className="fixed -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-primary/[0.08] blur-[120px] pointer-events-none z-0" />
       <div className="fixed -bottom-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-secondary/[0.05] blur-[100px] pointer-events-none z-0" />
 
-      {/* Left Column - Intro Section */}
-      <div className="w-full lg:w-[45%] flex flex-col justify-center px-8 py-12 lg:px-16 xl:px-24 z-10 relative">
-        <div className="max-w-md mx-auto lg:mx-0">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 bg-surface-container-lowest text-primary rounded-2xl shadow-sm border border-outline-variant/10 flex items-center justify-center">
-              <BookOpen size={24} strokeWidth={1.5} />
-            </div>
-            <h1 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">
-              Reading<span className="text-primary">Space</span>
-            </h1>
-          </div>
-
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 mb-10">
-            Premium Study Environment
-          </p>
-
-          <div className="space-y-8">
-            <div className="bg-surface-container-low/40 p-5 rounded-2xl border border-outline-variant/10 backdrop-blur-sm">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-primary/60 mb-2">
-                For Students
-              </p>
-              <p className="text-[14px] leading-relaxed font-medium text-on-surface/80">
-                Students can join a reading space, mark and track attendance, manage notes, habits and stay focused — all in one place.
-              </p>
-            </div>
-
-            <div className="bg-surface-container-low/40 p-5 rounded-2xl border border-outline-variant/10 backdrop-blur-sm">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-tertiary/60 mb-2">
-                For Managers
-              </p>
-              <p className="text-[14px] leading-relaxed font-medium text-on-surface/80">
-                Managers handle rooms, members, payments and attendance — from a single dashboard.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Column - Auth Card */}
-      <div className="w-full lg:w-[55%] flex items-center justify-center px-5 pb-12 lg:py-12 z-10">
-        <div className="w-full max-w-[380px] flex flex-col">
-          {/* Card */}
-          <div className="bg-surface-container-lowest/90 backdrop-blur-2xl rounded-3xl p-6 lg:p-8 border border-outline-variant/10 shadow-2xl shadow-primary/5">
+      {/* Auth Card */}
+      <div className="w-full max-w-[380px] flex flex-col z-10">
+        {/* Card */}
+        <div className="bg-surface-container-lowest/90 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 border border-outline-variant/10 shadow-2xl shadow-primary/5">
             {/* ── Login ──────────────────────────────────────── */}
             {mode === "login" && (
               <form
@@ -404,6 +365,5 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
-    </div>
   );
 }
