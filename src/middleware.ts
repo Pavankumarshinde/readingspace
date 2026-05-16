@@ -41,6 +41,7 @@ export async function middleware(request: NextRequest) {
   ];
   const isPublic =
     publicRoutes.some((r) => pathname.startsWith(r)) || pathname === "/";
+  const isApiRoute = pathname.startsWith("/api");
 
   // Skip auth check entirely for prefetch requests
   if (isPrefetch) {
@@ -58,6 +59,7 @@ export async function middleware(request: NextRequest) {
     .find((c) => c.name.startsWith(expectedCookiePrefix));
   if (!authCookie) {
     if (!isPublic) {
+      if (isApiRoute) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return supabaseResponse;
@@ -71,6 +73,15 @@ export async function middleware(request: NextRequest) {
       // refresh_token_not_found or similar — session is dead
       // For protected routes: clear cookies + redirect to login
       if (!isPublic) {
+        if (isApiRoute) {
+          const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+          request.cookies
+            .getAll()
+            .filter((c) => c.name.includes("auth-token") || c.name.includes("sb-"))
+            .forEach((c) => response.cookies.delete(c.name));
+          return response;
+        }
+        
         const loginUrl = new URL("/login", request.url);
         const response = NextResponse.redirect(loginUrl);
         // Clear all Supabase auth cookies so the client starts fresh
@@ -88,6 +99,7 @@ export async function middleware(request: NextRequest) {
   } catch {
     // Network or unexpected error — fail open for public routes, redirect otherwise
     if (!isPublic) {
+      if (isApiRoute) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return supabaseResponse;
@@ -96,6 +108,7 @@ export async function middleware(request: NextRequest) {
   // Not logged in → redirect protected routes to login
   if (!user) {
     if (!isPublic) {
+      if (isApiRoute) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return supabaseResponse;

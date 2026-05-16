@@ -90,20 +90,27 @@ export default function RoomDashboardTab({ roomId, roomName }: { roomId: string;
         rangeEnd = endOfMonth(selectedDate);
       }
 
-      // Fetch sessions for chosen range via secure API
+      // Fetch sessions for chosen range via Supabase directly
       const dateFrom = format(rangeStart, "yyyy-MM-dd");
       const dateTo = format(rangeEnd, "yyyy-MM-dd");
       
       let sessData = [];
       try {
-        const res = await fetch(`/api/manager/attendance/sessions?roomId=${roomId}&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}&limit=${limit}`);
-        const d = await res.json();
-        if (res.ok && d.sessions) {
-          sessData = d.sessions;
-          setTotalSessions(d.total || 0);
-        }
+        const offset = (page - 1) * limit;
+        const { data, count, error } = await supabase
+          .from("attendance_sessions")
+          .select("*, student:profiles(name, email)", { count: "exact" })
+          .eq("room_id", roomId)
+          .gte("date", dateFrom)
+          .lte("date", dateTo)
+          .order("check_in_at", { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        sessData = data || [];
+        setTotalSessions(count || 0);
       } catch (err) {
-        console.error("Failed to fetch sessions via API", err);
+        console.error("Failed to fetch sessions via Supabase", err);
       }
 
       // Enrich with seat numbers

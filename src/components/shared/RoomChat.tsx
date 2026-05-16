@@ -260,7 +260,7 @@ export default function RoomChat({
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-185px)] md:h-[calc(100vh-200px)] w-full bg-surface-container-lowest border-none md:border md:border-outline-variant/20 shadow-none md:shadow-sm rounded-none md:rounded-3xl overflow-hidden relative">
+    <div className="flex flex-col h-[calc(100dvh-240px)] md:h-[calc(100vh-260px)] w-full bg-surface-container-lowest border-none md:border md:border-outline-variant/20 shadow-none md:shadow-sm rounded-none md:rounded-3xl overflow-hidden relative">
       {/* Mini Header */}
       <div className="px-3 py-2 border-b border-outline-variant/10 bg-surface/80 backdrop-blur-md flex items-center justify-between shrink-0 sticky top-0 z-10">
         <div className="flex items-center gap-2">

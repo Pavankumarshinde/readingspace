@@ -181,7 +181,7 @@ export default function RoomStudentsTab({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: subsData, error: subsError } = await supabase
+      const { data: subsData, error: subsError, count } = await supabase
         .from("subscriptions")
         .select(
           `id, seat_number, tier, membership_type, qr_version, student:profiles!inner(id, name, email, phone, gender, membership_type)`,
