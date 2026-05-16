@@ -37,6 +37,7 @@ export async function proxy(request: NextRequest) {
     "/auth/callback",
     "/manifest.json",
     "/favicon.ico",
+    "/api/auth", // OTP send/verify/reset — called by unauthenticated users
   ];
   const isPublic =
     publicRoutes.some((r) => pathname.startsWith(r)) || pathname === "/";

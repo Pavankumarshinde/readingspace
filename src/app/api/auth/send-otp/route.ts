@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { createAdminClient } from "@/lib/supabase/server";
 import {
   buildGenericOtpSendMessage,
@@ -13,8 +13,10 @@ import {
   normalizePhone,
 } from "@/lib/security/otp";
 
+// nodemailer requires Node.js net/tls/dns — must use nodejs runtime
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
-  const resend = new Resend(process.env.RESEND_API_KEY!);
   try {
     const { identifier } = await req.json();
 
@@ -109,26 +111,46 @@ export async function POST(req: Request) {
     }
 
     try {
-      const { error: resendError } = await resend.emails.send({
-        from: "ReadingSpace Security <onboarding@resend.dev>",
-        to: [targetEmail],
-        subject: `Password Reset Verification Code: ${otpCode}`,
-        html: `
- <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; color: #1f1f1f;">
- <h2>Password Reset Verification</h2>
- <p>Use the code below to reset your ReadingSpace account password.</p>
- <div style="background: #f9f9f9; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 4px; border-radius: 8px; margin: 24px 0;">
- ${otpCode}
- </div>
- <p style="color: #666; font-size: 14px;">This code expires in ${config.otpTtlMinutes} minutes.</p>
- </div>
- `,
-      });
-      if (resendError) {
-        console.error("Resend API Error:", resendError);
+      const gmailUser = process.env.GMAIL_USER!;
+      const gmailPass = process.env.GMAIL_APP_PASSWORD!;
+
+      if (!gmailUser || !gmailPass) {
+        throw new Error("Gmail credentials not configured in environment");
       }
+
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true, // SSL
+        auth: {
+          user: gmailUser,
+          pass: gmailPass,
+        },
+        tls: {
+          rejectUnauthorized: false, // fix self-signed cert error in some environments
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"ReadingSpace Security" <${gmailUser}>`,
+        to: targetEmail,
+        subject: `Your Password Reset Code: ${otpCode}`,
+        html: `
+<div style="font-family: 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; background: #fffaf5; border-radius: 16px; padding: 40px; color: #1f1f1f; border: 1px solid #f0ebe0;">
+  <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 8px; color: #8B2500;">Password Reset</h2>
+  <p style="color: #555; font-size: 15px; margin-bottom: 24px;">Use the code below to reset your <strong>ReadingSpace</strong> account password. Do not share this code with anyone.</p>
+  <div style="background: #fff; border: 1px solid #e8ddd0; padding: 28px 20px; text-align: center; font-size: 38px; font-weight: 800; letter-spacing: 10px; border-radius: 12px; color: #8B2500; margin-bottom: 24px;">
+    ${otpCode}
+  </div>
+  <p style="color: #888; font-size: 13px;">This code expires in <strong>${config.otpTtlMinutes} minutes</strong>. If you did not request this, you can safely ignore this email.</p>
+  <hr style="border: none; border-top: 1px solid #f0ebe0; margin: 28px 0;" />
+  <p style="color: #bbb; font-size: 11px; text-align: center;">READINGSPACE © 2025 · PREMIUM STUDY ENVIRONMENT</p>
+</div>
+`,
+      });
     } catch (emailError) {
-      console.warn("Failed to dispatch forgot-password OTP:", emailError);
+      console.error("Failed to dispatch forgot-password OTP email:", emailError);
+      // Don't fail the request — OTP is already stored, user can retry
     }
 
     if (process.env.NODE_ENV === "development") {
@@ -143,3 +165,4 @@ export async function POST(req: Request) {
     );
   }
 }
+
