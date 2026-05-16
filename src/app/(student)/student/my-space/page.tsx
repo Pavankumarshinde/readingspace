@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Zap,
   Book,
+  Flame,
   LucideIcon,
 } from "lucide-react";
 import BackButton from "@/components/ui/BackButton";

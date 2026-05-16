@@ -16,6 +16,7 @@ import {
   Equal,
   ChevronsDown,
   Star,
+  Pencil,
 } from "lucide-react";
 
 interface Task {
@@ -360,17 +361,17 @@ export default function TasksTab({ userId }: TasksTabProps) {
                 </div>
 
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0 ml-1">
                   <button
                     onClick={() => startEditTask(task)}
-                    className="p-1.5 text-secondary/30 hover:text-primary rounded-md hover:bg-primary/10"
+                    className="p-2 text-secondary/60 hover:text-primary rounded-md hover:bg-primary/10 active:scale-95 transition-all"
                     aria-label="Edit task"
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>edit</span>
+                    <Pencil size={14} />
                   </button>
                   <button
                     onClick={() => deleteTask(task.id)}
-                    className="p-1.5 text-secondary/30 hover:text-error rounded-md hover:bg-error/10"
+                    className="p-2 text-secondary/60 hover:text-error rounded-md hover:bg-error/10 active:scale-95 transition-all"
                     aria-label="Delete task"
                   >
                     <Trash2 size={14} />

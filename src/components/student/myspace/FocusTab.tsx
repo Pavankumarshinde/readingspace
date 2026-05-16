@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
-import { Play, Pause, RotateCcw, SkipForward, Clock, ChevronDown } from "lucide-react";
+import { Play, Pause, RotateCcw, SkipForward, Clock, ChevronDown, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface FocusSession {
   id: string;
@@ -50,6 +51,17 @@ export default function FocusTab({ userId }: FocusTabProps) {
       .order("completed_at", { ascending: false })
       .limit(50);
     if (data) setSessions(data as FocusSession[]);
+  };
+
+  const deleteSession = async (id: string) => {
+    if (!confirm("Delete this focus session?")) return;
+    const { error } = await supabase.from("focus_sessions").delete().eq("id", id);
+    if (!error) {
+      setSessions(sessions.filter((s) => s.id !== id));
+      toast.success("Session deleted");
+    } else {
+      toast.error("Failed to delete session");
+    }
   };
 
   const tick = useCallback(() => {
@@ -286,12 +298,21 @@ export default function FocusTab({ userId }: FocusTabProps) {
                     </div>
                   </div>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 text-right">
-                  {s.duration_minutes} min<br />
-                  <span className="text-[8px] opacity-70">
-                    / {Math.round((MODES.find((m) => m.key === s.mode)?.secs || 0) / 60)} min
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary/50 text-right">
+                    {s.duration_minutes} min<br />
+                    <span className="text-[8px] opacity-70">
+                      / {Math.round((MODES.find((m) => m.key === s.mode)?.secs || 0) / 60)} min
+                    </span>
                   </span>
-                </span>
+                  <button
+                    onClick={() => deleteSession(s.id)}
+                    className="p-2 ml-1 text-secondary/40 hover:text-error rounded-md hover:bg-error/10 active:scale-95 transition-all shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    aria-label="Delete session"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
