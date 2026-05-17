@@ -48,8 +48,13 @@ export function validateEnv() {
   }
 }
 
-// Automatically validate when this file is imported
-validateEnv();
+// Automatically validate at runtime — but NOT during `next build`.
+// During build, Next.js evaluates server modules to collect page data,
+// but runtime secrets (QR_SECRET, CRON_SECRET, etc.) are only injected
+// by the host at startup, not at build time.
+if (process.env.NEXT_PHASE !== "phase-production-build") {
+  validateEnv();
+}
 
 export const env = {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
