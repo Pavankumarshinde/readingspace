@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Close each session with end-of-day timestamp for its date using the bulk RPC
-    const sessionsByDate = allOpenSessions.reduce((acc, session) => {
+    const sessionsByDate: Record<string, string[]> = allOpenSessions.reduce((acc, session) => {
       if (!acc[session.date]) acc[session.date] = [];
       acc[session.date].push(session.id);
       return acc;
