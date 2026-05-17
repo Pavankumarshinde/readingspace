@@ -3,7 +3,6 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { calculateDistance } from "@/lib/utils/distance";
 
 const todayIST = () =>
-const todayIST = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 const nowUTC = () => new Date().toISOString();
 const endOfDayIST = (dateStr: string) =>
