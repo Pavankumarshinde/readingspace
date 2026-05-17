@@ -1,8 +1,8 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,102 +10,148 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
+            request.cookies.set(name, value),
+          );
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+            supabaseResponse.cookies.set(name, value, options),
+          );
         },
       },
-    }
-  )
+    },
+  );
 
-  const { pathname } = request.nextUrl
-  const isPrefetch = request.headers.get('next-router-prefetch') === '1' || request.headers.get('purpose') === 'prefetch'
+  const { pathname } = request.nextUrl;
+  const isPrefetch =
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("purpose") === "prefetch";
 
-  // Public routes
-  const publicRoutes = ['/login', '/signup', '/auth/callback', '/manifest.json', '/favicon.ico']
-  const isPublic = publicRoutes.some(r => pathname.startsWith(r)) || pathname === '/'
+  // Public routes — never require auth
+  const publicRoutes = [
+    "/login",
+    "/signup",
+    "/auth/callback",
+    "/manifest.json",
+    "/favicon.ico",
+    "/api/auth", // OTP send/verify/reset — called by unauthenticated users
+  ];
+  const isPublic =
+    publicRoutes.some((r) => pathname.startsWith(r)) || pathname === "/";
+  const isApiRoute = pathname.startsWith("/api");
 
-  // Aggressive Bypass: If it's a prefetch, skip EVERYTHING and just return NextResponse.next()
-  // We handle the real security check on the actual page load.
+  // Skip auth check entirely for prefetch requests
   if (isPrefetch) {
-    return supabaseResponse
+    return supabaseResponse;
   }
 
-  // Quick check: If no auth cookies exist, we can skip getUser() for public routes
-  const authCookie = request.cookies.getAll().find(c => c.name.includes('auth-token'))
+  // Fast path: no auth cookie → redirect protected routes to login
+  const projectId = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    .replace(/^https?:\/\//, "")
+    .split(".")[0];
+  const expectedCookiePrefix = `sb-${projectId}-auth-token`;
+
+  const authCookie = request.cookies
+    .getAll()
+    .find((c) => c.name.startsWith(expectedCookiePrefix));
   if (!authCookie) {
     if (!isPublic) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      if (isApiRoute) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.redirect(new URL("/login", request.url));
     }
-    return supabaseResponse
+    return supabaseResponse;
   }
 
-  // Only call getUser if we have a cookie and it's NOT a prefetch
-  const { data: { user } } = await supabase.auth.getUser()
+  // Get user — wrap in try/catch to handle stale/invalid refresh tokens gracefully
+  let user = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      // refresh_token_not_found or similar — session is dead
+      // For protected routes: clear cookies + redirect to login
+      if (!isPublic) {
+        if (isApiRoute) {
+          const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+          request.cookies
+            .getAll()
+            .filter((c) => c.name.includes("auth-token") || c.name.includes("sb-"))
+            .forEach((c) => response.cookies.delete(c.name));
+          return response;
+        }
+        
+        const loginUrl = new URL("/login", request.url);
+        const response = NextResponse.redirect(loginUrl);
+        // Clear all Supabase auth cookies so the client starts fresh
+        request.cookies
+          .getAll()
+          .filter(
+            (c) => c.name.includes("auth-token") || c.name.includes("sb-"),
+          )
+          .forEach((c) => response.cookies.delete(c.name));
+        return response;
+      }
+      return supabaseResponse;
+    }
+    user = data.user;
+  } catch {
+    // Network or unexpected error — fail open for public routes, redirect otherwise
+    if (!isPublic) {
+      if (isApiRoute) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return supabaseResponse;
+  }
 
-  // 1. Not logged in -> Redirect to login (if not public)
+  // Not logged in → redirect protected routes to login
   if (!user) {
     if (!isPublic) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      if (isApiRoute) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.redirect(new URL("/login", request.url));
     }
-    return supabaseResponse
+    return supabaseResponse;
   }
 
-  // 2. Logged in -> Get role if needed
-  const isManagerRoute = pathname.startsWith('/manager')
-  const isStudentRoute = pathname.startsWith('/student')
-  const isAuthRoute = pathname === '/login' || pathname === '/signup'
-  const needsRole = isAuthRoute || isManagerRoute || isStudentRoute
+  // Logged in user → get role if needed
+  const isManagerRoute = pathname.startsWith("/manager");
+  const isStudentRoute = pathname.startsWith("/student");
+  const isAuthRoute = pathname === "/login" || pathname === "/signup";
+  const needsRole = isAuthRoute || isManagerRoute || isStudentRoute;
 
-  let role = null
+  let role = null;
   if (needsRole) {
-    // Check if we can get role from metadata first to skip DB call
-    role = user.user_metadata?.role
-    
-    // If not in metadata, fetch from DB
+    role = user.user_metadata?.role;
     if (!role) {
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      role = profile?.role
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      role = profile?.role;
     }
   }
 
-  // 3. User is on public route (like /login) -> Redirect to their dashboard
+  // Logged-in user on auth route → redirect to their dashboard
   if (isAuthRoute) {
-    const target = role === 'manager' ? '/manager/rooms' : '/student/rooms'
-    return NextResponse.redirect(new URL(target, request.url))
+    const target = role === "manager" ? "/manager/rooms" : "/student/rooms";
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
-  // 4. Role-based route protection
-  if (isManagerRoute && role !== 'manager') {
-    return NextResponse.redirect(new URL('/student/rooms', request.url))
+  // Role-based route protection
+  if (isManagerRoute && role !== "manager") {
+    return NextResponse.redirect(new URL("/student/rooms", request.url));
   }
-  if (isStudentRoute && role !== 'student') {
-    return NextResponse.redirect(new URL('/manager/rooms', request.url))
+  if (isStudentRoute && role !== "student") {
+    return NextResponse.redirect(new URL("/manager/rooms", request.url));
   }
 
-  return supabaseResponse
+  return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, sitemap.xml, robots.txt, manifest.json (metadata files)
-     * - public files with extensions
-     */
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2)$).*)",
   ],
-}
+};

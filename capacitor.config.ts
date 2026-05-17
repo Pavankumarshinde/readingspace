@@ -5,8 +5,13 @@ const config: CapacitorConfig = {
   appName: 'Reading Space',
   webDir: 'public',
   server: {
-    url: 'https://readingspace.vercel.app',
-    cleartext: true
+    url: 'https://readingspace.vercel.app'
+  },
+  plugins: {
+    StatusBar: {
+      style: 'LIGHT',
+      backgroundColor: '#ffffff'
+    }
   }
 };
 

@@ -4,30 +4,30 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[]
+  | Json[];
 
 export interface Database {
   public: {
     Tables: {
       [key: string]: {
-        Row: any
-        Insert: any
-        Update: any
-      }
-    }
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+    };
     Views: {
       [key: string]: {
-        Row: any
-      }
-    }
+        Row: any;
+      };
+    };
     Functions: {
       [key: string]: {
-        Args: any
-        Returns: any
-      }
-    }
+        Args: any;
+        Returns: any;
+      };
+    };
     Enums: {
-      [key: string]: any
-    }
-  }
+      [key: string]: any;
+    };
+  };
 }
